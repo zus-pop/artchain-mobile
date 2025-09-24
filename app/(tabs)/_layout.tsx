@@ -12,23 +12,34 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
-        headerShown: false,
         tabBarButton: HapticTab,
+        animation: "shift",
+        headerShown: false,
       }}
+      backBehavior="history"
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Announcement",
+          title: "Home",
           tabBarIcon: ({ color }) => (
             <Ionicons size={28} name="home" color={color} />
           ),
         }}
       />
       <Tabs.Screen
+        name="gallery"
+        options={{
+          title: "Gallery",
+          tabBarIcon: ({ color }) => (
+            <Ionicons size={28} name="images" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="contests"
         options={{
-          title: "Contest",
+          title: "Contests",
           tabBarIcon: ({ color }) => (
             <Ionicons size={28} name="brush" color={color} />
           ),
