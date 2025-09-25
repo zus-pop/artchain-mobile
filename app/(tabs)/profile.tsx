@@ -15,19 +15,17 @@ import {
   Star,
   Trophy,
 } from "lucide-react-native";
-import React, { useState } from "react";
-import {
-  Image,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { useState } from "react";
+import { Image, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
+  // Simulate user authentication state
+  const [isLoggedIn] = useState(true); // set to true for logged-in, false for guest
+  const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
+  const themedStyles = getThemedStyles(colorScheme);
+
   // Mock recent submissions data
   const recentSubmissions = [
     {
@@ -65,8 +63,6 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<"submissions" | "achievements">(
     "submissions"
   );
-  const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
-  const themedStyles = getThemedStyles(colorScheme);
 
   // Mock user stats data
   const userStats = {
@@ -107,6 +103,92 @@ export default function ProfileScreen() {
     }
   };
 
+  if (!isLoggedIn) {
+    // Guest user view
+    return (
+      <SafeAreaView style={themedStyles.container}>
+        <StatusBar
+          barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
+          backgroundColor={Colors[colorScheme].background}
+        />
+        <View
+          style={[
+            themedStyles.header,
+            {
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexDirection: "row",
+            },
+          ]}
+        >
+          <Text style={themedStyles.headerTitle}>Hồ sơ</Text>
+          <TouchableOpacity
+            onPress={() => router.push("/setting")}
+            style={themedStyles.settingsButton}
+          >
+            <Settings size={24} color={Colors[colorScheme].icon} />
+          </TouchableOpacity>
+        </View>
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 32,
+          }}
+        >
+          <Ionicons
+            name="person-circle-outline"
+            size={80}
+            color={Colors[colorScheme].muted}
+          />
+          <Text
+            style={{
+              fontSize: 20,
+              fontWeight: "bold",
+              color: Colors[colorScheme].foreground,
+              marginTop: 16,
+            }}
+          >
+            Bạn chưa đăng nhập
+          </Text>
+          <Text
+            style={{
+              fontSize: 15,
+              color: Colors[colorScheme].mutedForeground,
+              marginVertical: 12,
+              textAlign: "center",
+            }}
+          >
+            Đăng nhập để quản lý hồ sơ, theo dõi thành tích và tham gia các cuộc
+            thi nghệ thuật hấp dẫn trên ArtChain.
+          </Text>
+          <TouchableOpacity
+            style={{
+              backgroundColor: Colors[colorScheme].primary,
+              borderRadius: 16,
+              paddingHorizontal: 32,
+              paddingVertical: 12,
+              marginTop: 8,
+            }}
+            onPress={() => router.push("/login")}
+          >
+            <Text
+              style={{
+                color: Colors[colorScheme].primaryForeground,
+                fontWeight: "bold",
+                fontSize: 16,
+              }}
+            >
+              Đăng nhập / Đăng ký
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Logged-in user view
   return (
     <SafeAreaView style={themedStyles.container}>
       <StatusBar
@@ -320,37 +402,23 @@ export default function ProfileScreen() {
             <View style={themedStyles.achievementCard}>
               <Trophy size={24} color={Colors[colorScheme].chart1} />
               <View style={themedStyles.achievementContent}>
-                <Text style={themedStyles.achievementTitle}>Giải Nhất</Text>
-                <Text style={themedStyles.achievementDescription}>
-                  Cuộc thi "Vẽ Sài Gòn Xanh"
+                <Text style={themedStyles.achievementTitle}>
+                  Giải Nhất "Vẽ Sài Gòn Xanh"
                 </Text>
-                <Text style={themedStyles.achievementDate}>Tháng 12, 2024</Text>
+                <Text style={themedStyles.achievementSubtitle}>
+                  2024 - TP. Hồ Chí Minh
+                </Text>
               </View>
             </View>
-
             <View style={themedStyles.achievementCard}>
               <Award size={24} color={Colors[colorScheme].primary} />
               <View style={themedStyles.achievementContent}>
                 <Text style={themedStyles.achievementTitle}>
-                  Giải Khuyến Khích
+                  Top 10 "Nghệ Thuật Đường Phố"
                 </Text>
-                <Text style={themedStyles.achievementDescription}>
-                  Cuộc thi "Nghệ Thuật Đường Phố"
+                <Text style={themedStyles.achievementSubtitle}>
+                  2024 - Quận 1
                 </Text>
-                <Text style={themedStyles.achievementDate}>Tháng 11, 2024</Text>
-              </View>
-            </View>
-
-            <View style={themedStyles.achievementCard}>
-              <Star size={24} color={Colors[colorScheme].destructive} />
-              <View style={themedStyles.achievementContent}>
-                <Text style={themedStyles.achievementTitle}>
-                  Nghệ Sĩ Xuất Sắc
-                </Text>
-                <Text style={themedStyles.achievementDescription}>
-                  Danh hiệu năm 2024
-                </Text>
-                <Text style={themedStyles.achievementDate}>Tháng 10, 2024</Text>
               </View>
             </View>
           </View>
@@ -361,7 +429,7 @@ export default function ProfileScreen() {
 }
 
 function getThemedStyles(scheme: "light" | "dark") {
-  return StyleSheet.create({
+  return require("react-native").StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: Colors[scheme].background,

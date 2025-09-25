@@ -12,22 +12,30 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { z } from "zod";
+import z from "zod";
 
-const schema = z.object({
-  username: z
-    .string({ message: "Username is required" })
-    .trim()
-    .nonempty("Username is required"),
-  password: z
-    .string({ message: "Password is required" })
-    .trim()
-    .nonempty("Password is required"),
-});
+const schema = z
+  .object({
+    username: z.string().trim().min(2, "Username is required"),
+    password: z.string().trim().min(2, "Password is required"),
+    confirmPassword: z
+      .string()
+      .trim()
+      .nonempty("Confirmed Password is required"),
+  })
+  .superRefine(({ confirmPassword, password }, ctx) => {
+    if (confirmPassword !== password) {
+      ctx.addIssue({
+        code: "custom",
+        message: "The passwords did not match",
+        path: ["confirmPassword"],
+      });
+    }
+  });
 
 type Schema = z.infer<typeof schema>;
 
-export default function LoginScreen() {
+export default function SignupScreen() {
   const {
     control,
     handleSubmit,
@@ -39,10 +47,9 @@ export default function LoginScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
 
-  const handleLogin = (data: Schema) => {
-    // Placeholder: Implement login logic
-    alert(`Logged in as ${data.username}`);
-    // router.back(); // Go back to profile
+  const handleSignup = (data: Schema) => {
+    // Placeholder: Implement signup logic
+    // router.replace("/login");
   };
 
   return (
@@ -81,7 +88,7 @@ export default function LoginScreen() {
             color: Colors[colorScheme].primary,
           }}
         >
-          Đăng nhập
+          Đăng ký
         </Text>
       </View>
       <View
@@ -100,7 +107,7 @@ export default function LoginScreen() {
             marginBottom: 18,
           }}
         >
-          Đăng nhập
+          Đăng ký
         </Text>
         <Controller
           control={control}
@@ -154,7 +161,7 @@ export default function LoginScreen() {
                 backgroundColor: Colors[colorScheme].input,
                 color: Colors[colorScheme].foreground,
                 borderRadius: 12,
-                marginBottom: 18,
+                marginBottom: 14,
                 padding: 12,
                 fontSize: 16,
               }}
@@ -177,6 +184,44 @@ export default function LoginScreen() {
           </Text>
         )}
 
+        <Controller
+          control={control}
+          name="confirmPassword"
+          render={({ field }) => (
+            <TextInput
+              placeholder="Xác nhận mật khẩu"
+              onChangeText={field.onChange}
+              secureTextEntry
+              style={{
+                width: "100%",
+                borderWidth: 1,
+                borderColor: Colors[colorScheme].border,
+                backgroundColor: Colors[colorScheme].input,
+                color: Colors[colorScheme].foreground,
+                borderRadius: 12,
+                marginBottom: 18,
+                padding: 12,
+                fontSize: 16,
+              }}
+              placeholderTextColor={Colors[colorScheme].mutedForeground}
+              {...field}
+            />
+          )}
+        />
+        {errors.confirmPassword && (
+          <Text
+            style={{
+              color: Colors[colorScheme].destructive,
+              fontSize: 14,
+              marginBottom: 8,
+              alignSelf: "flex-start",
+              marginLeft: 4,
+            }}
+          >
+            {errors.confirmPassword.message}
+          </Text>
+        )}
+
         <TouchableOpacity
           style={{
             width: "100%",
@@ -189,25 +234,27 @@ export default function LoginScreen() {
             marginBottom: 12,
             opacity: isValid ? 1 : 0.7,
           }}
-          onPress={handleSubmit(handleLogin)}
+          onPress={handleSubmit(handleSignup)}
           disabled={!isValid}
         >
           <Text
             style={{
-              color: Colors[colorScheme].primaryForeground,
+              color: isValid
+                ? Colors[colorScheme].primaryForeground
+                : Colors[colorScheme].mutedForeground,
               fontWeight: "bold",
               fontSize: 16,
             }}
           >
-            Đăng nhập
+            Đăng ký
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => router.replace("/signup")}
+          onPress={() => router.replace("/login")}
           style={{ marginTop: 8 }}
         >
           <Text style={{ color: Colors[colorScheme].primary, fontSize: 15 }}>
-            Chưa có tài khoản? Đăng ký
+            Đã có tài khoản? Đăng nhập
           </Text>
         </TouchableOpacity>
       </View>

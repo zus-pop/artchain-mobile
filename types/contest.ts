@@ -7,16 +7,15 @@ export interface Contest {
   participants: number;
   deadline: string;
   startDate: string;
-  status: 'active' | 'upcoming' | 'ended';
+  status: "active" | "upcoming" | "ended";
   image: string;
   location: string;
   organizer: string;
-  rating: number;
-  rules: string[];
-  judges: string[];
-  submissions: Submission[];
 }
 
+export interface ContestFilter {
+  status: "active" | "upcoming" | "ended" | "all";
+}
 export interface Submission {
   id: string;
   contestId: string;
@@ -25,7 +24,7 @@ export interface Submission {
   description: string;
   category: string;
   imageUri: string;
-  status: 'pending' | 'accepted' | 'winner' | 'rejected';
+  status: "pending" | "accepted" | "winner" | "rejected";
   submissionDate: string;
   views: number;
   likes: number;
@@ -102,7 +101,7 @@ export interface Notification {
   userId: string;
   title: string;
   message: string;
-  type: 'contest' | 'submission' | 'result' | 'system';
+  type: "contest" | "submission" | "result" | "system";
   isRead: boolean;
   date: string;
   actionUrl?: string;

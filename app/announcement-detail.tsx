@@ -1,3 +1,5 @@
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Stack } from "expo-router";
 import React from "react";
 import {
@@ -21,21 +23,23 @@ const sample = {
 };
 
 const AnnouncementDetail = () => {
+  const colorScheme = useColorScheme() ?? "light";
+  const themedStyles = getThemedStyles(colorScheme);
   return (
     <>
       <Stack.Screen
         options={{
           title: sample.title,
-          headerStyle: {},
+          headerStyle: { backgroundColor: Colors[colorScheme].card },
         }}
       />
-      <ScrollView style={styles.container}>
-        <Image source={{ uri: sample.image }} style={styles.image} />
-        <View style={styles.content}>
-          <Text style={styles.title}>{sample.title}</Text>
-          <Text style={styles.date}>{sample.date}</Text>
-          <Text style={styles.summary}>{sample.summary}</Text>
-          <Text style={styles.description}>{sample.description}</Text>
+      <ScrollView style={themedStyles.container}>
+        <Image source={{ uri: sample.image }} style={themedStyles.image} />
+        <View style={themedStyles.content}>
+          <Text style={themedStyles.title}>{sample.title}</Text>
+          <Text style={themedStyles.date}>{sample.date}</Text>
+          <Text style={themedStyles.summary}>{sample.summary}</Text>
+          <Text style={themedStyles.description}>{sample.description}</Text>
         </View>
       </ScrollView>
     </>
@@ -43,40 +47,42 @@ const AnnouncementDetail = () => {
 };
 
 const { width } = Dimensions.get("window");
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8f8fc",
-  },
-  image: {
-    width: "100%",
-    height: 260,
-  },
-  content: {
-    padding: 22,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: "bold",
-    color: "#2d2d4a",
-    marginBottom: 10,
-  },
-  date: {
-    fontSize: 15,
-    color: "#6c63ff",
-    marginBottom: 12,
-    fontWeight: "600",
-  },
-  summary: {
-    fontSize: 17,
-    color: "#444",
-    marginBottom: 14,
-    lineHeight: 22,
-  },
-  description: {
-    fontSize: 16,
-    color: "#444",
-    lineHeight: 24,
-  },
-});
+function getThemedStyles(scheme: "light" | "dark") {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: Colors[scheme].background,
+    },
+    image: {
+      width: "100%",
+      height: 260,
+    },
+    content: {
+      padding: 22,
+    },
+    title: {
+      fontSize: 26,
+      fontWeight: "bold",
+      color: Colors[scheme].primary,
+      marginBottom: 10,
+    },
+    date: {
+      fontSize: 15,
+      color: Colors[scheme].accent,
+      marginBottom: 12,
+      fontWeight: "600",
+    },
+    summary: {
+      fontSize: 17,
+      color: Colors[scheme].foreground,
+      marginBottom: 14,
+      lineHeight: 22,
+    },
+    description: {
+      fontSize: 16,
+      color: Colors[scheme].mutedForeground,
+      lineHeight: 24,
+    },
+  });
+}
 export default AnnouncementDetail;
