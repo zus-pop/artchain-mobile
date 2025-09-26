@@ -42,7 +42,7 @@ export default function LoginScreen() {
   });
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
-  const { mutate } = useLoginMutation();
+  const { mutate, isPending } = useLoginMutation();
 
   const handleLogin = (data: Schema) => {
     // Placeholder: Implement login logic
@@ -194,28 +194,30 @@ export default function LoginScreen() {
           <TouchableOpacity
             style={{
               width: "100%",
-              backgroundColor: isValid
-                ? Colors[colorScheme].primary
-                : Colors[colorScheme].muted,
+              backgroundColor:
+                isValid && !isPending
+                  ? Colors[colorScheme].primary
+                  : Colors[colorScheme].muted,
               borderRadius: 12,
               paddingVertical: 14,
               alignItems: "center",
               marginBottom: 12,
-              opacity: isValid ? 1 : 0.7,
+              opacity: isValid && !isPending ? 1 : 0.7,
             }}
             onPress={handleSubmit(handleLogin)}
-            disabled={!isValid}
+            disabled={!isValid || isPending}
           >
             <Text
               style={{
-                color: isValid
-                  ? Colors[colorScheme].primaryForeground
-                  : Colors[colorScheme].mutedForeground,
+                color:
+                  isValid && !isPending
+                    ? Colors[colorScheme].primaryForeground
+                    : Colors[colorScheme].mutedForeground,
                 fontWeight: "bold",
                 fontSize: 16,
               }}
             >
-              Đăng nhập
+              {isPending ? "Đang đăng nhập..." : "Đăng nhập"}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
