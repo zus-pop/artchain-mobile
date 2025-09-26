@@ -31,6 +31,9 @@ const schema = z
       .string({ message: "Confirmed Password is required" })
       .trim()
       .nonempty("Confirmed Password is required"),
+    email: z
+      .string({ message: "Email is required" })
+      .email("Need the right format email"),
   })
   .superRefine(({ confirmPassword, password }, ctx) => {
     if (confirmPassword !== password) {
@@ -55,10 +58,11 @@ export default function SignupScreen() {
   });
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
-  const { mutate } = useSignInMutation();
+  const { mutate, isPending } = useSignInMutation();
 
   const handleSignup = (data: Schema) => {
     mutate({
+      email: data.email,
       username: data.username,
       password: data.password,
     });
@@ -126,6 +130,42 @@ export default function SignupScreen() {
           >
             ARTCHAIN
           </Text>
+          <Controller
+            control={control}
+            name="email"
+            render={({ field }) => (
+              <TextInput
+                placeholder="Email"
+                onChangeText={field.onChange}
+                style={{
+                  width: "100%",
+                  borderWidth: 1,
+                  borderColor: Colors[colorScheme].border,
+                  backgroundColor: Colors[colorScheme].input,
+                  color: Colors[colorScheme].foreground,
+                  borderRadius: 12,
+                  marginBottom: 14,
+                  padding: 12,
+                  fontSize: 16,
+                }}
+                placeholderTextColor={Colors[colorScheme].mutedForeground}
+                {...field}
+              />
+            )}
+          />
+          {errors.email && (
+            <Text
+              style={{
+                color: Colors[colorScheme].destructive,
+                fontSize: 14,
+                marginBottom: 8,
+                alignSelf: "flex-start",
+                marginLeft: 4,
+              }}
+            >
+              {errors.email.message}
+            </Text>
+          )}
           <Controller
             control={control}
             name="username"
@@ -242,28 +282,30 @@ export default function SignupScreen() {
           <TouchableOpacity
             style={{
               width: "100%",
-              backgroundColor: isValid
-                ? Colors[colorScheme].primary
-                : Colors[colorScheme].muted,
+              backgroundColor:
+                isValid && !isPending
+                  ? Colors[colorScheme].primary
+                  : Colors[colorScheme].muted,
               borderRadius: 12,
               paddingVertical: 14,
               alignItems: "center",
               marginBottom: 12,
-              opacity: isValid ? 1 : 0.7,
+              opacity: isValid && !isPending ? 1 : 0.7,
             }}
             onPress={handleSubmit(handleSignup)}
-            disabled={!isValid}
+            disabled={!isValid || isPending}
           >
             <Text
               style={{
-                color: isValid
-                  ? Colors[colorScheme].primaryForeground
-                  : Colors[colorScheme].mutedForeground,
+                color:
+                  isValid && !isPending
+                    ? Colors[colorScheme].primaryForeground
+                    : Colors[colorScheme].mutedForeground,
                 fontWeight: "bold",
                 fontSize: 16,
               }}
             >
-              Đăng ký
+              {isPending ? "Đang đăng ký..." : "Đăng ký"}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
