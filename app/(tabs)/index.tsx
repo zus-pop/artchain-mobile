@@ -1,36 +1,21 @@
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    Dimensions,
-    Image,
-    Pressable,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { usePagerView } from "react-native-pager-view";
-import { SafeAreaView } from "react-native-safe-area-context";
-
-const { width } = Dimensions.get("window");
-
-interface Contest {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  prize: string;
-  participants: number;
-  deadline: string;
-  status: "active" | "upcoming" | "ended";
-  image: string;
-  location: string;
-  rating: number;
-}
 
 interface Announcement {
   id: string;
@@ -78,17 +63,38 @@ const announcements: Announcement[] = [
     date: "2025-03-10",
     type: "result",
   },
+  {
+    id: "a5",
+    title: "Cuộc thi Nghệ Thuật Trẻ",
+    summary:
+      "Dành cho các nghệ sĩ trẻ tuổi dưới 18. Tham gia để thể hiện tài năng của bạn!",
+    image: "https://images.pexels.com/photos/1450354/pexels-photo-1450354.jpeg",
+    date: "2025-04-01",
+    type: "contest",
+  },
+  {
+    id: "a6",
+    title: "Kết quả cuộc thi Mỹ Thuật Hiện Đại",
+    summary:
+      "Các tác phẩm đoạt giải đã được công bố. Khám phá nghệ thuật hiện đại qua các bức tranh ấn tượng.",
+    image: "https://images.pexels.com/photos/1450355/pexels-photo-1450355.jpeg",
+    date: "2025-05-01",
+    type: "result",
+  },
 ];
 
-const categories = [
-  { id: "1", name: "Môi trường", icon: "🌱", color: "#10B981" },
-  { id: "2", name: "Đương đại", icon: "🎨", color: "#F97316" },
-  { id: "3", name: "Truyền thống", icon: "🏛️", color: "#1E40AF" },
-  { id: "4", name: "Thiếu nhi", icon: "👶", color: "#EC4899" },
-];
+// const categories = [
+//   { id: "1", name: "Môi trường", icon: "🌱", color: "#10B981" },
+//   { id: "2", name: "Đương đại", icon: "🎨", color: "#F97316" },
+//   { id: "3", name: "Truyền thống", icon: "🏛️", color: "#1E40AF" },
+//   { id: "4", name: "Thiếu nhi", icon: "👶", color: "#EC4899" },
+// ];
 export default function Home() {
   const colorScheme = useColorScheme() ?? "light";
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const headerHeight = 60;
   const heroSlides: {
     id: string;
     image: string;
@@ -98,7 +104,7 @@ export default function Home() {
     {
       id: "h1",
       image:
-        "https://images.pexels.com/photos/1061588/pexels-photo-1061588.jpeg",
+        "https://images.pexels.com/photos/3184192/pexels-photo-3184192.jpeg",
       title: "Vẽ Sài Gòn Xanh",
       subtitle: "Thành phố xanh, bền vững và thân thiện với môi trường",
     },
@@ -134,37 +140,75 @@ export default function Home() {
   const themedStyles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: Colors[colorScheme].background, // softer, neutral background
+      backgroundColor: Colors[colorScheme].background,
     },
     header: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
       paddingHorizontal: 24,
-      paddingTop: 28,
-      paddingBottom: 20,
-      backgroundColor: Colors[colorScheme].cardAlt, // lighter card background
-      borderBottomWidth: 1,
-      borderBottomColor: Colors[colorScheme].border,
+      paddingBottom: 8,
+      backgroundColor: Colors[colorScheme].background,
+      marginTop: 12,
     },
     greeting: {
-      fontSize: 14,
-      color: Colors[colorScheme].mutedForeground,
-      fontWeight: "400",
+      fontSize: 20,
+      color: Colors[colorScheme].primary,
+      fontWeight: "800",
+      textShadowColor: "rgba(0,0,0,0.5)",
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 2,
     },
     appName: {
-      fontSize: 32,
+      fontSize: 30,
       fontWeight: "bold",
       color: Colors[colorScheme].primary,
       marginTop: 2,
       letterSpacing: 1,
     },
+    avatar: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      borderWidth: 2,
+      borderColor: Colors[colorScheme].primary,
+    },
     scrollView: {
       flex: 1,
+      paddingBottom: 80, // Account for bottom tab bar
     },
     heroSlider: {
       width: "100%",
-      height: 300,
+      height: Dimensions.get("window").height - headerHeight, // Full screen minus safe area and tabs
+    },
+    heroContainer: {
+      position: "relative",
+      width: "100%",
+      height: Dimensions.get("window").height - headerHeight,
+    },
+    heroHeaderOverlay: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      padding: 20,
+      paddingTop: 25,
+      borderBottomStartRadius: 12,
+      borderBottomEndRadius: 12,
+    },
+    heroContentOverlay: {
+      position: "absolute",
+      bottom: 60,
+      left: 0,
+      right: 0,
+      padding: 20,
+    },
+    heroGradient: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
     },
     heroSlide: {
       width: "100%",
@@ -184,36 +228,59 @@ export default function Home() {
     },
     heroOverlay: {
       flex: 1,
-      justifyContent: "flex-end",
-      padding: 18,
-      backgroundColor: Colors[colorScheme].muted, // more subtle overlay
-      opacity: 0.85,
-      zIndex: 2,
+      justifyContent: "space-between",
+      padding: 20,
+    },
+    heroHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingTop: 10,
     },
     heroTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: "bold",
-      color: Colors[colorScheme].text,
-      marginBottom: 2,
-      textShadowColor: Colors[colorScheme].shadow,
+      color: Colors[colorScheme].primaryForeground,
+      marginBottom: 4,
+      textShadowColor: "rgba(0,0,0,0.5)",
       textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 1,
+      textShadowRadius: 2,
       zIndex: 1,
     },
     heroSubtitle: {
       fontSize: 14,
-      color: Colors[colorScheme].mutedForeground,
+      color: Colors[colorScheme].primaryForeground,
       lineHeight: 20,
-      textShadowColor: Colors[colorScheme].shadow,
+      textShadowColor: "rgba(0,0,0,0.5)",
       textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 1,
+      textShadowRadius: 2,
       zIndex: 1,
+    },
+    indicatorsContainer: {
+      position: "absolute",
+      bottom: 20,
+      left: 0,
+      right: 0,
+      flexDirection: "row",
+      justifyContent: "center",
+    },
+    indicator: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      marginHorizontal: 4,
+      backgroundColor: "rgba(255,255,255,0.5)",
+    },
+    activeIndicator: {
+      backgroundColor: Colors[colorScheme].primaryForeground,
     },
     section: {
       backgroundColor: Colors[colorScheme].card,
-      marginBottom: 12,
+      marginVertical: 8,
+      marginHorizontal: 4,
+      borderRadius: 6,
       paddingVertical: 18,
-      borderWidth: 1,
+      borderWidth: 0.8,
       borderColor: Colors[colorScheme].border,
       shadowColor: Colors[colorScheme].border,
       shadowOffset: { width: 0, height: 1 },
@@ -226,14 +293,13 @@ export default function Home() {
       fontWeight: "bold",
       color: Colors[colorScheme].primary,
       marginBottom: 12,
-      paddingHorizontal: 24,
+      paddingHorizontal: 20,
       letterSpacing: 0.5,
     },
     sectionHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      paddingHorizontal: 20,
       marginBottom: 16,
     },
     categoriesContainer: {
@@ -245,10 +311,9 @@ export default function Home() {
       width: 80,
       height: 80,
       marginRight: 12,
-      borderRadius: 16,
       borderWidth: 2,
-      backgroundColor: Colors[colorScheme].cardAlt,
-      borderColor: Colors[colorScheme].cardBorder,
+      backgroundColor: Colors[colorScheme].card,
+      borderColor: Colors[colorScheme].border,
     },
     categoryIcon: {
       fontSize: 24,
@@ -258,15 +323,12 @@ export default function Home() {
       fontSize: 12,
       fontWeight: "600",
       textAlign: "center",
-      color: Colors[colorScheme].text,
+      color: Colors[colorScheme].foreground,
     },
     announcementCard: {
-      backgroundColor: Colors[colorScheme].cardAlt,
-      borderWidth: 1,
-      borderColor: Colors[colorScheme].cardBorder,
-      marginHorizontal: 24,
-      marginBottom: 12,
-      borderRadius: 14,
+      backgroundColor: Colors[colorScheme].card,
+      marginHorizontal: 8,
+      marginBottom: 8,
       overflow: "hidden",
       shadowColor: Colors[colorScheme].border,
       shadowOffset: { width: 0, height: 1 },
@@ -274,16 +336,18 @@ export default function Home() {
       shadowRadius: 4,
       elevation: 1,
       flexDirection: "row",
+      borderColor: Colors[colorScheme].border,
+      borderWidth: 0.5,
     },
     announcementImage: {
       width: 90,
       height: "100%",
-      borderTopLeftRadius: 14,
-      borderBottomLeftRadius: 14,
+      borderTopLeftRadius: 5,
+      borderBottomLeftRadius: 5,
     },
     announcementContent: {
       flex: 1,
-      padding: 16,
+      padding: 8,
       justifyContent: "center",
     },
     announcementTitle: {
@@ -310,7 +374,16 @@ export default function Home() {
     },
     announcementType: {
       fontSize: 12,
-      color: Colors[colorScheme].accent,
+      color: Colors[colorScheme].accentForeground,
+      fontWeight: "600",
+    },
+    showAllButton: {
+      alignSelf: "center",
+      padding: 12,
+      marginTop: 8,
+    },
+    showAllText: {
+      color: Colors[colorScheme].primaryForeground,
       fontWeight: "600",
     },
     quickActions: {
@@ -321,66 +394,117 @@ export default function Home() {
     quickActionButton: {
       alignItems: "center",
       padding: 16,
-      backgroundColor: Colors[colorScheme].cardAlt,
+      backgroundColor: Colors[colorScheme].card,
       borderWidth: 2,
-      borderColor: Colors[colorScheme].cardBorder,
+      borderColor: Colors[colorScheme].border,
       borderRadius: 16,
       minWidth: 100,
     },
     quickActionIcon: {
-      fontSize: 32,
       marginBottom: 8,
     },
     quickActionText: {
       fontSize: 12,
       fontWeight: "600",
-      color: Colors[colorScheme].text,
+      color: Colors[colorScheme].foreground,
       textAlign: "center",
     },
   });
 
+  const headerStyle = {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    padding: 20,
+    paddingTop: 30,
+    zIndex: 10,
+    backgroundColor: scrollY.interpolate({
+      inputRange: [0, Dimensions.get("window").height - headerHeight],
+      outputRange: ["transparent", Colors[colorScheme].background],
+      extrapolate: "clamp",
+    }),
+  } as any;
+
   return (
-    <SafeAreaView style={themedStyles.container}>
-      <StatusBar
-        barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
-        backgroundColor={Colors[colorScheme].background}
-      />
-      <View style={themedStyles.header}>
+    <View style={themedStyles.container}>
+      <Animated.View style={[themedStyles.heroHeaderOverlay, headerStyle]}>
         <View>
-          <Text style={themedStyles.greeting}>Chào mừng đến với</Text>
-          <Text style={themedStyles.appName}>Artchain</Text>
+          <Text style={themedStyles.greeting}>Chào mừng</Text>
+          <Text style={themedStyles.appName}>Guest</Text>
         </View>
-      </View>
+        <TouchableOpacity>
+          <Image
+            source={{ uri: "https://via.placeholder.com/40" }}
+            style={themedStyles.avatar}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
+      </Animated.View>
       <ScrollView
         style={themedStyles.scrollView}
         showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
       >
-        <AnimatedPagerView
-          style={themedStyles.heroSlider}
-          initialPage={0}
-          ref={ref}
-        >
-          {heroSlides.map((slide, idx) => (
-            <Pressable
-              onPress={() => router.push("/announcement-detail")}
-              key={slide.id}
-            >
-              <View style={themedStyles.heroSlide}>
+        <View style={themedStyles.heroContainer}>
+          <AnimatedPagerView
+            style={themedStyles.heroSlider}
+            initialPage={0}
+            ref={ref}
+            onPageSelected={(e) => setCurrentPage(e.nativeEvent.position)}
+          >
+            {heroSlides.map((slide, idx) => (
+              <Pressable
+                onPress={() => router.push("/announcement-detail")}
+                key={slide.id}
+                style={themedStyles.heroSlide}
+              >
                 <Image
                   source={{ uri: slide.image }}
                   style={themedStyles.heroImage}
+                  resizeMode="cover"
                 />
-                <View style={themedStyles.heroOverlay}>
-                  <Text style={themedStyles.heroTitle}>{slide.title}</Text>
-                  <Text style={themedStyles.heroSubtitle}>
-                    {slide.subtitle}
-                  </Text>
-                </View>
-              </View>
-            </Pressable>
-          ))}
-        </AnimatedPagerView>
-        <View style={themedStyles.section}>
+              </Pressable>
+            ))}
+          </AnimatedPagerView>
+
+          <LinearGradient
+            pointerEvents="none"
+            colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.6)"]}
+            style={themedStyles.heroGradient}
+          />
+
+          {/* Fixed Content Overlay */}
+          <View style={themedStyles.heroContentOverlay}>
+            <Text style={themedStyles.heroTitle}>
+              {heroSlides[currentPage]?.title}
+            </Text>
+            <Text style={themedStyles.heroSubtitle}>
+              {heroSlides[currentPage]?.subtitle}
+            </Text>
+          </View>
+
+          {/* Fixed Indicators Overlay */}
+          <View style={themedStyles.indicatorsContainer}>
+            {heroSlides.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  themedStyles.indicator,
+                  index === currentPage && themedStyles.activeIndicator,
+                ]}
+              />
+            ))}
+          </View>
+        </View>
+        {/* <View style={themedStyles.section}>
           <Text style={themedStyles.sectionTitle}>Danh mục</Text>
           <ScrollView
             horizontal
@@ -402,7 +526,7 @@ export default function Home() {
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </View>
+        </View> */}
         <View style={themedStyles.section}>
           <View style={themedStyles.sectionHeader}>
             <Text style={themedStyles.sectionTitle}>Thông báo mới</Text>
@@ -415,6 +539,7 @@ export default function Home() {
               <Image
                 source={{ uri: post.image }}
                 style={themedStyles.announcementImage}
+                resizeMode="cover"
               />
               <View style={themedStyles.announcementContent}>
                 <Text style={themedStyles.announcementTitle}>{post.title}</Text>
@@ -435,25 +560,46 @@ export default function Home() {
               </View>
             </TouchableOpacity>
           ))}
+          <TouchableOpacity
+            style={themedStyles.showAllButton}
+            onPress={() => router.push("/contests")}
+          >
+            <Text style={themedStyles.showAllText}>Xem tất cả</Text>
+          </TouchableOpacity>
         </View>
         <View style={themedStyles.section}>
           <Text style={themedStyles.sectionTitle}>Hành động nhanh</Text>
           <View style={themedStyles.quickActions}>
             <TouchableOpacity style={themedStyles.quickActionButton}>
-              <Text style={themedStyles.quickActionIcon}>📝</Text>
+              <Ionicons
+                name="create-outline"
+                size={32}
+                color={Colors[colorScheme].foreground}
+                style={themedStyles.quickActionIcon}
+              />
               <Text style={themedStyles.quickActionText}>Tạo cuộc thi</Text>
             </TouchableOpacity>
             <TouchableOpacity style={themedStyles.quickActionButton}>
-              <Text style={themedStyles.quickActionIcon}>🎯</Text>
+              <Ionicons
+                name="play-outline"
+                size={32}
+                color={Colors[colorScheme].foreground}
+                style={themedStyles.quickActionIcon}
+              />
               <Text style={themedStyles.quickActionText}>Tham gia ngay</Text>
             </TouchableOpacity>
             <TouchableOpacity style={themedStyles.quickActionButton}>
-              <Text style={themedStyles.quickActionIcon}>🏆</Text>
+              <Ionicons
+                name="trophy-outline"
+                size={32}
+                color={Colors[colorScheme].foreground}
+                style={themedStyles.quickActionIcon}
+              />
               <Text style={themedStyles.quickActionText}>Xem kết quả</Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

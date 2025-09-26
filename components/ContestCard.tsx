@@ -117,9 +117,9 @@ function getThemedStyles(scheme: "light" | "dark") {
   return StyleSheet.create({
     card: {
       backgroundColor: Colors[scheme].card,
-      borderRadius: 16,
+      borderRadius: 6,
       overflow: "hidden",
-      shadowColor: Colors[scheme].shadow,
+      shadowColor: Colors[scheme].border,
       shadowOffset: {
         width: 0,
         height: 2,
@@ -127,8 +127,10 @@ function getThemedStyles(scheme: "light" | "dark") {
       shadowOpacity: 0.1,
       shadowRadius: 8,
       elevation: 3,
-      marginHorizontal: 20,
+      marginHorizontal: 6,
       marginBottom: 16,
+      borderWidth: 1,
+      borderColor: Colors[scheme].border,
     },
     image: {
       width: "100%",

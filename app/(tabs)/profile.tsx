@@ -16,13 +16,12 @@ import {
   Trophy,
 } from "lucide-react-native";
 import { useState } from "react";
-import { Image, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
   // Simulate user authentication state
-  const [isLoggedIn] = useState(true); // set to true for logged-in, false for guest
+  const [isLoggedIn] = useState(false); // set to true for logged-in, false for guest
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
   const themedStyles = getThemedStyles(colorScheme);
 
@@ -106,11 +105,7 @@ export default function ProfileScreen() {
   if (!isLoggedIn) {
     // Guest user view
     return (
-      <SafeAreaView style={themedStyles.container}>
-        <StatusBar
-          barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
-          backgroundColor={Colors[colorScheme].background}
-        />
+      <View style={themedStyles.container}>
         <View
           style={[
             themedStyles.header,
@@ -126,7 +121,7 @@ export default function ProfileScreen() {
             onPress={() => router.push("/setting")}
             style={themedStyles.settingsButton}
           >
-            <Settings size={24} color={Colors[colorScheme].icon} />
+            <Settings size={24} color={Colors[colorScheme].accentForeground} />
           </TouchableOpacity>
         </View>
         <View
@@ -184,18 +179,13 @@ export default function ProfileScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   // Logged-in user view
   return (
-    <SafeAreaView style={themedStyles.container}>
-      <StatusBar
-        barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
-        backgroundColor={Colors[colorScheme].background}
-      />
-
+    <View style={themedStyles.container}>
       {/* Header */}
       <View style={themedStyles.header}>
         <Text style={themedStyles.headerTitle}>Hồ sơ</Text>
@@ -206,7 +196,7 @@ export default function ProfileScreen() {
           >
             <Ionicons
               size={24}
-              color={Colors[colorScheme].icon}
+              color={Colors[colorScheme].accentForeground}
               name="notifications"
             />
           </TouchableOpacity>
@@ -214,7 +204,7 @@ export default function ProfileScreen() {
             onPress={() => router.push("/setting")}
             style={themedStyles.settingsButton}
           >
-            <Settings size={24} color={Colors[colorScheme].icon} />
+            <Settings size={24} color={Colors[colorScheme].accentForeground} />
           </TouchableOpacity>
         </View>
       </View>
@@ -243,17 +233,17 @@ export default function ProfileScreen() {
 
             <View style={themedStyles.userContact}>
               <View style={themedStyles.contactItem}>
-                <Mail size={14} color={Colors[colorScheme].icon} />
+                <Mail size={14} color={Colors[colorScheme].primary} />
                 <Text style={themedStyles.contactText}>
                   nam.artist@email.com
                 </Text>
               </View>
               <View style={themedStyles.contactItem}>
-                <Phone size={14} color={Colors[colorScheme].icon} />
+                <Phone size={14} color={Colors[colorScheme].primary} />
                 <Text style={themedStyles.contactText}>+84 123 456 789</Text>
               </View>
               <View style={themedStyles.contactItem}>
-                <MapPin size={14} color={Colors[colorScheme].icon} />
+                <MapPin size={14} color={Colors[colorScheme].primary} />
                 <Text style={themedStyles.contactText}>TP. Hồ Chí Minh</Text>
               </View>
             </View>
@@ -379,13 +369,13 @@ export default function ProfileScreen() {
 
                   <View style={themedStyles.submissionStats}>
                     <View style={themedStyles.submissionStat}>
-                      <Eye size={14} color={Colors[colorScheme].icon} />
+                      <Eye size={14} color={Colors[colorScheme].primary} />
                       <Text style={themedStyles.submissionStatText}>
                         {submission.views}
                       </Text>
                     </View>
                     <View style={themedStyles.submissionStat}>
-                      <Heart size={14} color={Colors[colorScheme].icon} />
+                      <Heart size={14} color={Colors[colorScheme].primary} />
                       <Text style={themedStyles.submissionStatText}>
                         {submission.likes}
                       </Text>
@@ -424,12 +414,12 @@ export default function ProfileScreen() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 function getThemedStyles(scheme: "light" | "dark") {
-  return require("react-native").StyleSheet.create({
+  return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: Colors[scheme].background,
@@ -475,9 +465,9 @@ function getThemedStyles(scheme: "light" | "dark") {
     },
     profileSection: {
       backgroundColor: Colors[scheme].card,
-      marginHorizontal: 20,
-      marginTop: 16,
-      borderRadius: 16,
+      marginHorizontal: 4,
+      marginTop: 8,
+      borderRadius: 6,
       padding: 20,
       alignItems: "center",
       shadowColor: "#000",
@@ -546,12 +536,12 @@ function getThemedStyles(scheme: "light" | "dark") {
       backgroundColor: Colors[scheme].accent,
       paddingHorizontal: 16,
       paddingVertical: 8,
-      borderRadius: 20,
+      borderRadius: 10,
       borderWidth: 1,
       borderColor: Colors[scheme].primary,
     },
     editProfileText: {
-      color: Colors[scheme].text,
+      color: Colors[scheme].foreground,
       fontWeight: "600",
       marginLeft: 6,
     },
@@ -559,9 +549,9 @@ function getThemedStyles(scheme: "light" | "dark") {
       flexDirection: "row",
       justifyContent: "space-around",
       backgroundColor: Colors[scheme].card,
-      marginHorizontal: 20,
-      marginTop: 16,
-      borderRadius: 16,
+      marginHorizontal: 4,
+      marginTop: 6,
+      borderRadius: 6,
       paddingVertical: 20,
       shadowColor: "#000",
       shadowOffset: {
@@ -588,9 +578,9 @@ function getThemedStyles(scheme: "light" | "dark") {
     },
     ratingSection: {
       backgroundColor: Colors[scheme].card,
-      marginHorizontal: 20,
-      marginTop: 16,
-      borderRadius: 16,
+      marginHorizontal: 4,
+      marginTop: 5,
+      borderRadius: 6,
       padding: 20,
       shadowColor: "#000",
       shadowOffset: {
@@ -620,10 +610,10 @@ function getThemedStyles(scheme: "light" | "dark") {
     tabsContainer: {
       flexDirection: "row",
       backgroundColor: Colors[scheme].card,
-      marginHorizontal: 20,
-      marginTop: 16,
-      borderRadius: 12,
-      padding: 4,
+      marginHorizontal: 4,
+      marginTop: 6,
+      borderRadius: 6,
+      padding: 15,
       shadowColor: "#000",
       shadowOffset: {
         width: 0,
@@ -635,7 +625,7 @@ function getThemedStyles(scheme: "light" | "dark") {
     },
     tab: {
       flex: 1,
-      paddingVertical: 12,
+      paddingVertical: 15,
       alignItems: "center",
       borderRadius: 8,
     },
@@ -655,10 +645,10 @@ function getThemedStyles(scheme: "light" | "dark") {
     },
     submissionCard: {
       backgroundColor: Colors[scheme].card,
-      marginHorizontal: 20,
-      marginBottom: 12,
-      borderRadius: 12,
-      padding: 16,
+      marginHorizontal: 4,
+      marginBottom: 8,
+      borderRadius: 6,
+      padding: 10,
       flexDirection: "row",
       shadowColor: "#000",
       shadowOffset: {
@@ -668,11 +658,13 @@ function getThemedStyles(scheme: "light" | "dark") {
       shadowOpacity: 0.05,
       shadowRadius: 3,
       elevation: 1,
+      borderColor: Colors[scheme].border,
+      borderWidth: 1,
     },
     submissionImage: {
-      width: 80,
-      height: 80,
-      borderRadius: 8,
+      width: 100,
+      height: 120,
+      borderRadius: 6,
       marginRight: 12,
     },
     submissionContent: {
@@ -685,7 +677,7 @@ function getThemedStyles(scheme: "light" | "dark") {
       marginBottom: 8,
     },
     submissionTitle: {
-      fontSize: 16,
+      fontSize: 18,
       fontWeight: "bold",
       color: Colors[scheme].foreground,
       flex: 1,
@@ -727,13 +719,13 @@ function getThemedStyles(scheme: "light" | "dark") {
     },
     achievementCard: {
       backgroundColor: Colors[scheme].card,
-      marginHorizontal: 20,
+      marginHorizontal: 4,
       marginBottom: 12,
-      borderRadius: 12,
+      borderRadius: 6,
       padding: 16,
       flexDirection: "row",
       alignItems: "center",
-      shadowColor: "#000",
+      shadowColor: Colors[scheme].border,
       shadowOffset: {
         width: 0,
         height: 1,
@@ -741,6 +733,8 @@ function getThemedStyles(scheme: "light" | "dark") {
       shadowOpacity: 0.05,
       shadowRadius: 3,
       elevation: 1,
+      borderColor: Colors[scheme].border,
+      borderWidth: 1,
     },
     achievementContent: {
       marginLeft: 16,
@@ -752,14 +746,14 @@ function getThemedStyles(scheme: "light" | "dark") {
       color: Colors[scheme].foreground,
       marginBottom: 4,
     },
-    achievementDescription: {
+    achievementSubtitle: {
       fontSize: 14,
       color: Colors[scheme].mutedForeground,
       marginBottom: 4,
     },
     achievementDate: {
       fontSize: 12,
-      color: Colors[scheme].muted,
+      color: Colors[scheme].mutedForeground,
     },
   });
 }

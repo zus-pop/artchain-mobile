@@ -98,16 +98,23 @@ export default function NotificationsScreen() {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case "contest":
-        return <Trophy size={20} color={Colors[colorScheme].chart1} />;
+        return (
+          <Trophy size={20} color={Colors[colorScheme].accentForeground} />
+        );
       case "submission":
-        return <FileText size={20} color={Colors[colorScheme].primary} />;
+        return (
+          <FileText size={20} color={Colors[colorScheme].accentForeground} />
+        );
       case "result":
         return (
-          <CheckCircle size={20} color={Colors[colorScheme].mutedForeground} />
+          <CheckCircle size={20} color={Colors[colorScheme].accentForeground} />
         );
       case "system":
         return (
-          <SettingsIcon size={20} color={Colors[colorScheme].mutedForeground} />
+          <SettingsIcon
+            size={20}
+            color={Colors[colorScheme].accentForeground}
+          />
         );
       default:
         return <Bell size={20} color={Colors[colorScheme].mutedForeground} />;
@@ -153,7 +160,7 @@ export default function NotificationsScreen() {
             onPress={() => router.back()}
             name="arrow-back"
             size={24}
-            color={Colors[colorScheme].icon}
+            color={Colors[colorScheme].primary}
           />
           <View>
             <Text style={themedStyles.headerTitle}>Thông báo</Text>
@@ -210,13 +217,13 @@ export default function NotificationsScreen() {
                     <Ionicons
                       name="checkmark-done"
                       size={16}
-                      color={Colors[colorScheme].muted}
+                      color={Colors[colorScheme].accentForeground}
                     />
                   ) : (
                     <Ionicons
                       name="ellipse"
                       size={16}
-                      color={Colors[colorScheme].accent}
+                      color={Colors[colorScheme].accentForeground}
                     />
                   )}
                 </View>
@@ -283,9 +290,9 @@ function getThemedStyles(scheme: "light" | "dark") {
     },
     notificationCard: {
       backgroundColor: Colors[scheme].card,
-      marginHorizontal: 20,
-      marginBottom: 8,
-      borderRadius: 12,
+      marginHorizontal: 5,
+      marginBottom: 6,
+      borderRadius: 6,
       padding: 16,
       flexDirection: "row",
       alignItems: "flex-start",
@@ -298,7 +305,7 @@ function getThemedStyles(scheme: "light" | "dark") {
       shadowRadius: 3,
       elevation: 1,
       borderWidth: 0.8,
-      borderColor: Colors[scheme].foreground,
+      borderColor: Colors[scheme].border,
     },
     // unreadCard removed, replaced with icon indicator
     notificationIcon: {

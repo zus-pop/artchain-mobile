@@ -1,11 +1,13 @@
 import { ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 
 import { Colors, Fonts } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { Toaster } from "sonner-native";
 export const unstable_settings = {
   anchor: "(tabs)",
 };
@@ -19,7 +21,7 @@ export default function RootLayout() {
     colors: {
       background: Colors[colorScheme ?? "light"].background,
       card: Colors[colorScheme ?? "light"].card,
-      text: Colors[colorScheme ?? "light"].text,
+      text: Colors[colorScheme ?? "light"].foreground,
       border: Colors[colorScheme ?? "light"].border,
       notification: Colors[colorScheme ?? "light"].primary,
       primary: Colors[colorScheme ?? "light"].primary,
@@ -36,49 +38,51 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView>
-      <QueryClientProvider client={queryClient}>
-        <StatusBar animated backgroundColor="transparent" />
-        <ThemeProvider value={theme}>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="login"
-              options={{
-                title: "Login",
-                headerShown: false,
-              }}
-            />
-            <Stack.Screen
-              name="signup"
-              options={{
-                title: "Signup",
-                headerShown: false,
-              }}
-            />
-            <Stack.Screen
-              name="setting"
-              options={{
-                title: "Setting",
-                headerShown: false,
-                presentation: "formSheet",
-              }}
-            />
-            <Stack.Screen
-              name="notifications"
-              options={{
-                title: "Notification",
-                headerShown: false,
-                presentation: "modal",
-              }}
-            />
-            <Stack.Screen
-              name="contest-detail"
-              options={{ title: "Contest Detail" }}
-            />
-          </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </QueryClientProvider>
+      <SafeAreaProvider>
+        <QueryClientProvider client={queryClient}>
+          <StatusBar translucent animated backgroundColor="transparent" />
+          <ThemeProvider value={theme}>
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="login"
+                options={{
+                  title: "Login",
+                  headerShown: false,
+                }}
+              />
+              <Stack.Screen
+                name="signup"
+                options={{
+                  title: "Signup",
+                  headerShown: false,
+                }}
+              />
+              <Stack.Screen
+                name="setting"
+                options={{
+                  title: "Setting",
+                  headerShown: false,
+                  presentation: "formSheet",
+                }}
+              />
+              <Stack.Screen
+                name="notifications"
+                options={{
+                  title: "Notification",
+                  headerShown: false,
+                  presentation: "modal",
+                }}
+              />
+              <Stack.Screen
+                name="contest-detail"
+                options={{ title: "Contest Detail" }}
+              />
+            </Stack>
+            <Toaster richColors />
+          </ThemeProvider>
+        </QueryClientProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
