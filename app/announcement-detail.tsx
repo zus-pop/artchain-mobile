@@ -2,14 +2,7 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Stack } from "expo-router";
 import React from "react";
-import {
-  Dimensions,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 
 const sample = {
   title: "ArtChain Painting Contest 2024",
@@ -46,7 +39,6 @@ const AnnouncementDetail = () => {
   );
 };
 
-const { width } = Dimensions.get("window");
 function getThemedStyles(scheme: "light" | "dark") {
   return StyleSheet.create({
     container: {
@@ -68,7 +60,7 @@ function getThemedStyles(scheme: "light" | "dark") {
     },
     date: {
       fontSize: 15,
-      color: Colors[scheme].accent,
+      color: Colors[scheme].mutedForeground,
       marginBottom: 12,
       fontWeight: "600",
     },

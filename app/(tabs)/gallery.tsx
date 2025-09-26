@@ -148,10 +148,10 @@ function getThemedStyles(scheme: "light" | "dark") {
     },
     imageCard: {
       backgroundColor: Colors[scheme].card,
-      borderRadius: 16,
+      borderRadius: 5,
       margin: 6,
       overflow: "hidden",
-      shadowColor: Colors[scheme].shadow,
+      shadowColor: Colors[scheme].mutedForeground,
       shadowOpacity: 0.08,
       shadowRadius: 6,
       elevation: 2,
@@ -163,7 +163,7 @@ function getThemedStyles(scheme: "light" | "dark") {
     },
     imageInfo: {
       padding: 10,
-      backgroundColor: Colors[scheme].input,
+      backgroundColor: Colors[scheme].card,
       borderBottomLeftRadius: 16,
       borderBottomRightRadius: 16,
     },

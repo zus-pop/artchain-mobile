@@ -3,7 +3,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { StatusBar, Switch, Text, TouchableOpacity, View } from "react-native";
+import { Switch, Text, TouchableOpacity, View } from "react-native";
 
 const languages = [
   { label: "Tiếng Việt", value: "vi" },
@@ -19,10 +19,6 @@ const Setting = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors[colorScheme].background }}>
-      <StatusBar
-        barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
-        backgroundColor={Colors[colorScheme].background}
-      />
       {/* Header */}
       <View
         style={{
@@ -43,7 +39,7 @@ const Setting = () => {
           <Ionicons
             name="arrow-back"
             size={24}
-            color={Colors[colorScheme].icon}
+            color={Colors[colorScheme].primary}
           />
         </TouchableOpacity>
         <Text

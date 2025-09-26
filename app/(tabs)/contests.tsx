@@ -7,14 +7,12 @@ import { Filter, Search } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 const filterOptions = ["Tất cả", "Đang diễn ra", "Sắp diễn ra", "Đã kết thúc"];
 
@@ -42,68 +40,68 @@ export default function ContestsScreen() {
   });
 
   return (
-    <SafeAreaView style={themedStyles.container}>
-      <StatusBar />
-
-      {/* Header */}
+    <View style={themedStyles.container}>
+      {/* Header with Search and Filter */}
       <View style={themedStyles.header}>
-        <Text style={themedStyles.headerTitle}>Cuộc thi</Text>
-        <Text style={themedStyles.headerSubtitle}>
-          Khám phá các cuộc thi vẽ hấp dẫn
-        </Text>
-      </View>
-
-      {/* Search and Filter */}
-      <View style={themedStyles.searchSection}>
-        <View style={themedStyles.searchContainer}>
-          <Search
-            size={20}
-            color={Colors[colorScheme].icon}
-            style={themedStyles.searchIcon}
-          />
-          <TextInput
-            style={themedStyles.searchInput}
-            placeholder="Tìm kiếm cuộc thi..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor={Colors[colorScheme].mutedForeground}
-          />
+        <View style={themedStyles.headerContent}>
+          <Text style={themedStyles.headerTitle}>Cuộc thi</Text>
+          <Text style={themedStyles.headerSubtitle}>
+            Khám phá các cuộc thi vẽ hấp dẫn
+          </Text>
         </View>
-        <TouchableOpacity
-          style={themedStyles.filterButton}
-          onPress={() => setShowFilters(!showFilters)}
-        >
-          <Filter size={20} color={Colors[colorScheme].primaryForeground} />
-        </TouchableOpacity>
-      </View>
 
-      {/* Filter Options */}
-      {showFilters && (
-        <View style={themedStyles.filterOptions}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {filterOptions.map((option) => (
-              <TouchableOpacity
-                key={option}
-                style={[
-                  themedStyles.filterOption,
-                  selectedFilter === option && themedStyles.filterOptionActive,
-                ]}
-                onPress={() => setSelectedFilter(option)}
-              >
-                <Text
+        <View style={themedStyles.searchSection}>
+          <View style={themedStyles.searchContainer}>
+            <Search
+              size={20}
+              color={Colors[colorScheme].border}
+              style={themedStyles.searchIcon}
+            />
+            <TextInput
+              style={themedStyles.searchInput}
+              placeholder="Tìm kiếm cuộc thi..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor={Colors[colorScheme].mutedForeground}
+            />
+          </View>
+          <TouchableOpacity
+            style={themedStyles.filterButton}
+            onPress={() => setShowFilters(!showFilters)}
+          >
+            <Filter size={20} color={Colors[colorScheme].primaryForeground} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Filter Options */}
+        {showFilters && (
+          <View style={themedStyles.filterOptions}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {filterOptions.map((option) => (
+                <TouchableOpacity
+                  key={option}
                   style={[
-                    themedStyles.filterOptionText,
+                    themedStyles.filterOption,
                     selectedFilter === option &&
-                      themedStyles.filterOptionTextActive,
+                      themedStyles.filterOptionActive,
                   ]}
+                  onPress={() => setSelectedFilter(option)}
                 >
-                  {option}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+                  <Text
+                    style={[
+                      themedStyles.filterOptionText,
+                      selectedFilter === option &&
+                        themedStyles.filterOptionTextActive,
+                    ]}
+                  >
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+      </View>
 
       {/* Contest List */}
       {isLoading ? (
@@ -135,7 +133,7 @@ export default function ContestsScreen() {
           ))}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -150,7 +148,14 @@ function getThemedStyles(scheme: "light" | "dark") {
       backgroundColor: Colors[scheme].card,
       paddingHorizontal: 20,
       paddingTop: 20,
-      paddingBottom: 16,
+      paddingBottom: 20,
+      borderBottomStartRadius: 12,
+      borderBottomEndRadius: 12,
+      borderBottomColor: Colors[scheme].border,
+      borderBottomWidth: 0.8,
+    },
+    headerContent: {
+      marginBottom: 16,
     },
     headerTitle: {
       fontSize: 28,
@@ -164,9 +169,6 @@ function getThemedStyles(scheme: "light" | "dark") {
     },
     searchSection: {
       flexDirection: "row",
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-      backgroundColor: Colors[scheme].card,
       alignItems: "center",
     },
     searchContainer: {
@@ -193,11 +195,7 @@ function getThemedStyles(scheme: "light" | "dark") {
       borderRadius: 12,
     },
     filterOptions: {
-      backgroundColor: Colors[scheme].card,
-      paddingVertical: 8,
-      paddingLeft: 20,
-      borderBottomWidth: 1,
-      borderBottomColor: Colors[scheme].border,
+      paddingTop: 20,
     },
     filterOption: {
       paddingHorizontal: 16,

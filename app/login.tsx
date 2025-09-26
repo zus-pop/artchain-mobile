@@ -6,6 +6,9 @@ import { useRouter } from "expo-router";
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   StatusBar,
   Text,
   TextInput,
@@ -13,6 +16,7 @@ import {
   View,
 } from "react-native";
 import { z } from "zod";
+import { useLoginMutation } from "../apis/auth";
 
 const schema = z.object({
   username: z
@@ -38,11 +42,14 @@ export default function LoginScreen() {
   });
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
+  const { mutate } = useLoginMutation();
 
   const handleLogin = (data: Schema) => {
     // Placeholder: Implement login logic
-    alert(`Logged in as ${data.username}`);
-    // router.back(); // Go back to profile
+    mutate({
+      username: data.username,
+      password: data.password,
+    });
   };
 
   return (
@@ -71,7 +78,7 @@ export default function LoginScreen() {
           <Ionicons
             name="arrow-back"
             size={24}
-            color={Colors[colorScheme].icon}
+            color={Colors[colorScheme].primary}
           />
         </TouchableOpacity>
         <Text
@@ -84,133 +91,143 @@ export default function LoginScreen() {
           Đăng nhập
         </Text>
       </View>
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          padding: 24,
-        }}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
       >
-        <Text
-          style={{
-            fontSize: 28,
-            fontWeight: "bold",
-            color: Colors[colorScheme].primary,
-            marginBottom: 18,
-          }}
-        >
-          Đăng nhập
-        </Text>
-        <Controller
-          control={control}
-          name="username"
-          render={({ field }) => (
-            <TextInput
-              placeholder="Tên đăng nhập"
-              onChangeText={field.onChange}
-              style={{
-                width: "100%",
-                borderWidth: 1,
-                borderColor: Colors[colorScheme].border,
-                backgroundColor: Colors[colorScheme].input,
-                color: Colors[colorScheme].foreground,
-                borderRadius: 12,
-                marginBottom: 14,
-                padding: 12,
-                fontSize: 16,
-              }}
-              placeholderTextColor={Colors[colorScheme].mutedForeground}
-              {...field}
-            />
-          )}
-        />
-        {errors.username && (
-          <Text
-            style={{
-              color: Colors[colorScheme].destructive,
-              fontSize: 14,
-              marginBottom: 8,
-              alignSelf: "flex-start",
-              marginLeft: 4,
-            }}
-          >
-            {errors.username.message}
-          </Text>
-        )}
-
-        <Controller
-          control={control}
-          name="password"
-          render={({ field }) => (
-            <TextInput
-              placeholder="Mật khẩu"
-              onChangeText={field.onChange}
-              secureTextEntry
-              style={{
-                width: "100%",
-                borderWidth: 1,
-                borderColor: Colors[colorScheme].border,
-                backgroundColor: Colors[colorScheme].input,
-                color: Colors[colorScheme].foreground,
-                borderRadius: 12,
-                marginBottom: 18,
-                padding: 12,
-                fontSize: 16,
-              }}
-              placeholderTextColor={Colors[colorScheme].mutedForeground}
-              {...field}
-            />
-          )}
-        />
-        {errors.password && (
-          <Text
-            style={{
-              color: Colors[colorScheme].destructive,
-              fontSize: 14,
-              marginBottom: 8,
-              alignSelf: "flex-start",
-              marginLeft: 4,
-            }}
-          >
-            {errors.password.message}
-          </Text>
-        )}
-
-        <TouchableOpacity
-          style={{
-            width: "100%",
-            backgroundColor: isValid
-              ? Colors[colorScheme].primary
-              : Colors[colorScheme].muted,
-            borderRadius: 12,
-            paddingVertical: 14,
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: "center",
             alignItems: "center",
-            marginBottom: 12,
-            opacity: isValid ? 1 : 0.7,
+            padding: 24,
           }}
-          onPress={handleSubmit(handleLogin)}
-          disabled={!isValid}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <Text
             style={{
-              color: Colors[colorScheme].primaryForeground,
+              fontSize: 28,
               fontWeight: "bold",
-              fontSize: 16,
+              color: Colors[colorScheme].primary,
+              marginBottom: 18,
             }}
           >
-            Đăng nhập
+            ARTCHAIN
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => router.replace("/signup")}
-          style={{ marginTop: 8 }}
-        >
-          <Text style={{ color: Colors[colorScheme].primary, fontSize: 15 }}>
-            Chưa có tài khoản? Đăng ký
-          </Text>
-        </TouchableOpacity>
-      </View>
+          <Controller
+            control={control}
+            name="username"
+            render={({ field }) => (
+              <TextInput
+                placeholder="Tên đăng nhập"
+                onChangeText={field.onChange}
+                style={{
+                  width: "100%",
+                  borderWidth: 1,
+                  borderColor: Colors[colorScheme].border,
+                  backgroundColor: Colors[colorScheme].input,
+                  color: Colors[colorScheme].foreground,
+                  borderRadius: 12,
+                  marginBottom: 14,
+                  padding: 12,
+                  fontSize: 16,
+                }}
+                placeholderTextColor={Colors[colorScheme].mutedForeground}
+                {...field}
+              />
+            )}
+          />
+          {errors.username && (
+            <Text
+              style={{
+                color: Colors[colorScheme].destructive,
+                fontSize: 14,
+                marginBottom: 8,
+                alignSelf: "flex-start",
+                marginLeft: 4,
+              }}
+            >
+              {errors.username.message}
+            </Text>
+          )}
+
+          <Controller
+            control={control}
+            name="password"
+            render={({ field }) => (
+              <TextInput
+                placeholder="Mật khẩu"
+                onChangeText={field.onChange}
+                secureTextEntry
+                style={{
+                  width: "100%",
+                  borderWidth: 1,
+                  borderColor: Colors[colorScheme].border,
+                  backgroundColor: Colors[colorScheme].input,
+                  color: Colors[colorScheme].foreground,
+                  borderRadius: 12,
+                  marginBottom: 18,
+                  padding: 12,
+                  fontSize: 16,
+                }}
+                placeholderTextColor={Colors[colorScheme].mutedForeground}
+                {...field}
+              />
+            )}
+          />
+          {errors.password && (
+            <Text
+              style={{
+                color: Colors[colorScheme].destructive,
+                fontSize: 14,
+                marginBottom: 8,
+                alignSelf: "flex-start",
+                marginLeft: 4,
+              }}
+            >
+              {errors.password.message}
+            </Text>
+          )}
+
+          <TouchableOpacity
+            style={{
+              width: "100%",
+              backgroundColor: isValid
+                ? Colors[colorScheme].primary
+                : Colors[colorScheme].muted,
+              borderRadius: 12,
+              paddingVertical: 14,
+              alignItems: "center",
+              marginBottom: 12,
+              opacity: isValid ? 1 : 0.7,
+            }}
+            onPress={handleSubmit(handleLogin)}
+            disabled={!isValid}
+          >
+            <Text
+              style={{
+                color: isValid
+                  ? Colors[colorScheme].primaryForeground
+                  : Colors[colorScheme].mutedForeground,
+                fontWeight: "bold",
+                fontSize: 16,
+              }}
+            >
+              Đăng nhập
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.replace("/signup")}
+            style={{ marginTop: 8 }}
+          >
+            <Text style={{ color: Colors[colorScheme].primary, fontSize: 15 }}>
+              Chưa có tài khoản? Đăng ký
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
