@@ -1,3 +1,4 @@
+import BrushButton from "@/components/buttons/BrushButton";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
@@ -5,7 +6,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
+
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -17,6 +20,7 @@ import {
 } from "react-native";
 import { z } from "zod";
 import { useLoginMutation } from "../apis/auth";
+import { LinearGradient } from 'react-native-linear-gradient';
 
 const schema = z.object({
   username: z
@@ -106,6 +110,13 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          <View>
+            <Image
+              source={require("../assets/logo/Logo.png")}
+              style={{ width: 300, height: 120, marginBottom: 16 }}
+              resizeMode="contain"
+            />
+          </View>
           <Text
             style={{
               fontSize: 28,
@@ -116,6 +127,8 @@ export default function LoginScreen() {
           >
             ARTCHAIN
           </Text>
+
+        
           <Controller
             control={control}
             name="username"
@@ -220,6 +233,9 @@ export default function LoginScreen() {
               {isPending ? "Đang đăng nhập..." : "Đăng nhập"}
             </Text>
           </TouchableOpacity>
+
+          <BrushButton title="Đăng nhập" />
+
           <TouchableOpacity
             onPress={() => router.replace("/signup")}
             style={{ marginTop: 8 }}

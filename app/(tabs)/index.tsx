@@ -1,21 +1,25 @@
+import AnnouncementCard from "@/components/cards/AnnouncementCard";
+import HeroCarousel from "@/components/carousels/HeroCarousel";
+import CollapsibleHeader, {
+  HEADER_COLLAPSED,
+  HEADER_EXPANDED,
+} from "@/components/header/CollapsibleHeader";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
-  Image,
-  Pressable,
-  ScrollView,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { usePagerView } from "react-native-pager-view";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface Announcement {
   id: string;
@@ -25,7 +29,14 @@ interface Announcement {
   date: string;
   type: "contest" | "result";
 }
-
+type UtilityItem = {
+  id: string;
+  icon: any; // hoặc keyof typeof Ionicons.glyphMap nếu muốn chặt hơn
+  label: string;
+  color: string;
+  badge?: string;
+  onPress?: () => void; // <- thêm optional
+};
 const announcements: Announcement[] = [
   {
     id: "a1",
@@ -91,9 +102,105 @@ const announcements: Announcement[] = [
 // ];
 export default function Home() {
   const colorScheme = useColorScheme() ?? "light";
+
+  const W = Dimensions.get("window").width;
+
+  const UTIL_COLS = 3;
+  const GRID_GAP = 22;
+  const GRID_PAD_H = 20;
+  // giữ nguyên các const: W, GRID_PAD_H, GRID_GAP, UTIL_COLS
+  const TILE_W = (W - GRID_PAD_H * 2 - GRID_GAP * (UTIL_COLS - 1)) / UTIL_COLS;
+
+  const artUtilities: UtilityItem[] = [
+    {
+      id: "u1",
+      icon: "color-palette-outline",
+      label: "Chủ đề",
+      color: "#a855f7",
+      // onPress: () => router.push("/topics"),
+    },
+    {
+      id: "u2",
+      icon: "brush-outline",
+      label: "Tạo\ncuộc thi",
+      color: "#f97316",
+      // onPress: () => router.push("/contest-create"),
+    },
+    {
+      id: "u3",
+      icon: "images-outline",
+      label: "Tác phẩm",
+      color: "#06b6d4",
+      // onPress: () => router.push("/my-artworks"),
+    },
+    {
+      id: "u4",
+      icon: "play-outline",
+      label: "Tham gia",
+      color: "#22c55e",
+      badge: "Mới",
+      // onPress: () => router.push("/join"),
+    },
+    {
+      id: "u5",
+      icon: "trophy-outline",
+      label: "Bảng xếp hạng",
+      color: "#eab308",
+      // onPress: () => router.push("/leaderboard"),
+    },
+    {
+      id: "u6",
+      icon: "book-outline",
+      label: "Thể lệ",
+      color: "#f43f5e",
+      // onPress: () => router.push("/rules"),
+    },
+  ];
+
+  // giữ lại scrollY nếu bạn còn dùng cho thứ khác
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  // 1 = thu gọn, 0 = bung ra
+  const headerProgress = useRef(new Animated.Value(1)).current;
+  const lastY = useRef(0);
+  const isOpen = useRef(false);
+
+  const THRESHOLD = 60; // gần top bao nhiêu px thì mở
+  const HYST = 14; // biên chống rung
+
+  const handleScroll = (e: any) => {
+    const y = e.nativeEvent.contentOffset.y as number;
+    const goingUp = y < lastY.current;
+    lastY.current = y;
+
+    if (goingUp && y <= THRESHOLD && !isOpen.current) {
+      isOpen.current = true;
+      Animated.spring(headerProgress, {
+        toValue: 0,
+        useNativeDriver: true,
+        bounciness: 0,
+      }).start();
+    } else if (!goingUp && y >= THRESHOLD + HYST && isOpen.current) {
+      isOpen.current = false;
+      Animated.spring(headerProgress, {
+        toValue: 1,
+        useNativeDriver: true,
+        bounciness: 0,
+      }).start();
+    }
+  };
+
+  const insets = useSafeAreaInsets();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    // TODO: gọi API / reload dữ liệu
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
+
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
-  const scrollY = useRef(new Animated.Value(0)).current;
+
   const headerHeight = 60;
   const heroSlides: {
     id: string;
@@ -123,6 +230,7 @@ export default function Home() {
       subtitle: "Bảo tồn và quảng bá di sản Việt Nam qua tranh vẽ",
     },
   ];
+
   // Use the custom hook from react-native-pager-view
   const { AnimatedPagerView, ref } = usePagerView();
   const page = useRef(0);
@@ -135,7 +243,7 @@ export default function Home() {
     }, 3500);
     return () => clearInterval(interval);
   }, []);
-
+  const slides = heroSlides.map((s) => ({ id: s.id, image: s.image }));
   // Dynamic styles using Colors
   const themedStyles = StyleSheet.create({
     container: {
@@ -280,13 +388,6 @@ export default function Home() {
       marginHorizontal: 4,
       borderRadius: 6,
       paddingVertical: 18,
-      borderWidth: 0.8,
-      borderColor: Colors[colorScheme].border,
-      shadowColor: Colors[colorScheme].border,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 4,
-      elevation: 1,
     },
     sectionTitle: {
       fontSize: 18,
@@ -409,6 +510,90 @@ export default function Home() {
       color: Colors[colorScheme].foreground,
       textAlign: "center",
     },
+    seeAllBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: Colors[colorScheme].muted,
+    },
+    seeAllText: {
+      marginRight: 4,
+      fontSize: 13,
+      fontWeight: "700",
+      color: Colors[colorScheme].accentForeground,
+    },
+    utilitiesGrid: {
+      paddingHorizontal: GRID_PAD_H,
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between", // <- chia đều khoảng trống trong từng hàng
+      rowGap: 10, // RN >= 0.71 sẽ hỗ trợ; nếu chưa có, xem fallback ở dưới
+    },
+
+    utilTile: {
+      alignItems: "center",
+      marginBottom: 18,
+    },
+
+    // khối chứa icon – bo tròn + đổ bóng rất nhẹ
+    utilCircleWrap: {
+      width: 72,
+      height: 72,
+      marginBottom: 8,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    // nền tròn
+    utilCircle: {
+      position: "absolute",
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      shadowColor: "#000",
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
+    },
+
+    // viền nét đứt tạo cảm giác “cọ vẽ”
+    utilRing: {
+      position: "absolute",
+      width: 68,
+      height: 68,
+      borderRadius: 34,
+      borderWidth: 2,
+      borderStyle: "dashed",
+    },
+
+    utilLabel: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: Colors[colorScheme].foreground,
+      textAlign: "center",
+      lineHeight: 16,
+    },
+
+    // badge “Mới”
+    utilBadge: {
+      position: "absolute",
+      top: -6,
+      right: -6,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: "#fff",
+    },
+    utilBadgeTxt: {
+      fontSize: 10,
+      fontWeight: "800",
+      color: "#fff",
+      letterSpacing: 0.2,
+    },
   });
 
   const headerStyle = {
@@ -432,174 +617,133 @@ export default function Home() {
 
   return (
     <View style={themedStyles.container}>
-      <Animated.View style={[themedStyles.heroHeaderOverlay, headerStyle]}>
-        <View>
-          <Text style={themedStyles.greeting}>Chào mừng</Text>
-          <Text style={themedStyles.appName}>Guest</Text>
-        </View>
-        <TouchableOpacity>
-          <Image
-            source={{ uri: "https://via.placeholder.com/40" }}
-            style={themedStyles.avatar}
-            resizeMode="cover"
+      <CollapsibleHeader
+        progress={headerProgress}
+        username="Hoàng Trí"
+        gradientMode="rainbow" // hoặc "rainbow" | "neon"
+      />
+
+      <Animated.ScrollView
+        contentContainerStyle={{
+          paddingTop: HEADER_EXPANDED + 160 * (1 - 0.5) + 16,
+          paddingBottom: 80,
+        }}
+        scrollEventThrottle={16}
+        // (tuỳ chọn) cho phép kéo dù nội dung không đủ dài
+        bounces
+        alwaysBounceVertical
+        onScroll={(e) => {
+          if (!refreshing) {
+            handleScroll(e); // chỉ chạy logic header khi không refreshing
+          }
+          scrollY.setValue(e.nativeEvent.contentOffset.y);
+        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            // iOS
+            tintColor="#f97316"
+            titleColor="#f97316"
+            // Android
+            colors={["#f97316"]}
+            progressBackgroundColor="#fff"
+            // đẩy spinner xuống dưới phần safe area + header collapsed
+            progressViewOffset={insets.top + HEADER_COLLAPSED / 2}
           />
-        </TouchableOpacity>
-      </Animated.View>
-      <ScrollView
-        style={themedStyles.scrollView}
-        showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
+        }
       >
-        <View style={themedStyles.heroContainer}>
-          <AnimatedPagerView
-            style={themedStyles.heroSlider}
-            initialPage={0}
-            ref={ref}
-            onPageSelected={(e) => setCurrentPage(e.nativeEvent.position)}
-          >
-            {heroSlides.map((slide, idx) => (
-              <Pressable
-                onPress={() => router.push("/announcement-detail")}
-                key={slide.id}
-                style={themedStyles.heroSlide}
-              >
-                <Image
-                  source={{ uri: slide.image }}
-                  style={themedStyles.heroImage}
-                  resizeMode="cover"
-                />
-              </Pressable>
-            ))}
-          </AnimatedPagerView>
+        <View style={themedStyles.section}>
+          <Text style={themedStyles.sectionTitle}>Tiện ích</Text>
 
-          <LinearGradient
-            pointerEvents="none"
-            colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.6)"]}
-            style={themedStyles.heroGradient}
-          />
-
-          {/* Fixed Content Overlay */}
-          <View style={themedStyles.heroContentOverlay}>
-            <Text style={themedStyles.heroTitle}>
-              {heroSlides[currentPage]?.title}
-            </Text>
-            <Text style={themedStyles.heroSubtitle}>
-              {heroSlides[currentPage]?.subtitle}
-            </Text>
-          </View>
-
-          {/* Fixed Indicators Overlay */}
-          <View style={themedStyles.indicatorsContainer}>
-            {heroSlides.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  themedStyles.indicator,
-                  index === currentPage && themedStyles.activeIndicator,
-                ]}
-              />
-            ))}
-          </View>
-        </View>
-        {/* <View style={themedStyles.section}>
-          <Text style={themedStyles.sectionTitle}>Danh mục</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={themedStyles.categoriesContainer}
-          >
-            {categories.map((category) => (
+          <View style={themedStyles.utilitiesGrid}>
+            {artUtilities.map((u) => (
               <TouchableOpacity
-                key={category.id}
-                style={themedStyles.categoryCard}
-                onPress={() =>
-                  setSelectedCategory(
-                    selectedCategory === category.id ? null : category.id
-                  )
-                }
+                key={u.id}
+                activeOpacity={0.9}
+                onPress={() => u.onPress?.()}
+                style={[themedStyles.utilTile, { width: TILE_W }]} // <- chỉ set width
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               >
-                <Text style={themedStyles.categoryIcon}>{category.icon}</Text>
-                <Text style={themedStyles.categoryName}>{category.name}</Text>
+                <View style={themedStyles.utilCircleWrap}>
+                  <View
+                    style={[
+                      themedStyles.utilCircle,
+                      { backgroundColor: `${u.color}1A` },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      themedStyles.utilRing,
+                      { borderColor: `${u.color}66` },
+                    ]}
+                  />
+                  <Ionicons
+                    name={u.icon as any}
+                    size={26}
+                    color={u.color}
+                    style={{ position: "absolute" }}
+                  />
+                  {!!u.badge && (
+                    <View
+                      style={[
+                        themedStyles.utilBadge,
+                        { backgroundColor: u.color },
+                      ]}
+                    >
+                      <Text style={themedStyles.utilBadgeTxt}>{u.badge}</Text>
+                    </View>
+                  )}
+                </View>
+
+                <Text numberOfLines={2} style={themedStyles.utilLabel}>
+                  {u.label}
+                </Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
-        </View> */}
+          </View>
+        </View>
+
+        <View>
+          <HeroCarousel
+            data={slides}
+            height={200}
+            inset={16}
+            radius={16}
+            autoPlayInterval={3500}
+          />
+        </View>
+
         <View style={themedStyles.section}>
           <View style={themedStyles.sectionHeader}>
             <Text style={themedStyles.sectionTitle}>Thông báo mới</Text>
-          </View>
-          {announcements.map((post) => (
+
             <TouchableOpacity
-              key={post.id}
-              style={themedStyles.announcementCard}
+              style={themedStyles.seeAllBtn}
+              activeOpacity={0.8}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              onPress={() => router.push("/contests")}
             >
-              <Image
-                source={{ uri: post.image }}
-                style={themedStyles.announcementImage}
-                resizeMode="cover"
-              />
-              <View style={themedStyles.announcementContent}>
-                <Text style={themedStyles.announcementTitle}>{post.title}</Text>
-                <Text
-                  style={themedStyles.announcementSummary}
-                  numberOfLines={2}
-                >
-                  {post.summary}
-                </Text>
-                <View style={themedStyles.announcementMeta}>
-                  <Text style={themedStyles.announcementDate}>
-                    {new Date(post.date).toLocaleDateString("vi-VN")}
-                  </Text>
-                  <Text style={themedStyles.announcementType}>
-                    {post.type === "contest" ? "Cuộc thi" : "Kết quả"}
-                  </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-          <TouchableOpacity
-            style={themedStyles.showAllButton}
-            onPress={() => router.push("/contests")}
-          >
-            <Text style={themedStyles.showAllText}>Xem tất cả</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={themedStyles.section}>
-          <Text style={themedStyles.sectionTitle}>Hành động nhanh</Text>
-          <View style={themedStyles.quickActions}>
-            <TouchableOpacity style={themedStyles.quickActionButton}>
+              <Text style={themedStyles.seeAllText}>Xem tất cả</Text>
               <Ionicons
-                name="create-outline"
-                size={32}
-                color={Colors[colorScheme].foreground}
-                style={themedStyles.quickActionIcon}
+                name="chevron-forward"
+                size={16}
+                color={Colors[colorScheme].accentForeground}
               />
-              <Text style={themedStyles.quickActionText}>Tạo cuộc thi</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={themedStyles.quickActionButton}>
-              <Ionicons
-                name="play-outline"
-                size={32}
-                color={Colors[colorScheme].foreground}
-                style={themedStyles.quickActionIcon}
-              />
-              <Text style={themedStyles.quickActionText}>Tham gia ngay</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={themedStyles.quickActionButton}>
-              <Ionicons
-                name="trophy-outline"
-                size={32}
-                color={Colors[colorScheme].foreground}
-                style={themedStyles.quickActionIcon}
-              />
-              <Text style={themedStyles.quickActionText}>Xem kết quả</Text>
             </TouchableOpacity>
           </View>
+
+          {announcements.map((item, i) => (
+            <AnnouncementCard
+              key={item.id}
+              item={item}
+              thumbSize={96} // chỉnh 80–100 tuỳ ý
+              radius={12}
+              showDivider={i < announcements.length - 1}
+            />
+          ))}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
