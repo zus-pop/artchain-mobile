@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import z from "zod";
 import { useSignInMutation } from "../apis/auth";
+import BrushButton from "@/components/buttons/BrushButton";
 
 const schema = z
   .object({
@@ -308,6 +309,7 @@ export default function SignupScreen() {
               {isPending ? "Đang đăng ký..." : "Đăng ký"}
             </Text>
           </TouchableOpacity>
+                 <BrushButton title="Đăng Ký" />
           <TouchableOpacity
             onPress={() => router.replace("/login")}
             style={{ marginTop: 8 }}
