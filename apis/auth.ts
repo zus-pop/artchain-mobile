@@ -1,17 +1,32 @@
 import myAxios from "@/constants/custom-axios";
-import { AuthResponse, LoginRequest, RegisterRequest } from "@/types";
-import { useMutation } from "@tanstack/react-query";
+import { AuthResponse, LoginRequest, RegisterRequest, WhoAmI } from "@/types";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { toast } from "sonner-native";
+import { useAuthStore } from "../store";
+
+export function useWhoAmI() {
+  return useQuery({
+    queryKey: ["me"],
+    queryFn: async () => {
+      const response = await myAxios.get<WhoAmI>("/users/me");
+      return response.data;
+    },
+    staleTime: 0,
+    retry: false,
+  });
+}
 
 export function useLoginMutation() {
+  const { setAccessToken } = useAuthStore.getState();
   return useMutation({
     mutationFn: async (loginRequest: LoginRequest) => {
       const response = await myAxios.post("/auth/login", loginRequest);
       return response.data;
     },
     onSuccess: (result: AuthResponse) => {
-      toast.success(`Success: [${result.access_token}]`);
-      //   router.back(); // Go back to profile
+      setAccessToken(result.access_token);
+      router.replace("/profile"); // Go back to profile
     },
     onError: (error) => {
       toast.error(error.message);
@@ -27,7 +42,7 @@ export function useSignInMutation() {
     },
     onSuccess: (token) => {
       toast.success(`Success: [${token}]`);
-      //   router.back(); // Go back to profile
+      router.replace("/login"); // Go back to profile
     },
     onError: (error) => {
       toast.error(error.message);
