@@ -6,9 +6,7 @@ const myAxios = axios.create({
 
 myAxios.interceptors.request.use((config) => {
   const { accessToken } = useAuthStore.getState();
-  if (accessToken !== null) {
-    config.headers["Authorization"] = `Bearer ${accessToken}`;
-  }
+  config.headers["Authorization"] = `Bearer ${accessToken}`;
   return config;
 });
 

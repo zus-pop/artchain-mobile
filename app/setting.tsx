@@ -1,9 +1,11 @@
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Switch, Text, TouchableOpacity, View } from "react-native";
+import { useAuthStore } from "../store";
 
 const languages = [
   { label: "Tiếng Việt", value: "vi" },
@@ -16,6 +18,14 @@ const Setting = () => {
   const [language, setLanguage] = useState("vi");
   const [notifications, setNotifications] = useState(true);
   const router = useRouter();
+  const { setAccessToken } = useAuthStore();
+  const queryClient = useQueryClient();
+
+  const handleSignOut = () => {
+    setAccessToken(null);
+    queryClient.invalidateQueries({ queryKey: ["me"] });
+    router.replace("/login");
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors[colorScheme].background }}>
@@ -152,6 +162,28 @@ const Setting = () => {
             }}
           />
         </View>
+
+        {/* Sign Out Button */}
+        <TouchableOpacity
+          onPress={handleSignOut}
+          style={{
+            backgroundColor: Colors[colorScheme].destructive,
+            paddingVertical: 14,
+            borderRadius: 8,
+            alignItems: "center",
+            marginTop: 24,
+          }}
+        >
+          <Text
+            style={{
+              color: Colors[colorScheme].destructiveForeground || "#ffffff",
+              fontSize: 16,
+              fontWeight: "600",
+            }}
+          >
+            Đăng xuất
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
