@@ -1,22 +1,9 @@
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Award, Clock, MapPin, Star, Users } from "lucide-react-native";
+import { Award, Clock } from "lucide-react-native";
 import React from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-
-interface Contest {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  prize: string;
-  participants: number;
-  deadline: string;
-  status: "active" | "upcoming" | "ended";
-  image: string;
-  location: string;
-  rating?: number;
-}
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Contest } from "../types";
 
 interface ContestCardProps {
   contest: Contest;
@@ -29,33 +16,36 @@ export function ContestCard({ contest, onPress }: ContestCardProps) {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "active":
+      case "ACTIVE":
         return Colors[colorScheme].chart1;
-      case "upcoming":
+      case "UPCOMING":
         return Colors[colorScheme].accent;
-      case "ended":
+      case "ENDED":
         return Colors[colorScheme].mutedForeground;
       default:
         return Colors[colorScheme].mutedForeground;
     }
+    // thiếu trường hợp
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case "active":
+      case "ACTIVE":
         return "Đang diễn ra";
-      case "upcoming":
+      case "UPCOMING":
         return "Sắp diễn ra";
-      case "ended":
+      case "ENDED":
         return "Đã kết thúc";
       default:
         return status;
     }
+    // thiếu trường hợp
   };
 
   return (
     <TouchableOpacity style={themedStyles.card} onPress={onPress}>
-      <Image source={{ uri: contest.image }} style={themedStyles.image} />
+      {/* Dưới Database chưa có hình, style thì add tạm ảnh sample nha em Trí */}
+      {/* <Image source={{ uri: contest.image }} style={themedStyles.image} /> */}
       <View style={themedStyles.content}>
         <View style={themedStyles.header}>
           <View
@@ -69,12 +59,12 @@ export function ContestCard({ contest, onPress }: ContestCardProps) {
             </Text>
           </View>
           <View style={themedStyles.ratingContainer}>
-            <Star
-              size={14}
-              color={Colors[colorScheme].accent}
-              fill={Colors[colorScheme].accent}
+            <Award
+              size={16}
+              color={Colors[colorScheme].destructive}
+              fill={Colors[colorScheme].destructive}
             />
-            <Text style={themedStyles.ratingText}>{contest.rating}</Text>
+            <Text style={themedStyles.ratingText}>{contest.numOfAward}</Text>
           </View>
         </View>
 
@@ -83,28 +73,11 @@ export function ContestCard({ contest, onPress }: ContestCardProps) {
           {contest.description}
         </Text>
 
-        <View style={themedStyles.metaContainer}>
-          <View style={themedStyles.metaItem}>
-            <MapPin size={14} color={Colors[colorScheme].mutedForeground} />
-            <Text style={themedStyles.metaText}>{contest.location}</Text>
-          </View>
-          <View style={themedStyles.metaItem}>
-            <Users size={14} color={Colors[colorScheme].mutedForeground} />
-            <Text style={themedStyles.metaText}>
-              {contest.participants.toLocaleString()}
-            </Text>
-          </View>
-        </View>
-
         <View style={themedStyles.footer}>
-          <View style={themedStyles.prizeContainer}>
-            <Award size={16} color={Colors[colorScheme].destructive} />
-            <Text style={themedStyles.prizeText}>{contest.prize}</Text>
-          </View>
           <View style={themedStyles.deadlineContainer}>
             <Clock size={14} color={Colors[colorScheme].destructive} />
             <Text style={themedStyles.deadlineText}>
-              {new Date(contest.deadline).toLocaleDateString("vi-VN")}
+              {new Date(contest.endDate).toLocaleDateString("vi-VN")}
             </Text>
           </View>
         </View>
