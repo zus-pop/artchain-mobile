@@ -4,6 +4,7 @@ import SegmentTabs from "@/components/tabs/SegmentedTabs";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   Image,
@@ -13,20 +14,19 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useWhoAmI } from "../../../wdpTuscode/artchain-mobile/apis/auth";
+import { useAuthStore } from "../../../wdpTuscode/artchain-mobile/store";
 
 // ===== Types =====
 import type {
-  AchievementItem,
   ColorTokens,
   EmptyProps,
   KPIProps,
   RawProfile,
-  SubmissionItem,
   TabKey,
-  UserProfile,
   UserStats,
 } from "@/types/tabkey";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // ---- JSON đầu vào (từ bạn) ----
 const rawProfile: RawProfile = {
@@ -40,63 +40,68 @@ const rawProfile: RawProfile = {
 };
 
 export default function ProfileScreen() {
-  const [isLoggedIn] = useState(true);
-
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
-  const C = Colors[scheme] as ColorTokens;
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const { data: userData, isLoading } = useWhoAmI();
+  const C = Colors[scheme];
   const s = styles(C);
 
-  // ---- Chuẩn hoá dữ liệu người dùng từ JSON ----
-  const emailUser = rawProfile.email?.split("@")[0] ?? "user";
-  const gradeText = rawProfile.grade ? `Lớp ${rawProfile.grade}` : "";
-  const subtitle = [gradeText, rawProfile.schoolName]
-    .filter(Boolean)
-    .join(" • ");
+  // Use real user data from API
+  const user = userData
+    ? {
+        fullName: userData.fullName,
+        email: userData.email,
+        phone: userData.phone,
+        birthday: userData.birthday,
+        schoolName: userData.schoolName,
+        ward: userData.ward,
+        grade: userData.grade,
+        // Keep some fake data for now until API provides it
+        avatar:
+          "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg",
+        followers: 2,
+        handle: userData.email.split("@")[0], // Generate handle from email
+      }
+    : null;
 
-  const user: UserProfile = {
-    name: rawProfile.fullName,
-    handle: emailUser, // từ email
-    email: rawProfile.email,
-    phone: rawProfile.phone ?? "",
-    location: rawProfile.ward ?? "",
-    avatar: "", // nếu có URL ảnh thì gán ở đây; để trống sẽ fallback
-    followers: 0, // không dùng cho hồ sơ học sinh, mặc định 0
-    subtitle, // hiển thị ngay dưới handle
-  };
-
-  // ---- Dữ liệu mẫu cho bài gửi (giữ nguyên để hiển thị UI) ----
-  const recentSubmissions: SubmissionItem[] = [
-    {
-      id: "1",
-      title: "Bức tranh bình minh",
-      contest: "Vẽ Sài Gòn Xanh",
-      submissionDate: "2024-12-01",
-      status: "winner",
-      image: "https://images.pexels.com/photos/417173/pexels-photo-417173.jpeg",
-      views: 320,
-      likes: 45,
-    },
-    {
-      id: "2",
-      title: "Phố đêm rực rỡ",
-      contest: "Nghệ Thuật Đường Phố",
-      submissionDate: "2024-11-15",
-      status: "accepted",
-      image: "https://images.pexels.com/photos/210186/pexels-photo-210186.jpeg",
-      views: 210,
-      likes: 30,
-    },
-    {
-      id: "3",
-      title: "Sắc màu tuổi thơ",
-      contest: "Nghệ Sĩ Xuất Sắc",
-      submissionDate: "2024-10-20",
-      status: "pending",
-      image: "https://images.pexels.com/photos/102127/pexels-photo-102127.jpeg",
-      views: 180,
-      likes: 22,
-    },
-  ];
+  const recentSubmissions = useMemo(
+    () => [
+      {
+        id: "1",
+        title: "Bức tranh bình minh",
+        contest: "Vẽ Sài Gòn Xanh",
+        submissionDate: "2024-12-01",
+        status: "winner",
+        image:
+          "https://images.pexels.com/photos/417173/pexels-photo-417173.jpeg",
+        views: 320,
+        likes: 45,
+      },
+      {
+        id: "2",
+        title: "Phố đêm rực rỡ",
+        contest: "Nghệ Thuật Đường Phố",
+        submissionDate: "2024-11-15",
+        status: "accepted",
+        image:
+          "https://images.pexels.com/photos/210186/pexels-photo-210186.jpeg",
+        views: 210,
+        likes: 30,
+      },
+      {
+        id: "3",
+        title: "Sắc màu tuổi thơ",
+        contest: "Nghệ Sĩ Xuất Sắc",
+        submissionDate: "2024-10-20",
+        status: "pending",
+        image:
+          "https://images.pexels.com/photos/102127/pexels-photo-102127.jpeg",
+        views: 180,
+        likes: 22,
+      },
+    ],
+    []
+  );
 
   const userStats: UserStats = {
     totalSubmissions: 12,
@@ -106,7 +111,10 @@ export default function ProfileScreen() {
     rating: 4.7,
   };
 
-  const achievements: AchievementItem[] = useMemo(
+  const [active, setActive] = useState<TabKey>("threads");
+  const [openDetails, setOpenDetails] = useState(false);
+
+  const achievements = useMemo(
     () => [
       {
         id: "a1",
@@ -119,7 +127,7 @@ export default function ProfileScreen() {
         place: "2024 - Quận 1",
       },
     ],
-    []
+    [recentSubmissions]
   );
 
   const getStatusColor = (status: string) =>
@@ -140,7 +148,7 @@ export default function ProfileScreen() {
       ? "Đang xử lý"
       : "Bị từ chối";
 
-  if (!isLoggedIn) {
+  if (!accessToken) {
     return (
       <View style={s.container}>
         <View style={s.topbar}>
@@ -180,6 +188,7 @@ export default function ProfileScreen() {
             thi nghệ thuật hấp dẫn trên ArtChain.
           </Text>
           <TouchableOpacity
+            onPress={() => router.push("/login")}
             style={{
               backgroundColor: C.primary,
               borderRadius: 16,
@@ -203,9 +212,6 @@ export default function ProfileScreen() {
     );
   }
 
-  const [active, setActive] = useState<TabKey>("threads");
-  const [openDetails, setOpenDetails] = useState(false);
-
   const ICONS: Record<
     "brush" | "trophy" | "eye" | "heart",
     { fg: string; bg: string }
@@ -215,6 +221,55 @@ export default function ProfileScreen() {
     eye: { fg: "#3B82F6", bg: "rgba(59,130,246,0.14)" }, // blue
     heart: { fg: "#EF4444", bg: "rgba(239,68,68,0.14)" }, // red
   };
+  // Show loading state while fetching user data
+  if (isLoading || !user) {
+    return (
+      <View style={s.container}>
+        <View style={s.topbar}>
+          <Text style={s.headerTitle}>Hồ sơ</Text>
+          <View style={{ flexDirection: "row" }}>
+            <TouchableOpacity style={s.iconBtn}>
+              <Ionicons
+                name="notifications-outline"
+                size={22}
+                color={C.foreground}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/setting")}
+              style={s.iconBtn}
+            >
+              <Ionicons
+                name="settings-outline"
+                size={22}
+                color={C.foreground}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 32,
+          }}
+        >
+          <Ionicons name="person-circle-outline" size={80} color={C.muted} />
+          <Text
+            style={{
+              fontSize: 20,
+              fontWeight: "bold",
+              color: C.foreground,
+              marginTop: 16,
+            }}
+          >
+            Đang tải hồ sơ...
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   // Trước đây: const Avatar = (): JSX.Element => { ... }  // -> lỗi
   const Avatar = () =>
@@ -241,7 +296,10 @@ export default function ProfileScreen() {
               color={C.foreground}
             />
           </TouchableOpacity>
-          <TouchableOpacity style={s.iconBtn}>
+          <TouchableOpacity
+            onPress={() => router.push("/setting")}
+            style={s.iconBtn}
+          >
             <Ionicons name="settings-outline" size={22} color={C.foreground} />
           </TouchableOpacity>
         </View>
@@ -254,7 +312,7 @@ export default function ProfileScreen() {
         {/* Header compact */}
         <View style={s.headerWrap}>
           <View style={{ flex: 1 }}>
-            <Text style={s.name}>{user.name}</Text>
+            <Text style={s.name}>{user.fullName}</Text>
             <Text style={s.handle}>@{user.handle}</Text>
             {!!user.subtitle && (
               <Text style={s.followers}>{user.subtitle}</Text>
@@ -292,7 +350,40 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* KPI */}
+        {/* User Info Cards */}
+        <View style={s.infoCards}>
+          <View style={s.infoCard}>
+            <Ionicons name="school-outline" size={20} color={C.primary} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={s.infoLabel}>Trường học</Text>
+              <Text style={s.infoValue}>{user.schoolName}</Text>
+            </View>
+          </View>
+          <View style={s.infoCard}>
+            <Ionicons name="location-outline" size={20} color={C.primary} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={s.infoLabel}>Khu vực</Text>
+              <Text style={s.infoValue}>{user.ward}</Text>
+            </View>
+          </View>
+          <View style={s.infoCard}>
+            <Ionicons name="school-outline" size={20} color={C.primary} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={s.infoLabel}>Lớp</Text>
+              <Text style={s.infoValue}>{user.grade}</Text>
+            </View>
+          </View>
+          <View style={s.infoCard}>
+            <Ionicons name="calendar-outline" size={20} color={C.primary} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={s.infoLabel}>Ngày sinh</Text>
+              <Text style={s.infoValue}>
+                {new Date(user.birthday).toLocaleDateString("vi-VN")}
+              </Text>
+            </View>
+          </View>
+        </View>
+
         <View style={s.kpiCard}>
           <KPI
             icon="brush-outline"
@@ -410,7 +501,15 @@ export default function ProfileScreen() {
         visible={openDetails}
         onClose={() => setOpenDetails(false)}
         scheme={scheme}
-        user={user}
+        user={{
+          name: user.fullName,
+          handle: user.handle,
+          email: user.email,
+          phone: user.phone || "",
+          location: `${user.ward}, ${user.schoolName}`,
+          avatar: user.avatar,
+          followers: user.followers,
+        }}
         achievements={achievements}
       />
     </SafeAreaProvider>
@@ -570,6 +669,37 @@ const styles = (C: ColorTokens) =>
     },
     chipText: { color: C.foreground, fontWeight: "600" },
 
+    // User Info Cards
+    infoCards: {
+      marginHorizontal: 12,
+      marginTop: 8,
+      gap: 8,
+    },
+    infoCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: C.card,
+      borderRadius: 12,
+      padding: 12,
+      shadowColor: "#000",
+      shadowOpacity: 0.06,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 1,
+    },
+    infoLabel: {
+      fontSize: 12,
+      color: C.mutedForeground,
+      fontWeight: "500",
+    },
+    infoValue: {
+      fontSize: 14,
+      color: C.foreground,
+      fontWeight: "600",
+      marginTop: 2,
+    },
+
+    // KPI card — bỏ border, thêm shadow + divider hairline
     kpiCard: {
       flexDirection: "row",
       alignItems: "stretch",

@@ -1,21 +1,25 @@
 export interface Contest {
-  id: string;
+  contestId: string;
   title: string;
   description: string;
-  category: string;
-  prize: string;
-  participants: number;
-  deadline: string;
+  numOfAward: number;
   startDate: string;
-  status: "active" | "upcoming" | "ended";
-  image: string;
-  location: string;
-  organizer: string;
+  endDate: string;
+  status: ContestStatus;
+  createdBy: string;
 }
 
 export interface ContestFilter {
-  status: "active" | "upcoming" | "ended" | "all";
+  status?: ContestStatus;
 }
+
+export type ContestStatus =
+  | "ACTIVE"
+  | "UPCOMING"
+  | "ENDED"
+  | "COMPLETED"
+  | "DRAFT"
+  | "ALL";
 export interface Submission {
   id: string;
   contestId: string;

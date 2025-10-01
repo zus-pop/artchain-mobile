@@ -14,7 +14,13 @@ import {
   View,
 } from "react-native";
 
-const filterOptions = ["Tất cả", "Đang diễn ra", "Sắp diễn ra", "Đã kết thúc"];
+const filterOptions = [
+  "Tất cả",
+  "Đang diễn ra",
+  "Sắp diễn ra",
+  "Đã kết thúc",
+  "Hoàn thành",
+];
 
 export default function ContestsScreen() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -24,19 +30,17 @@ export default function ContestsScreen() {
   const themedStyles = getThemedStyles(colorScheme);
 
   // Use real API
-  const {
-    data: contests = [],
-    isLoading,
-    isError,
-  } = useContest({
+  const { data: contests = [], isLoading } = useContest({
     status:
       selectedFilter === "Tất cả"
-        ? "all"
+        ? "ALL"
         : selectedFilter === "Đang diễn ra"
-        ? "active"
+        ? "ACTIVE"
         : selectedFilter === "Sắp diễn ra"
-        ? "upcoming"
-        : "ended",
+        ? "UPCOMING"
+        : selectedFilter === "Hoàn thành"
+        ? "COMPLETED"
+        : "ENDED",
   });
 
   return (
@@ -128,7 +132,7 @@ export default function ContestsScreen() {
             <ContestCard
               onPress={() => router.push("/contest-detail")}
               contest={contest}
-              key={contest.id}
+              key={contest.contestId}
             />
           ))}
         </ScrollView>

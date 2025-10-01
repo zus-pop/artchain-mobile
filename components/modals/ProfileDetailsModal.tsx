@@ -161,7 +161,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
       }),
       Animated.timing(backdropOpacity, {
         toValue: 0,
-        duration: 220,
+        duration: 300,
         useNativeDriver: true,
       }),
     ]).start(() => {

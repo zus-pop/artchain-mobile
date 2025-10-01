@@ -20,7 +20,6 @@ import {
 } from "react-native";
 import { z } from "zod";
 import { useLoginMutation } from "../apis/auth";
-import { LinearGradient } from 'react-native-linear-gradient';
 
 const schema = z.object({
   username: z
@@ -128,7 +127,6 @@ export default function LoginScreen() {
             ARTCHAIN
           </Text>
 
-        
           <Controller
             control={control}
             name="username"
