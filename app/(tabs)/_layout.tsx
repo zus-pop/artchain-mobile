@@ -49,7 +49,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: "Profile",
-          
+
           tabBarIcon: ({ color }) => (
             <Ionicons size={28} name="person" color={color} />
           ),
