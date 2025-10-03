@@ -78,7 +78,11 @@ export default function RootLayout() {
               />
               <Stack.Screen
                 name="contest-detail"
-                options={{ title: "Contest Detail" }}
+                options={{ title: "Contest Detail", headerShown: false }}
+              />
+              <Stack.Screen
+                name="searchContest"
+                options={{ title: "Search Contest", headerShown: false }}
               />
             </Stack>
             <Toaster richColors />

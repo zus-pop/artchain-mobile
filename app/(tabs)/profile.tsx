@@ -1,12 +1,14 @@
 import PostCard from "@/components/cards/PostCard";
+import PillButton from "@/components/buttons/PillButton";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
 import SegmentTabs from "@/components/tabs/SegmentedTabs";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
+  Animated,
   Image,
   ScrollView,
   StyleSheet,
@@ -14,10 +16,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useWhoAmI } from "../../../wdpTuscode/artchain-mobile/apis/auth";
-import { useAuthStore } from "../../../wdpTuscode/artchain-mobile/store";
 
 // ===== Types =====
+import { useWhoAmI } from "@/apis/auth";
+import StickyProfileHeader from "@/components/header/StickyProfileHeader";
+
+import { useAuthStore } from "@/store/auth-store";
 import type {
   ColorTokens,
   EmptyProps,
@@ -279,14 +283,15 @@ export default function ProfileScreen() {
       <View
         style={[s.avatar, { alignItems: "center", justifyContent: "center" }]}
       >
-        <Ionicons name="person-outline" size={28} color={C.mutedForeground} />
+        <Ionicons name="person-outline" size={22} color={C.mutedForeground} />
       </View>
     );
-
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const scrollY = useRef(new Animated.Value(0)).current;
   return (
     <SafeAreaProvider style={s.container}>
       {/* Top bar */}
-      <View style={s.topbar}>
+      {/* <View style={s.topbar}>
         <Text style={s.headerTitle}>Hồ sơ</Text>
         <View style={{ flexDirection: "row" }}>
           <TouchableOpacity style={s.iconBtn}>
@@ -303,14 +308,49 @@ export default function ProfileScreen() {
             <Ionicons name="settings-outline" size={22} color={C.foreground} />
           </TouchableOpacity>
         </View>
-      </View>
+      </View> */}
 
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 110 }}
+     
+
+      <StickyProfileHeader
+        title={user.fullName}
+        colors={C}
+        scrollY={scrollY}
+        showAt={60} // đẩy thêm nếu muốn hiện muộn hơn
+        onBack={() => router.back()}
+        onRightPress={() => router.push("/setting")}
+      />
+
+      
+      <Animated.ScrollView
+        contentContainerStyle={{
+          paddingBottom: 110,
+          paddingTop: 56 /* độ cao header */,
+        }}
         showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true } // chỉ animate opacity/transform → OK
+        )}
+        scrollEventThrottle={16}
       >
         {/* Header compact */}
         <View style={s.headerWrap}>
+          <TouchableOpacity
+            onPress={() => setOpenDetails(true)}
+            activeOpacity={0.9}
+          >
+            <View>
+              <Avatar />
+              <View style={s.addBadge}>
+                <Ionicons
+                  name="person-add-outline"
+                  size={12}
+                  color={C.primaryForeground}
+                />
+              </View>
+            </View>
+          </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={s.name}>{user.fullName}</Text>
             <Text style={s.handle}>@{user.handle}</Text>
@@ -323,65 +363,14 @@ export default function ProfileScreen() {
               </Text>
             )}
           </View>
-          <TouchableOpacity
-            onPress={() => setOpenDetails(true)}
-            activeOpacity={0.9}
-          >
-            <View>
-              <Avatar />
-              <View style={s.addBadge}>
-                <Ionicons
-                  name="person-add-outline"
-                  size={14}
-                  color={C.primaryForeground}
-                />
-              </View>
-            </View>
-          </TouchableOpacity>
-        </View>
 
-        {/* Chips hành động */}
-        <View style={s.chipsRow}>
-          <TouchableOpacity style={s.chip} onPress={() => setOpenDetails(true)}>
-            <Text style={s.chipText}>Chỉnh sửa trang cá nhân</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.chip}>
-            <Text style={s.chipText}>Chia sẻ trang cá nhân</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* User Info Cards */}
-        <View style={s.infoCards}>
-          <View style={s.infoCard}>
-            <Ionicons name="school-outline" size={20} color={C.primary} />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={s.infoLabel}>Trường học</Text>
-              <Text style={s.infoValue}>{user.schoolName}</Text>
-            </View>
-          </View>
-          <View style={s.infoCard}>
-            <Ionicons name="location-outline" size={20} color={C.primary} />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={s.infoLabel}>Khu vực</Text>
-              <Text style={s.infoValue}>{user.ward}</Text>
-            </View>
-          </View>
-          <View style={s.infoCard}>
-            <Ionicons name="school-outline" size={20} color={C.primary} />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={s.infoLabel}>Lớp</Text>
-              <Text style={s.infoValue}>{user.grade}</Text>
-            </View>
-          </View>
-          <View style={s.infoCard}>
-            <Ionicons name="calendar-outline" size={20} color={C.primary} />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={s.infoLabel}>Ngày sinh</Text>
-              <Text style={s.infoValue}>
-                {new Date(user.birthday).toLocaleDateString("vi-VN")}
-              </Text>
-            </View>
-          </View>
+        <PillButton
+  label="Hồ sơ"
+  icon="person-outline"
+  colors={C}
+  variant="ghost"
+  onPress={() => router.push("/profile-detail")} // hoặc "/profile-screen" nếu bạn đặt tên vậy
+/>
         </View>
 
         <View style={s.kpiCard}>
@@ -494,7 +483,7 @@ export default function ProfileScreen() {
             chips={["Khám phá feed", "Theo dõi tag", "Gợi ý hôm nay"]}
           />
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Modal hồ sơ cá nhân */}
       <ProfileDetailsModal
@@ -626,8 +615,9 @@ const styles = (C: ColorTokens) =>
       paddingHorizontal: 16,
       paddingTop: 14,
       paddingBottom: 10,
+      gap: 10,
     },
-    name: { fontSize: 22, fontWeight: "800", color: C.foreground },
+    name: { fontSize: 15, fontWeight: "800", color: C.foreground },
     handle: { color: C.mutedForeground, marginTop: 2 },
     followers: { color: C.mutedForeground, marginTop: 6, fontSize: 12 },
     avatar: {

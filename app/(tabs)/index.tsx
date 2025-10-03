@@ -1,5 +1,6 @@
 import AnnouncementCard from "@/components/cards/AnnouncementCard";
 import HeroCarousel from "@/components/carousels/HeroCarousel";
+
 import CollapsibleHeader, {
   HEADER_COLLAPSED,
   HEADER_EXPANDED,
@@ -20,6 +21,7 @@ import {
 import { usePagerView } from "react-native-pager-view";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import themedStyles from "../../components/styleSheet/themeSheet";
+
 interface Announcement {
   id: string;
   title: string;
