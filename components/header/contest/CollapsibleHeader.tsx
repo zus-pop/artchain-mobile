@@ -1,5 +1,6 @@
 // components/header/contest/CollapsibleHeader.tsx
 import { Colors } from "@/constants/theme";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router"; // ⬅️ thêm
 import { Filter, Search } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef } from "react";
@@ -235,6 +236,30 @@ export default function CollapsibleHeader({
       {/* Nền & kính mờ */}
       <View style={s.accentWrap}>{AccentBG}</View>
       <View style={s.glass} />
+<View style={s.colorHeaderWrap} accessible accessibilityRole="header">
+  <LinearGradient
+    colors={[palette[0], palette[2], palette[3]]}
+    start={{ x: 0, y: 0 }}
+    end={{ x: 1, y: 1 }}
+    style={s.colorHeader}
+  >
+    {/* vệt sáng nhịp màu */}
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        s.colorHeaderGlow,
+        { backgroundColor: colorCycle }
+      ]}
+    />
+
+    <Text style={s.colorHeaderTitle} numberOfLines={1}>
+      Khám phá cuộc thi
+    </Text>
+    <Text style={s.colorHeaderSubtitle} numberOfLines={1}>
+      Tìm kiếm & lọc nhanh chóng
+    </Text>
+  </LinearGradient>
+</View>
 
       {/* Hàng tìm kiếm + nút filter */}
       <Animated.View
@@ -464,4 +489,37 @@ const styles = (C: any) =>
       backgroundColor: C.border,
       opacity: 0.5,
     },
+    colorHeaderWrap: {
+  marginBottom: 12,
+  borderRadius: 16,
+  overflow: "hidden",
+  // đổ bóng nhẹ để nổi khối
+  shadowColor: "#000",
+  shadowOpacity: 0.08,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 3,
+},
+colorHeader: {
+  paddingHorizontal: 16,
+  paddingVertical: 14,
+  minHeight: 64,
+  justifyContent: "center",
+},
+colorHeaderGlow: {
+  ...StyleSheet.absoluteFillObject,
+  opacity: 0.18,
+},
+colorHeaderTitle: {
+  fontSize: 18,
+  fontWeight: "800",
+  color: "#fff",
+  letterSpacing: 0.3,
+},
+colorHeaderSubtitle: {
+  marginTop: 2,
+  fontSize: 13,
+  color: "rgba(255,255,255,0.9)",
+},
+
   });

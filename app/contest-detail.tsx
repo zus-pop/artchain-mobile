@@ -200,7 +200,7 @@ export default function ContestDetail() {
     }).start();
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.background,  }}>
+    <View style={{ flex: 1, backgroundColor: C.background }}>
       <DetailHeader
         scheme={scheme}
         title={contest.title}
@@ -209,7 +209,7 @@ export default function ContestDetail() {
 
       <Animated.ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 25, paddingTop:90 }}
+        contentContainerStyle={{ paddingBottom: 25, paddingTop: 90 }}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
         onScroll={
@@ -254,7 +254,7 @@ export default function ContestDetail() {
                     source={{ uri: contest.image }}
                     style={s.image}
                   />
-              
+
                   <View style={s.innerStroke} pointerEvents="none" />
                 </View>
               </LinearGradient>

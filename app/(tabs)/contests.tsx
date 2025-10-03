@@ -1,4 +1,22 @@
 // app/(tabs)/contests.tsx
+import { router } from "expo-router";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  ActivityIndicator,
+  Animated,
+  LayoutChangeEvent,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+
 import { useContest } from "@/apis/contest";
 import { ContestCard } from "@/components/ContestCard";
 import CollapsibleHeader, {
@@ -6,18 +24,11 @@ import CollapsibleHeader, {
 } from "@/components/header/contest/CollapsibleHeader";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { router } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Animated,
-  LayoutChangeEvent,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
 
-const filterOptions: FilterOption[] = [
+/* ======================== Types & helpers ======================== */
+type ContestStatus = "ALL" | "ACTIVE" | "UPCOMING" | "COMPLETED" | "ENDED";
+
+const FILTERS: FilterOption[] = [
   "Tất cả",
   "Đang diễn ra",
   "Sắp diễn ra",
@@ -25,75 +36,76 @@ const filterOptions: FilterOption[] = [
   "Hoàn thành",
 ];
 
-function mapFilterToStatus(
-  opt: FilterOption
-): "ALL" | "ACTIVE" | "UPCOMING" | "COMPLETED" | "ENDED" {
-  switch (opt) {
-    case "Đang diễn ra":
-      return "ACTIVE";
-    case "Sắp diễn ra":
-      return "UPCOMING";
-    case "Hoàn thành":
-      return "COMPLETED";
-    case "Đã kết thúc":
-      return "ENDED";
-    case "Tất cả":
-    default:
-      return "ALL";
-  }
+const filterToStatus: Record<FilterOption, ContestStatus> = {
+  "Tất cả": "ALL",
+  "Đang diễn ra": "ACTIVE",
+  "Sắp diễn ra": "UPCOMING",
+  "Đã kết thúc": "ENDED",
+  "Hoàn thành": "COMPLETED",
+};
+
+type Contest = {
+  id?: string | number;
+  contestId?: string | number;
+  title?: string;
+  name?: string;
+  subtitle?: string;
+  // ... các field khác dùng trong ContestCard
+};
+
+function useDebouncedValue<T>(value: T, delay = 260) {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return v;
 }
 
+/* ======================== Screen ======================== */
 export default function ContestsScreen() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState<FilterOption>("Tất cả");
-  const [showFilters, setShowFilters] = useState(false);
-
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const C = Colors[scheme];
   const s = styles(scheme);
 
-  // Debounce search gõ phím
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 260);
-    return () => clearTimeout(t);
-  }, [searchQuery]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState<FilterOption>("Tất cả");
+  const [showFilters, setShowFilters] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // NEW: chỉ bật query khi độ dài hợp lệ để tránh spam API
-  const canQuery = debouncedQuery.length === 0 || debouncedQuery.length >= 2; // <=2 coi như bỏ qua
+  const debouncedQuery = useDebouncedValue(searchQuery.trim(), 260);
+  const canQuery = debouncedQuery.length === 0 || debouncedQuery.length >= 2;
 
-  // API
-  const { data, isLoading, isFetching, error } = useContest({
-    status: mapFilterToStatus(selectedFilter),
-    // NEW: nếu BE hỗ trợ query, truyền vào với điều kiện canQuery
+  // ===== API =====
+  const { data, isLoading, isFetching, error, refetch } = useContest({
+    status: filterToStatus[selectedFilter],
     query: canQuery ? debouncedQuery || undefined : undefined,
-    // Ngoài ra, nếu hook useContest hỗ trợ options (react-query), nên bật:
-    // enabled: canQuery, refetchOnWindowFocus: false, refetchOnReconnect: false
   } as any);
 
-  const contests = useMemo(() => (data ?? []) as any[], [data]);
+  const contests: Contest[] = useMemo(() => (data ?? []) as Contest[], [data]);
 
-  // Fallback search client-side
-  const filtered = useMemo(() => {
+  // Fallback filter client-side nếu BE chưa hỗ trợ subtitle
+  const filtered: Contest[] = useMemo(() => {
     if (!debouncedQuery) return contests;
     const q = debouncedQuery.toLowerCase();
-    return contests.filter((c: any) => {
+    return contests.filter((c) => {
       const title = (c?.title ?? c?.name ?? "").toLowerCase();
       const subtitle = (c?.subtitle ?? "").toLowerCase();
       return title.includes(q) || subtitle.includes(q);
     });
   }, [contests, debouncedQuery]);
 
-  /* ========== Collapsible header ========== */
+  // ===== Collapsible header =====
   const scrollY = useRef(new Animated.Value(0)).current;
+  const listRef = useRef<Animated.FlatList<Contest>>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
 
-  const headerOnLayout = (e: LayoutChangeEvent) => {
+  const headerOnLayout = useCallback((e: LayoutChangeEvent) => {
     const h = e.nativeEvent.layout.height;
-    if (h !== headerHeight) setHeaderHeight(h);
-  };
+    setHeaderHeight((prev) => (prev === h ? prev : h));
+  }, []);
 
-  const clamped = Animated.diffClamp(scrollY, 0, headerHeight || 1);
+  const clamped = Animated.diffClamp(scrollY, 0, Math.max(headerHeight, 1));
   const translateY = clamped.interpolate({
     inputRange: [0, Math.max(headerHeight, 1)],
     outputRange: [0, -Math.max(headerHeight, 1)],
@@ -105,24 +117,78 @@ export default function ContestsScreen() {
     extrapolate: "clamp",
   });
 
-  // NEW: chống spam toggle filter & submit bằng cooldown
+  // Snap header khi momentum kết thúc: scroll list tới offset = headerHeight hoặc 0
+  const handleMomentumEnd = useCallback(
+    (e: any) => {
+      const y = e.nativeEvent.contentOffset.y;
+      const threshold = headerHeight * 0.5;
+      const target = y > threshold ? headerHeight : 0;
+      // Animated.FlatList có scrollToOffset
+      listRef.current?.scrollToOffset?.({ offset: target, animated: true });
+    },
+    [headerHeight]
+  );
+
+  // Toggle bộ lọc có cooldown tránh spam
   const lastToggleRef = useRef(0);
-  const safeToggleFilters = () => {
+  const safeToggleFilters = useCallback(() => {
     const now = Date.now();
-    if (now - lastToggleRef.current < 400) return; // cooldown 400ms
+    if (now - lastToggleRef.current < 400) return;
     lastToggleRef.current = now;
     setShowFilters((v) => !v);
-  };
+  }, []);
 
-  const lastSubmitRef = useRef(0);
-  const safeSubmit = () => {
-    const now = Date.now();
-    if (now - lastSubmitRef.current < 500) return; // cooldown 500ms
-    lastSubmitRef.current = now;
-    // Nếu muốn hành vi submit riêng (ví dụ mở /search) thì đặt ở đây
-    // Ở màn này mình chỉ lọc local nên không cần.
-  };
+  const onChangeSearch = useCallback((txt: string) => {
+    setSearchQuery(txt);
+    listRef.current?.scrollToOffset?.({ offset: 0, animated: false });
+  }, []);
 
+  const onSubmitSearch = useCallback(() => {
+    listRef.current?.scrollToOffset?.({ offset: 0, animated: true });
+  }, []);
+
+  const onChangeFilter = useCallback((opt: FilterOption) => {
+    setSelectedFilter(opt);
+    listRef.current?.scrollToOffset?.({ offset: 0, animated: true });
+  }, []);
+
+  // Đổi filter → refetch (nếu hook hỗ trợ)
+  useEffect(() => {
+    refetch?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFilter]);
+
+  const onRefresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      await refetch?.();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
+
+  const keyExtractor = useCallback(
+    (c: Contest, i: number) => String(c.contestId ?? c.id ?? i),
+    []
+  );
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: Contest; index: number }) => (
+      <ContestCard
+        contest={item}
+        onPress={() =>
+          router.push({
+            pathname: "/contest-detail",
+            params: { id: String(item.contestId ?? item.id ?? index) },
+          })
+        }
+        // gợi ý: thêm accessibilityRole/Label trong ContestCard
+      />
+    ),
+    []
+  );
+
+  /* ======================== UI ======================== */
   return (
     <View style={s.container}>
       <CollapsibleHeader
@@ -131,13 +197,14 @@ export default function ContestsScreen() {
         progress={progress}
         headerOnLayout={headerOnLayout}
         searchQuery={searchQuery}
-        onChangeSearch={setSearchQuery}
+        onChangeSearch={onChangeSearch}
+        onSubmitSearch={onSubmitSearch}
         showFilters={showFilters}
-        onToggleFilters={safeToggleFilters} // NEW: dùng safeToggleFilters
+        onToggleFilters={safeToggleFilters}
         selectedFilter={selectedFilter}
-        onSelectFilter={setSelectedFilter}
-        filterOptions={filterOptions}
-        // Nếu bạn thêm prop onSubmitSearch ở CollapsibleHeader.TextInput => truyền safeSubmit
+        onSelectFilter={onChangeFilter}
+        filterOptions={FILTERS}
+        // gợi ý: hiển thị hint nếu debouncedQuery.length === 1
       />
 
       {isLoading ? (
@@ -153,13 +220,20 @@ export default function ContestsScreen() {
         </View>
       ) : filtered.length === 0 ? (
         <View style={s.stateWrap}>
-          <Text style={s.stateText}>Không có cuộc thi phù hợp.</Text>
+          <Text style={s.stateText}>
+            {debouncedQuery && debouncedQuery.length === 1
+              ? "Nhập ≥ 2 ký tự để tìm…"
+              : "Không có cuộc thi phù hợp."}
+          </Text>
         </View>
       ) : (
-        <Animated.ScrollView
-          style={s.list}
+        <Animated.FlatList
+          ref={listRef}
+          data={filtered}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
           contentContainerStyle={{
-            paddingTop: headerHeight,
+            paddingTop: headerHeight, // đẩy nội dung dưới header
             paddingBottom: 24,
           }}
           showsVerticalScrollIndicator={false}
@@ -168,41 +242,37 @@ export default function ContestsScreen() {
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
             { useNativeDriver: true }
           )}
-          // NEW: optional – snap nhẹ để tránh “nhảy” khi dừng cuộn
-          onMomentumScrollEnd={(e) => {
-            const y = e.nativeEvent.contentOffset.y;
-            const threshold = headerHeight * 0.5;
-            Animated.spring(scrollY, {
-              toValue: y > threshold ? headerHeight : 0,
-              useNativeDriver: true,
-              speed: 20,
-              bounciness: 0,
-            }).start();
-          }}
-        >
-          {filtered.map((contest: any, i: number) => (
-            <ContestCard
-              key={String(contest.contestId ?? contest.id ?? i)}
-              contest={contest}
-              onPress={() => router.push("/contest-detail")}
+          onMomentumScrollEnd={handleMomentumEnd}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={C.mutedForeground}
+              colors={[C.primary]}
             />
-          ))}
-          {isFetching && (
-            <View style={{ paddingVertical: 12, alignItems: "center" }}>
-              <ActivityIndicator color={C.mutedForeground} />
-            </View>
-          )}
-        </Animated.ScrollView>
+          }
+          // Nếu có pagination từ hook:
+          // onEndReachedThreshold={0.25}
+          // onEndReached={() => fetchNextPage?.()}
+          // ListFooterComponent={isFetchingNextPage ? <Spinner/> : null}
+        />
+      )}
+
+      {/* Fetching indicator nhỏ phía dưới khi refetch background */}
+      {isFetching && !isLoading && filtered.length > 0 && (
+        <View style={s.fetchingFoot}>
+          <ActivityIndicator color={C.mutedForeground} />
+        </View>
       )}
     </View>
   );
 }
 
+/* ======================== Styles ======================== */
 const styles = (scheme: "light" | "dark") => {
   const C = Colors[scheme];
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: C.background },
-    list: { flex: 1 },
     stateWrap: {
       flex: 1,
       justifyContent: "center",
@@ -211,5 +281,14 @@ const styles = (scheme: "light" | "dark") => {
       padding: 16,
     },
     stateText: { marginTop: 10, color: C.mutedForeground, fontSize: 16 },
+    fetchingFoot: {
+      position: "absolute",
+      bottom: 8,
+      alignSelf: "center",
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: C.card,
+    },
   });
 };
