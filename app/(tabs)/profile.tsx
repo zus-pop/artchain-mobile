@@ -1,12 +1,14 @@
 import PostCard from "@/components/cards/PostCard";
+import PillButton from "@/components/buttons/PillButton";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
 import SegmentTabs from "@/components/tabs/SegmentedTabs";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
+  Animated,
   Image,
   ScrollView,
   StyleSheet,
@@ -14,10 +16,32 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useWhoAmI } from "../../apis/auth";
-import { useAuthStore } from "../../store";
 
-type TabKey = "threads" | "replies" | "media" | "reposts";
+// ===== Types =====
+import { useWhoAmI } from "@/apis/auth";
+import StickyProfileHeader from "@/components/header/StickyProfileHeader";
+
+import { useAuthStore } from "@/store/auth-store";
+import type {
+  ColorTokens,
+  EmptyProps,
+  KPIProps,
+  RawProfile,
+  TabKey,
+  UserStats,
+} from "@/types/tabkey";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+
+// ---- JSON đầu vào (từ bạn) ----
+const rawProfile: RawProfile = {
+  fullName: "Nguyễn Văn An",
+  email: "an@example.com",
+  phone: "012323141242",
+  birthday: "2010-05-14T17:00:00.000Z",
+  schoolName: "Trường Tiểu học Hòa Bình",
+  ward: "Phường 7, Quận 3",
+  grade: "5",
+};
 
 export default function ProfileScreen() {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
@@ -83,7 +107,7 @@ export default function ProfileScreen() {
     []
   );
 
-  const userStats = {
+  const userStats: UserStats = {
     totalSubmissions: 12,
     wins: 3,
     views: 2450,
@@ -93,12 +117,6 @@ export default function ProfileScreen() {
 
   const [active, setActive] = useState<TabKey>("threads");
   const [openDetails, setOpenDetails] = useState(false);
-  const ICONS = {
-    brush: { fg: "#F59E0B", bg: "rgba(245,158,11,0.14)" }, // amber
-    trophy: { fg: "#EAB308", bg: "rgba(234,179,8,0.14)" }, // yellow
-    eye: { fg: "#3B82F6", bg: "rgba(59,130,246,0.14)" }, // blue
-    heart: { fg: "#EF4444", bg: "rgba(239,68,68,0.14)" }, // red
-  };
 
   const achievements = useMemo(
     () => [
@@ -132,9 +150,7 @@ export default function ProfileScreen() {
       ? "Được chấp nhận"
       : status === "pending"
       ? "Đang xử lý"
-      : status === "rejected"
-      ? "Bị từ chối"
-      : status;
+      : "Bị từ chối";
 
   if (!accessToken) {
     return (
@@ -200,6 +216,15 @@ export default function ProfileScreen() {
     );
   }
 
+  const ICONS: Record<
+    "brush" | "trophy" | "eye" | "heart",
+    { fg: string; bg: string }
+  > = {
+    brush: { fg: "#F59E0B", bg: "rgba(245,158,11,0.14)" }, // amber
+    trophy: { fg: "#EAB308", bg: "rgba(234,179,8,0.14)" }, // yellow
+    eye: { fg: "#3B82F6", bg: "rgba(59,130,246,0.14)" }, // blue
+    heart: { fg: "#EF4444", bg: "rgba(239,68,68,0.14)" }, // red
+  };
   // Show loading state while fetching user data
   if (isLoading || !user) {
     return (
@@ -250,10 +275,23 @@ export default function ProfileScreen() {
     );
   }
 
+  // Trước đây: const Avatar = (): JSX.Element => { ... }  // -> lỗi
+  const Avatar = () =>
+    user.avatar ? (
+      <Image source={{ uri: user.avatar }} style={s.avatar} />
+    ) : (
+      <View
+        style={[s.avatar, { alignItems: "center", justifyContent: "center" }]}
+      >
+        <Ionicons name="person-outline" size={22} color={C.mutedForeground} />
+      </View>
+    );
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const scrollY = useRef(new Animated.Value(0)).current;
   return (
-    <View style={s.container}>
+    <SafeAreaProvider style={s.container}>
       {/* Top bar */}
-      <View style={s.topbar}>
+      {/* <View style={s.topbar}>
         <Text style={s.headerTitle}>Hồ sơ</Text>
         <View style={{ flexDirection: "row" }}>
           <TouchableOpacity style={s.iconBtn}>
@@ -270,78 +308,69 @@ export default function ProfileScreen() {
             <Ionicons name="settings-outline" size={22} color={C.foreground} />
           </TouchableOpacity>
         </View>
-      </View>
+      </View> */}
 
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 110 }}
+     
+
+      <StickyProfileHeader
+        title={user.fullName}
+        colors={C}
+        scrollY={scrollY}
+        showAt={60} // đẩy thêm nếu muốn hiện muộn hơn
+        onBack={() => router.back()}
+        onRightPress={() => router.push("/setting")}
+      />
+
+      
+      <Animated.ScrollView
+        contentContainerStyle={{
+          paddingBottom: 110,
+          paddingTop: 56 /* độ cao header */,
+        }}
         showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true } // chỉ animate opacity/transform → OK
+        )}
+        scrollEventThrottle={16}
       >
         {/* Header compact */}
         <View style={s.headerWrap}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.name}>{user.fullName}</Text>
-            <Text style={s.handle}>@{user.handle}</Text>
-            <Text style={s.followers}>{user.followers} người theo dõi</Text>
-          </View>
           <TouchableOpacity
             onPress={() => setOpenDetails(true)}
             activeOpacity={0.9}
           >
             <View>
-              <Image source={{ uri: user.avatar }} style={s.avatar} />
+              <Avatar />
               <View style={s.addBadge}>
                 <Ionicons
                   name="person-add-outline"
-                  size={14}
+                  size={12}
                   color={C.primaryForeground}
                 />
               </View>
             </View>
           </TouchableOpacity>
-        </View>
-
-        {/* Chips hành động */}
-        <View style={s.chipsRow}>
-          <TouchableOpacity style={s.chip} onPress={() => setOpenDetails(true)}>
-            <Text style={s.chipText}>Chỉnh sửa trang cá nhân</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.chip}>
-            <Text style={s.chipText}>Chia sẻ trang cá nhân</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* User Info Cards */}
-        <View style={s.infoCards}>
-          <View style={s.infoCard}>
-            <Ionicons name="school-outline" size={20} color={C.primary} />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={s.infoLabel}>Trường học</Text>
-              <Text style={s.infoValue}>{user.schoolName}</Text>
-            </View>
-          </View>
-          <View style={s.infoCard}>
-            <Ionicons name="location-outline" size={20} color={C.primary} />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={s.infoLabel}>Khu vực</Text>
-              <Text style={s.infoValue}>{user.ward}</Text>
-            </View>
-          </View>
-          <View style={s.infoCard}>
-            <Ionicons name="school-outline" size={20} color={C.primary} />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={s.infoLabel}>Lớp</Text>
-              <Text style={s.infoValue}>{user.grade}</Text>
-            </View>
-          </View>
-          <View style={s.infoCard}>
-            <Ionicons name="calendar-outline" size={20} color={C.primary} />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={s.infoLabel}>Ngày sinh</Text>
-              <Text style={s.infoValue}>
-                {new Date(user.birthday).toLocaleDateString("vi-VN")}
+          <View style={{ flex: 1 }}>
+            <Text style={s.name}>{user.fullName}</Text>
+            <Text style={s.handle}>@{user.handle}</Text>
+            {!!user.subtitle && (
+              <Text style={s.followers}>{user.subtitle}</Text>
+            )}
+            {!!user.location && (
+              <Text style={[s.followers, { marginTop: 4 }]}>
+                {user.location}
               </Text>
-            </View>
+            )}
           </View>
+
+        <PillButton
+  label="Hồ sơ"
+  icon="person-outline"
+  colors={C}
+  variant="ghost"
+  onPress={() => router.push("/profile-detail")} // hoặc "/profile-screen" nếu bạn đặt tên vậy
+/>
         </View>
 
         <View style={s.kpiCard}>
@@ -382,17 +411,17 @@ export default function ProfileScreen() {
           />
         </View>
 
-        {/* Rating (không viền, shadow rất nhẹ) */}
+        {/* Rating */}
         <View style={s.ratingBox}>
           <Ionicons name="star" size={18} color={C.chart1} />
           <Text style={s.ratingText}>{userStats.rating}</Text>
           <Text style={s.ratingSub}>Đánh giá trung bình</Text>
         </View>
 
-        {/* Divider mảnh tách khu vực */}
+        {/* Divider */}
         <View style={s.sectionDivider} />
 
-        {/* Tabs mảnh */}
+        {/* Tabs */}
         <View style={{ marginHorizontal: 0 }}>
           <SegmentTabs
             tabs={[
@@ -454,7 +483,7 @@ export default function ProfileScreen() {
             chips={["Khám phá feed", "Theo dõi tag", "Gợi ý hôm nay"]}
           />
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Modal hồ sơ cá nhân */}
       <ProfileDetailsModal
@@ -472,7 +501,7 @@ export default function ProfileScreen() {
         }}
         achievements={achievements}
       />
-    </View>
+    </SafeAreaProvider>
   );
 }
 
@@ -481,16 +510,9 @@ function KPI({
   label,
   value,
   C,
-  iconColor = C.foreground, // màu icon
-  iconBg = C.muted, // nền nhạt
-}: {
-  icon: any;
-  label: string;
-  value: string;
-  C: any;
-  iconColor?: string;
-  iconBg?: string;
-}) {
+  iconColor = C.foreground,
+  iconBg = C.muted,
+}: KPIProps) {
   return (
     <View style={{ flex: 1, alignItems: "center" }}>
       <View
@@ -512,7 +534,7 @@ function KPI({
   );
 }
 
-function Empty({ label, chips = [] }: { label: string; chips?: string[] }) {
+function Empty({ label, chips = [] }: EmptyProps) {
   return (
     <View style={emptyStyles.wrap}>
       <Text style={emptyStyles.text}>{label}</Text>
@@ -571,11 +593,9 @@ const emptyStyles = StyleSheet.create({
   },
 });
 
-const styles = (C: any) =>
+const styles = (C: ColorTokens) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: C.background },
-
-    // Topbar vẫn dùng hairline cho rõ phân tách
     topbar: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -595,8 +615,9 @@ const styles = (C: any) =>
       paddingHorizontal: 16,
       paddingTop: 14,
       paddingBottom: 10,
+      gap: 10,
     },
-    name: { fontSize: 22, fontWeight: "800", color: C.foreground },
+    name: { fontSize: 15, fontWeight: "800", color: C.foreground },
     handle: { color: C.mutedForeground, marginTop: 2 },
     followers: { color: C.mutedForeground, marginTop: 6, fontSize: 12 },
     avatar: {
@@ -627,10 +648,9 @@ const styles = (C: any) =>
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: C.card, // không viền
+      backgroundColor: C.card,
       borderRadius: 12,
       paddingVertical: 10,
-      // bóng rất nhẹ
       shadowColor: "#000",
       shadowOpacity: 0.06,
       shadowRadius: 10,
@@ -690,7 +710,6 @@ const styles = (C: any) =>
       marginVertical: 6,
     },
 
-    // Rating — bỏ border, nhẹ nhàng
     ratingBox: {
       flexDirection: "row",
       alignItems: "center",
@@ -718,7 +737,6 @@ const styles = (C: any) =>
       marginBottom: 2,
     },
 
-    // Bài viết — bỏ border, dùng shadow
     postRow: {
       flexDirection: "row",
       backgroundColor: C.card,

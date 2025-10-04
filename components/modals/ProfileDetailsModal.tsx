@@ -1,6 +1,7 @@
 import { Colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useMemo, useRef } from "react";
+import * as ImagePicker from "expo-image-picker";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -12,33 +13,50 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import styles from "./style";
 
 type Scheme = "light" | "dark";
+
+type UserShape = {
+  name: string;
+  handle: string;
+  email: string;
+  phone: string;
+  location: string;
+  avatar: string;
+  followers: number;
+};
 
 type Props = {
   visible: boolean;
   onClose: () => void;
   scheme: Scheme;
-  user: {
-    name: string;
-    handle: string;
-    email: string;
-    phone: string;
-    location: string;
-    avatar: string;
-    followers: number;
-  };
+  user: UserShape;
   achievements?: { id: string; title: string; place: string }[];
+  onSave?: (updated: UserShape) => void;
 };
 
 const { height: SCREEN_H } = Dimensions.get("window");
 const SNAP = { OPEN: 0, DISMISS: SCREEN_H };
 const DRAG_CLOSE_THRESHOLD = 120;
 const VELOCITY_CLOSE_THRESHOLD = 1.0;
+const FOOTER_H = 64;
+
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+
+const COLORFUL = {
+  blue: { bg: "rgba(37, 99, 235, 0.12)", fg: "#2563EB" },   // indigo-600
+  green: { bg: "rgba(5, 150, 105, 0.12)", fg: "#059669" },  // emerald-600
+  purple: { bg: "rgba(147, 51, 234, 0.12)", fg: "#9333EA" },// purple-600
+  amber: { bg: "rgba(245, 158, 11, 0.12)", fg: "#F59E0B" }, // amber-500
+  pink: { bg: "rgba(219, 39, 119, 0.12)", fg: "#DB2777" },  // pink-600
+  sky: { bg: "rgba(2, 132, 199, 0.12)", fg: "#0284C7" },    // sky-600
+};
 
 const ProfileDetailsModal: React.FC<Props> = ({
   visible,
@@ -46,6 +64,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
   scheme,
   user,
   achievements = [],
+  onSave,
 }) => {
   const C = Colors[scheme];
   const s = styles(C);
@@ -56,6 +75,60 @@ const ProfileDetailsModal: React.FC<Props> = ({
   const dragOffset = useRef(0);
   const scrollYRef = useRef(0);
 
+  // ---------- FORM STATE ----------
+  const [form, setForm] = useState<UserShape>(user);
+  const [touched, setTouched] = useState<Record<keyof UserShape, boolean>>({
+    name: false,
+    handle: false,
+    email: false,
+    phone: false,
+    location: false,
+    avatar: false,
+    followers: false,
+  });
+
+  // reset form khi mở modal với user mới
+  useEffect(() => {
+    if (visible) {
+      setForm(user);
+      setTouched({
+        name: false,
+        handle: false,
+        email: false,
+        phone: false,
+        location: false,
+        avatar: false,
+        followers: false,
+      });
+    }
+  }, [visible, user]);
+
+  const setField = <K extends keyof UserShape>(key: K, val: UserShape[K]) => {
+    setForm((prev) => ({ ...prev, [key]: val }));
+  };
+
+  const errors = useMemo(() => {
+    const e: Partial<Record<keyof UserShape, string>> = {};
+    if (!form.name.trim()) e.name = "Vui lòng nhập họ tên";
+    if (!emailRegex.test(form.email)) e.email = "Email không hợp lệ";
+    if (form.phone && form.phone.replace(/\D/g, "").length < 8)
+      e.phone = "Số điện thoại chưa đúng";
+    return e;
+  }, [form]);
+
+  const isDirty = useMemo(() => {
+    return (
+      form.name !== user.name ||
+      form.email !== user.email ||
+      form.phone !== user.phone ||
+      form.location !== user.location ||
+      form.avatar !== user.avatar
+    );
+  }, [form, user]);
+
+  const canSave = isDirty && Object.keys(errors).length === 0;
+
+  // ---------- SHEET ANIM ----------
   const openSheet = () => {
     translateY.setValue(SNAP.DISMISS);
     backdropOpacity.setValue(0);
@@ -77,7 +150,6 @@ const ProfileDetailsModal: React.FC<Props> = ({
     });
   };
 
-  // Close: sheet xuống nhanh, backdrop fade 2s rồi onClose
   const closeSheet = () => {
     Animated.parallel([
       Animated.spring(translateY, {
@@ -142,7 +214,32 @@ const ProfileDetailsModal: React.FC<Props> = ({
     scrollYRef.current = e.nativeEvent.contentOffset.y;
   };
 
+  // ---------- IMAGE PICKER ----------
+  const pickAvatar = async () => {
+    // xin quyền
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    // mở thư viện
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+      selectionLimit: 1,
+    });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      setField("avatar", result.assets[0].uri);
+      setTouched((t) => ({ ...t, avatar: true }));
+    }
+  };
+
   if (!visible) return null;
+
+  const handleSave = () => {
+    if (!canSave) return;
+    if (onSave) onSave(form);
+    closeSheet();
+  };
 
   return (
     <Modal
@@ -163,86 +260,149 @@ const ProfileDetailsModal: React.FC<Props> = ({
           style={[s.sheet, { transform: [{ translateY }] }]}
           {...panResponder.panHandlers}
         >
-          {/* Grabber + Header */}
+          {/* Header */}
           <View>
             <View style={s.grabberWrap}>
               <View style={s.grabber} />
             </View>
 
             <View style={s.headerRow}>
-              <Text style={s.title}>Trang cá nhân</Text>
+              <Text style={s.title}>Cập nhật hồ sơ</Text>
               <TouchableOpacity
                 onPress={closeSheet}
                 style={s.iconBtn}
                 activeOpacity={0.85}
               >
-                <Ionicons name="close" size={22} color={C.foreground} />
+                <Ionicons name="close" size={22} color={COLORFUL.pink.fg} />
               </TouchableOpacity>
             </View>
 
-            {/* Divider */}
             <View style={s.divider} />
           </View>
 
-          {/* Content */}
+          {/* CONTENT */}
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 16 }}
+            contentContainerStyle={{ paddingBottom: FOOTER_H + 16 }}
             keyboardShouldPersistTaps="handled"
             bounces
             scrollEventThrottle={16}
             onScroll={onScroll}
           >
-            {/* INFO — nổi bật hơn, khoảng cách gọn */}
+            {/* INFO / AVATAR */}
             <View style={s.infoRow}>
-              <View style={s.avatarRing}>
-                <Image source={{ uri: user.avatar }} style={s.avatar} />
+              <View style={[s.avatarRing, { shadowColor: COLORFUL.sky.fg }]}>
+                {form.avatar ? (
+                  <Image source={{ uri: form.avatar }} style={s.avatar} />
+                ) : (
+                  <View
+                    style={[
+                      s.avatar,
+                      { alignItems: "center", justifyContent: "center" },
+                    ]}
+                  >
+                    <Ionicons
+                      name="person-outline"
+                      size={28}
+                      color={COLORFUL.sky.fg}
+                    />
+                  </View>
+                )}
+
+                {/* Nút máy ảnh overlay — bấm để chọn ảnh trong máy */}
+                <TouchableOpacity
+                  onPress={pickAvatar}
+                  activeOpacity={0.9}
+                  style={[
+                    local.camBtn,
+                    {
+                      backgroundColor: COLORFUL.blue.fg,
+                      borderColor: C.background,
+                    },
+                  ]}
+                >
+                  <Ionicons name="camera" size={14} color={"#fff"} />
+                </TouchableOpacity>
               </View>
 
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={s.name} numberOfLines={1}>
-                  {user.name}
-                </Text>
-                <Text style={s.handle} numberOfLines={1}>
-                  @{user.handle}
-                </Text>
+                <TextInput
+                  value={form.name}
+                  onChangeText={(t) => setField("name", t)}
+                  onBlur={() => setTouched((t) => ({ ...t, name: true }))}
+                  placeholder="Họ và tên"
+                  placeholderTextColor={C.mutedForeground}
+                  style={[
+                    local.input,
+                    { color: C.foreground, borderColor: C.border },
+                    errors.name && touched.name ? local.inputError : null,
+                  ]}
+                />
+                <View style={local.handleRow}>
+                  <Ionicons name="at" size={14} color={COLORFUL.purple.fg} />
+                  <Text style={[s.handle, { color: COLORFUL.purple.fg }]} numberOfLines={1}>
+                    {form.handle}
+                  </Text>
+                </View>
 
-                <View style={s.followChip}>
-                  <Ionicons name="people" size={12} color={C.primary} />
-                  <Text style={s.followTxt}>{user.followers} theo dõi</Text>
+                <View style={[s.followChip, { backgroundColor: COLORFUL.green.bg }]}>
+                  <Ionicons name="people" size={12} color={COLORFUL.green.fg} />
+                  <Text style={[s.followTxt, { color: COLORFUL.green.fg }]}>
+                    {user.followers} theo dõi
+                  </Text>
                 </View>
               </View>
             </View>
 
-            {/* Divider sát info */}
             <View style={[s.divider, { marginTop: 2 }]} />
 
-            {/* CONTACTS — mỗi dòng có divider */}
+            {/* FORM FIELDS — icon nhiều màu */}
             <View style={s.sectionTight}>
-              <DetailRow
+             
+
+              <Field
                 icon="mail-outline"
-                label={user.email}
+                iconColor={COLORFUL.blue.fg}
+                chipColor={COLORFUL.blue}
+                label="Email"
+                value={form.email}
+                onChangeText={(t) => setField("email", t)}
+                onBlur={() => setTouched((t) => ({ ...t, email: true }))}
                 C={C}
-                tone="blue"
+                keyboardType="email-address"
+                error={touched.email ? errors.email : undefined}
               />
-              <DetailRow
+
+              <Field
                 icon="call-outline"
-                label={user.phone}
+                iconColor={COLORFUL.green.fg}
+                chipColor={COLORFUL.green}
+                label="Điện thoại"
+                value={form.phone}
+                onChangeText={(t) => setField("phone", t)}
+                onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
                 C={C}
-                tone="green"
+                keyboardType="phone-pad"
+                error={touched.phone ? errors.phone : undefined}
               />
-              <DetailRow
+
+              <Field
                 icon="location-outline"
-                label={user.location}
+                iconColor={COLORFUL.purple.fg}
+                chipColor={COLORFUL.purple}
+                label="Địa chỉ / Khu vực"
+                value={form.location}
+                onChangeText={(t) => setField("location", t)}
+                onBlur={() => setTouched((t) => ({ ...t, location: true }))}
                 C={C}
-                tone="purple"
+                placeholder="Phường, Quận"
                 last
               />
             </View>
 
             {achievements.length > 0 && <View style={s.divider} />}
 
-            {/* ACHIEVEMENTS — khoảng cách gọn, icon badge */}
+            {/* ACHIEVEMENTS (read-only ở modal này) */}
             {achievements.length > 0 && (
               <View style={s.sectionTight}>
                 <Text style={s.sectionTitle}>Thành tích</Text>
@@ -258,33 +418,117 @@ const ProfileDetailsModal: React.FC<Props> = ({
                 ))}
               </View>
             )}
-
-            <View style={s.divider} />
-
-            {/* ACTIONS — sát nhau hơn */}
-            <View style={s.actionsRow}>
-              <TouchableOpacity
-                style={[s.primaryBtn, { flex: 1 }]}
-                onPress={closeSheet}
-                activeOpacity={0.9}
-              >
-                <Text style={s.primaryTxt}>Xong</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.ghostBtn, { flex: 1 }]}
-                activeOpacity={0.9}
-              >
-                <Text style={s.ghostTxt}>Chia sẻ</Text>
-              </TouchableOpacity>
-            </View>
           </ScrollView>
+
+          {/* FOOTER STICKY */}
+          <View
+            style={[
+              s.footer,
+              {
+                backgroundColor: C.card,
+                borderTopColor: C.border,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={[s.primaryBtn, canSave ? null : { opacity: 0.5 }]}
+              onPress={handleSave}
+              activeOpacity={0.9}
+              disabled={!canSave}
+            >
+              <Text
+                style={[
+                  s.primaryTxt,
+                  { color: C.primaryForeground, backgroundColor: COLORFUL.blue.fg },
+                ]}
+              >
+                Lưu thay đổi
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={s.ghostBtn}
+              onPress={closeSheet}
+              activeOpacity={0.9}
+            >
+              <Text style={[s.ghostTxt, { color: COLORFUL.pink.fg }]}>Huỷ</Text>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       </View>
     </Modal>
   );
 };
 
-/** Dòng detail có icon badge + divider riêng, spacing gọn */
+/** Ô nhập có label + icon trái, icon nhiều màu */
+function Field({
+  icon,
+  label,
+  value,
+  onChangeText,
+  onBlur,
+  C,
+  keyboardType,
+  placeholder,
+  error,
+  last,
+  iconColor,
+  chipColor,
+}: {
+  icon: keyof typeof Ionicons.glyphMap | any;
+  label: string;
+  value: string;
+  onChangeText: (t: string) => void;
+  onBlur?: () => void;
+  C: any;
+  keyboardType?: "default" | "email-address" | "phone-pad";
+  placeholder?: string;
+  error?: string;
+  last?: boolean;
+  iconColor?: string;
+  chipColor?: { bg: string; fg: string };
+}) {
+  return (
+    <View style={{ paddingVertical: 8 }}>
+      <Text style={[local.label, { color: C.mutedForeground }]}>{label}</Text>
+      <View
+        style={[
+          local.row,
+          { borderColor: C.border, backgroundColor: chipColor?.bg ?? C.card },
+        ]}
+      >
+        <Ionicons name={icon} size={16} color={iconColor ?? C.mutedForeground} />
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          onBlur={onBlur}
+          keyboardType={keyboardType}
+          placeholder={placeholder}
+          placeholderTextColor={C.mutedForeground}
+          style={[local.input, { color: C.foreground }]}
+        />
+      </View>
+      {!!error && (
+        <Text style={[local.err, { color: C.destructive ?? "#EF4444" }]}>
+          {error}
+        </Text>
+      )}
+      {!last && (
+        <View
+          style={{
+            height: StyleSheet.hairlineWidth,
+            backgroundColor: C.border,
+            opacity: 0.9,
+            marginTop: 10,
+            marginHorizontal: -14,
+          }}
+        />
+      )}
+    </View>
+  );
+}
+
+/** Dòng read-only cho thành tích, icon nhiều màu rực hơn */
 function DetailRow({
   icon,
   label,
@@ -298,12 +542,14 @@ function DetailRow({
   C: any;
   tone?: "blue" | "green" | "purple" | "amber";
 }) {
-  const palette = {
-    blue: { bg: "rgba(59,130,246,0.12)", fg: "#3B82F6", shadow: "#3B82F6" },
-    green: { bg: "rgba(34,197,94,0.12)", fg: "#22C55E", shadow: "#22C55E" },
-    purple: { bg: "rgba(168,85,247,0.12)", fg: "#A855F7", shadow: "#A855F7" },
-    amber: { bg: "rgba(245,158,11,0.12)", fg: "#F59E0B", shadow: "#F59E0B" },
-  }[tone];
+  const palette =
+    tone === "green"
+      ? COLORFUL.green
+      : tone === "purple"
+      ? COLORFUL.purple
+      : tone === "amber"
+      ? COLORFUL.amber
+      : COLORFUL.blue;
 
   return (
     <View style={{ paddingVertical: 8 }}>
@@ -316,7 +562,7 @@ function DetailRow({
             backgroundColor: palette.bg,
             alignItems: "center",
             justifyContent: "center",
-            shadowColor: palette.shadow,
+            shadowColor: palette.fg,
             shadowOpacity: 0.16,
             shadowRadius: 5,
             shadowOffset: { width: 0, height: 2 },
@@ -333,7 +579,6 @@ function DetailRow({
         </Text>
       </View>
 
-      {/* Divider riêng — mảnh và sát hơn */}
       <View
         style={[
           {
@@ -341,7 +586,7 @@ function DetailRow({
             backgroundColor: C.border,
             opacity: 0.9,
             marginTop: 10,
-            marginHorizontal: -14, // full-bleed tinh tế hơn
+            marginHorizontal: -14,
           },
           last ? { height: 0 } : null,
         ]}
@@ -350,127 +595,60 @@ function DetailRow({
   );
 }
 
-const styles = (C: any) =>
-  StyleSheet.create({
-    wrap: { flex: 1, justifyContent: "flex-end" },
-    backdrop: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: "rgba(0,0,0,0.45)",
-    },
-
-    // bỏ viền bao; dùng shadow cho sang hơn
-    sheet: {
-      maxHeight: SCREEN_H * 0.9,
-      backgroundColor: C.background,
-      borderTopLeftRadius: 22,
-      borderTopRightRadius: 22,
-      paddingHorizontal: 14, // gọn hơn
-      paddingTop: 6,
-      paddingBottom: 10,
-      shadowColor: "#000",
-      shadowOpacity: 0.14,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: -4 },
-      elevation: 16,
-    },
-
-    grabberWrap: {
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: 6,
-    },
-    grabber: {
-      width: 44,
-      height: 5,
-      borderRadius: 3,
-      backgroundColor: C.border,
-      opacity: 0.95,
-    },
-
-    headerRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 2,
-      paddingVertical: 8, // gọn
-    },
-    title: { fontSize: 18, fontWeight: "800", color: C.foreground },
-    iconBtn: { padding: 6, marginRight: -6 },
-
-    divider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: C.border,
-      opacity: 0.9,
-      marginHorizontal: -14,
-    },
-
-    // INFO block — nổi bật
-    infoRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingVertical: 10, // gọn
-    },
-    avatarRing: {
-      width: 76,
-      height: 76,
-      borderRadius: 38,
-      backgroundColor: C.card,
-      alignItems: "center",
-      justifyContent: "center",
-      shadowColor: "#000",
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 3,
-      borderWidth: 2,
-      borderColor: C.primary, // viền primary làm nổi
-    },
-    avatar: {
-      width: 68,
-      height: 68,
-      borderRadius: 34,
-      backgroundColor: C.muted,
-    },
-
-    name: { fontSize: 18, fontWeight: "900", color: C.foreground },
-    handle: { color: C.mutedForeground, marginTop: 2, fontSize: 12 },
-
-    followChip: {
-      marginTop: 6,
-      alignSelf: "flex-start",
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 999,
-      backgroundColor: C.card,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: C.border,
-    },
-    followTxt: { color: C.primary, fontWeight: "700", fontSize: 12 },
-
-    sectionTight: { paddingVertical: 6 }, // section gọn
-
-    sectionTitle: { fontWeight: "800", color: C.foreground, marginBottom: 4 },
-
-    actionsRow: { flexDirection: "row", gap: 10, marginTop: 8 },
-    primaryBtn: {
-      backgroundColor: C.primary,
-      borderRadius: 12,
-      paddingVertical: 12,
-      alignItems: "center",
-    },
-    primaryTxt: { color: C.primaryForeground, fontWeight: "800" },
-    ghostBtn: {
-      borderRadius: 12,
-      paddingVertical: 12,
-      alignItems: "center",
-      backgroundColor: C.card,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: C.border,
-    },
-    ghostTxt: { color: C.foreground, fontWeight: "800" },
-  });
-
 export default ProfileDetailsModal;
+
+const local = StyleSheet.create({
+  camBtn: {
+    position: "absolute",
+    right: -4,
+    bottom: -4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  row: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 0,
+    fontWeight: "600",
+  },
+  inputError: {
+    borderWidth: 1,
+    borderColor: "#EF4444",
+  },
+  label: {
+    fontSize: 12,
+    marginBottom: 6,
+    fontWeight: "600",
+    opacity: 0.8,
+  },
+  err: {
+    fontSize: 12,
+    marginTop: 6,
+    fontWeight: "600",
+  },
+  handleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  
+    marginTop: 4,
+    justifyContent: "flex-start",
+    
+  },
+});

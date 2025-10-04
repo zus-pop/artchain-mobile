@@ -1,20 +1,36 @@
-import { useContest } from "@/apis/contest";
-import { ContestCard } from "@/components/ContestCard";
-import { Colors } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+// app/(tabs)/contests.tsx
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { Filter, Search } from "lucide-react-native";
-import React, { useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
-  ScrollView,
+  ActivityIndicator,
+  Animated,
+  Easing,
+  LayoutChangeEvent,
+  RefreshControl,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 
-const filterOptions = [
+import { useContest } from "@/apis/contest";
+import { ContestCard } from "@/components/ContestCard";
+import CollapsibleHeader, {
+  FilterOption,
+} from "@/components/header/contest/CollapsibleHeader";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+
+/* ======================== Types & helpers ======================== */
+type ContestStatus = "ALL" | "ACTIVE" | "UPCOMING" | "COMPLETED" | "ENDED";
+
+const FILTERS: FilterOption[] = [
   "Tất cả",
   "Đang diễn ra",
   "Sắp diễn ra",
@@ -22,206 +38,301 @@ const filterOptions = [
   "Hoàn thành",
 ];
 
-export default function ContestsScreen() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState("Tất cả");
-  const [showFilters, setShowFilters] = useState(false);
-  const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
-  const themedStyles = getThemedStyles(colorScheme);
+const filterToStatus: Record<FilterOption, ContestStatus> = {
+  "Tất cả": "ALL",
+  "Đang diễn ra": "ACTIVE",
+  "Sắp diễn ra": "UPCOMING",
+  "Đã kết thúc": "ENDED",
+  "Hoàn thành": "COMPLETED",
+};
 
-  // Use real API
-  const { data: contests = [], isLoading } = useContest({
-    status:
-      selectedFilter === "Tất cả"
-        ? "ALL"
-        : selectedFilter === "Đang diễn ra"
-        ? "ACTIVE"
-        : selectedFilter === "Sắp diễn ra"
-        ? "UPCOMING"
-        : selectedFilter === "Hoàn thành"
-        ? "COMPLETED"
-        : "ENDED",
+type Contest = {
+  id?: string | number;
+  contestId?: string | number;
+  title?: string;
+  name?: string;
+  subtitle?: string;
+  // ... các field khác dùng trong ContestCard
+};
+
+function useDebouncedValue<T>(value: T, delay = 260) {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return v;
+}
+
+/* ======================== Screen ======================== */
+export default function ContestsScreen() {
+  const scheme = (useColorScheme() ?? "light") as "light" | "dark";
+  const C = Colors[scheme];
+  const s = styles(scheme);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState<FilterOption>("Tất cả");
+  const [showFilters, setShowFilters] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const debouncedQuery = useDebouncedValue(searchQuery.trim(), 260);
+  const canQuery = debouncedQuery.length === 0 || debouncedQuery.length >= 2;
+
+  // ===== API =====
+  const { data, isLoading, isFetching, error, refetch } = useContest({
+    status: filterToStatus[selectedFilter],
+    query: canQuery ? debouncedQuery || undefined : undefined,
+  } as any);
+
+  const contests: Contest[] = useMemo(() => (data ?? []) as Contest[], [data]);
+
+  // Fallback filter client-side nếu BE chưa hỗ trợ subtitle
+  const filtered: Contest[] = useMemo(() => {
+    if (!debouncedQuery) return contests;
+    const q = debouncedQuery.toLowerCase();
+    return contests.filter((c) => {
+      const title = (c?.title ?? c?.name ?? "").toLowerCase();
+      const subtitle = (c?.subtitle ?? "").toLowerCase();
+      return title.includes(q) || subtitle.includes(q);
+    });
+  }, [contests, debouncedQuery]);
+
+  // ===== Collapsible header =====
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const listRef = useRef<Animated.FlatList<Contest>>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+  const headerOnLayout = useCallback((e: LayoutChangeEvent) => {
+    const h = e.nativeEvent.layout.height;
+    setHeaderHeight((prev) => (prev === h ? prev : h));
+  }, []);
+
+  const clamped = Animated.diffClamp(scrollY, 0, Math.max(headerHeight, 1));
+  const translateY = clamped.interpolate({
+    inputRange: [0, Math.max(headerHeight, 1)],
+    outputRange: [0, -Math.max(headerHeight, 1)],
+    extrapolate: "clamp",
+  });
+  const progress = clamped.interpolate({
+    inputRange: [0, Math.max(headerHeight, 1)],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
   });
 
+  // Snap header khi momentum kết thúc: scroll list tới offset = headerHeight hoặc 0
+  const handleMomentumEnd = useCallback(
+    (e: any) => {
+      const y = e.nativeEvent.contentOffset.y;
+      const threshold = headerHeight * 0.5;
+      const target = y > threshold ? headerHeight : 0;
+      listRef.current?.scrollToOffset?.({ offset: target, animated: true });
+    },
+    [headerHeight]
+  );
+
+  // Toggle bộ lọc có cooldown tránh spam
+  const lastToggleRef = useRef(0);
+  const safeToggleFilters = useCallback(() => {
+    const now = Date.now();
+    if (now - lastToggleRef.current < 400) return;
+    lastToggleRef.current = now;
+    setShowFilters((v) => !v);
+  }, []);
+
+  const onChangeSearch = useCallback((txt: string) => {
+    setSearchQuery(txt);
+    listRef.current?.scrollToOffset?.({ offset: 0, animated: false });
+  }, []);
+
+  const onSubmitSearch = useCallback(() => {
+    listRef.current?.scrollToOffset?.({ offset: 0, animated: true });
+  }, []);
+
+  const onChangeFilter = useCallback((opt: FilterOption) => {
+    setSelectedFilter(opt);
+    listRef.current?.scrollToOffset?.({ offset: 0, animated: true });
+  }, []);
+
+  // Đổi filter → refetch (nếu hook hỗ trợ)
+  useEffect(() => {
+    refetch?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFilter]);
+
+  const onRefresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      await refetch?.();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
+
+  const keyExtractor = useCallback(
+    (c: Contest, i: number) => String(c.contestId ?? c.id ?? i),
+    []
+  );
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: Contest; index: number }) => (
+      <ContestCard
+        contest={item}
+        onPress={() =>
+          router.push({
+            pathname: "/contest-detail",
+            params: { id: String(item.contestId ?? item.id ?? index) },
+          })
+        }
+      />
+    ),
+    []
+  );
+
+  // ===== Colorful pulsing backdrop (giống results) =====
+  const pulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(pulse, {
+        toValue: 1,
+        duration: 5000,
+        easing: Easing.linear,
+        useNativeDriver: false, // animate colors
+      })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
+  const g1 = pulse.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [C.primary, C.chart2 ?? "#22c55e", C.primary],
+  });
+  const g2 = pulse.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [
+      C.chart1 ?? "#8b5cf6",
+      C.chart3 ?? "#3b82f6",
+      C.chart1 ?? "#8b5cf6",
+    ],
+  });
+
+  /* ======================== UI ======================== */
   return (
-    <View style={themedStyles.container}>
-      {/* Header with Search and Filter */}
-      <View style={themedStyles.header}>
-        <View style={themedStyles.headerContent}>
-          <Text style={themedStyles.headerTitle}>Cuộc thi</Text>
-          <Text style={themedStyles.headerSubtitle}>
-            Khám phá các cuộc thi vẽ hấp dẫn
+    <View style={s.container}>
+      {/* Pulsing colorful backdrop */}
+      <Animated.View style={s.backdrop}>
+        <LinearGradient
+          colors={["transparent", "transparent"]}
+          style={StyleSheet.absoluteFill}
+        />
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: g1 as any, opacity: 0.12 },
+          ]}
+        />
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: g2 as any, opacity: 0.12 },
+          ]}
+        />
+      </Animated.View>
+
+      <CollapsibleHeader
+        scheme={scheme}
+        translateY={translateY}
+        progress={progress}
+        headerOnLayout={headerOnLayout}
+        searchQuery={searchQuery}
+        onChangeSearch={onChangeSearch}
+        onSubmitSearch={onSubmitSearch}
+        showFilters={showFilters}
+        onToggleFilters={safeToggleFilters}
+        selectedFilter={selectedFilter}
+        onSelectFilter={onChangeFilter}
+        filterOptions={FILTERS}
+      />
+
+      {isLoading ? (
+        <View style={s.stateWrap}>
+          <ActivityIndicator color={C.primary} />
+          <Text style={s.stateText}>Đang tải cuộc thi...</Text>
+        </View>
+      ) : error ? (
+        <View style={s.stateWrap}>
+          <Text style={[s.stateText, { color: C.destructive ?? "#EF4444" }]}>
+            Không tải được dữ liệu. Vui lòng thử lại.
           </Text>
         </View>
-
-        <View style={themedStyles.searchSection}>
-          <View style={themedStyles.searchContainer}>
-            <Search
-              size={20}
-              color={Colors[colorScheme].border}
-              style={themedStyles.searchIcon}
-            />
-            <TextInput
-              style={themedStyles.searchInput}
-              placeholder="Tìm kiếm cuộc thi..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor={Colors[colorScheme].mutedForeground}
-            />
-          </View>
-          <TouchableOpacity
-            style={themedStyles.filterButton}
-            onPress={() => setShowFilters(!showFilters)}
-          >
-            <Filter size={20} color={Colors[colorScheme].primaryForeground} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Filter Options */}
-        {showFilters && (
-          <View style={themedStyles.filterOptions}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {filterOptions.map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={[
-                    themedStyles.filterOption,
-                    selectedFilter === option &&
-                      themedStyles.filterOptionActive,
-                  ]}
-                  onPress={() => setSelectedFilter(option)}
-                >
-                  <Text
-                    style={[
-                      themedStyles.filterOptionText,
-                      selectedFilter === option &&
-                        themedStyles.filterOptionTextActive,
-                    ]}
-                  >
-                    {option}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-      </View>
-
-      {/* Contest List */}
-      {isLoading ? (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: Colors[colorScheme].background,
-          }}
-        >
-          <Text
-            style={{ color: Colors[colorScheme].mutedForeground, fontSize: 16 }}
-          >
-            Đang tải cuộc thi...
+      ) : filtered.length === 0 ? (
+        <View style={s.stateWrap}>
+          <Text style={s.stateText}>
+            {debouncedQuery && debouncedQuery.length === 1
+              ? "Nhập ≥ 2 ký tự để tìm…"
+              : "Không có cuộc thi phù hợp."}
           </Text>
         </View>
       ) : (
-        <ScrollView
-          style={themedStyles.contestList}
+        <Animated.FlatList
+          ref={listRef}
+          data={filtered}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          contentContainerStyle={{
+            paddingTop: headerHeight, // đẩy nội dung dưới header
+            paddingBottom: 24,
+          }}
           showsVerticalScrollIndicator={false}
-        >
-          {contests.map((contest) => (
-            <ContestCard
-              onPress={() => router.push("/contest-detail")}
-              contest={contest}
-              key={contest.contestId}
+          scrollEventThrottle={16}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true }
+          )}
+          onMomentumScrollEnd={handleMomentumEnd}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={C.mutedForeground}
+              colors={[C.primary]}
             />
-          ))}
-        </ScrollView>
+          }
+        />
+      )}
+
+      {/* Fetching indicator nhỏ phía dưới khi refetch background */}
+      {isFetching && !isLoading && filtered.length > 0 && (
+        <View style={s.fetchingFoot}>
+          <ActivityIndicator color={C.mutedForeground} />
+        </View>
       )}
     </View>
   );
 }
 
-// Dynamic themed styles
-function getThemedStyles(scheme: "light" | "dark") {
+/* ======================== Styles ======================== */
+const styles = (scheme: "light" | "dark") => {
+  const C = Colors[scheme];
   return StyleSheet.create({
-    container: {
+    container: { flex: 1, backgroundColor: C.background },
+    backdrop: { ...StyleSheet.absoluteFillObject }, // nền động
+    stateWrap: {
       flex: 1,
-      backgroundColor: Colors[scheme].background,
-    },
-    header: {
-      backgroundColor: Colors[scheme].card,
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 20,
-      borderBottomStartRadius: 12,
-      borderBottomEndRadius: 12,
-      borderBottomColor: Colors[scheme].border,
-      borderBottomWidth: 0.8,
-    },
-    headerContent: {
-      marginBottom: 16,
-    },
-    headerTitle: {
-      fontSize: 28,
-      fontWeight: "bold",
-      color: Colors[scheme].cardForeground,
-      marginBottom: 4,
-    },
-    headerSubtitle: {
-      fontSize: 16,
-      color: Colors[scheme].mutedForeground,
-    },
-    searchSection: {
-      flexDirection: "row",
+      justifyContent: "center",
       alignItems: "center",
+      backgroundColor: "transparent",
+      padding: 16,
     },
-    searchContainer: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: Colors[scheme].input,
-      borderRadius: 12,
+    stateText: { marginTop: 10, color: C.mutedForeground, fontSize: 16 },
+    fetchingFoot: {
+      position: "absolute",
+      bottom: 8,
+      alignSelf: "center",
       paddingHorizontal: 12,
-      marginRight: 12,
-    },
-    searchIcon: {
-      marginRight: 8,
-    },
-    searchInput: {
-      flex: 1,
-      paddingVertical: 12,
-      fontSize: 16,
-      color: Colors[scheme].foreground,
-    },
-    filterButton: {
-      padding: 12,
-      backgroundColor: Colors[scheme].primary,
-      borderRadius: 12,
-    },
-    filterOptions: {
-      paddingTop: 20,
-    },
-    filterOption: {
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      backgroundColor: Colors[scheme].input,
-      borderRadius: 20,
-      marginRight: 8,
-    },
-    filterOptionActive: {
-      backgroundColor: Colors[scheme].primary,
-    },
-    filterOptionText: {
-      fontSize: 14,
-      color: Colors[scheme].mutedForeground,
-      fontWeight: "500",
-    },
-    filterOptionTextActive: {
-      color: Colors[scheme].primaryForeground,
-    },
-    contestList: {
-      flex: 1,
-      paddingTop: 8,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: C.card,
     },
   });
-}
+};
