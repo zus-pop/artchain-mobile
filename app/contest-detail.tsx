@@ -12,14 +12,11 @@ import { Palette } from "lucide-react-native";
 import React, { useMemo, useRef } from "react";
 import {
   Animated,
-  ImageStyle,
   Pressable,
   StyleSheet,
   Text,
-  TextStyle,
   TouchableOpacity,
   View,
-  ViewStyle,
 } from "react-native";
 
 /** --------- SPACING ---------- */
@@ -36,7 +33,7 @@ const VIVID = {
   green: "#166534", // organizer
   red: "#991B1B", // location
   amber: "#92400E", // prize
-};
+} as const;
 
 /** --------- Types ---------- */
 type ScheduleKind = "open" | "deadline" | "review" | "award";
@@ -57,7 +54,7 @@ type Contest = {
 };
 
 /** --------- Mock data ---------- */
-const contestData = {
+const contestData: Record<string, Contest> = {
   "1": {
     title: "Summer Painting Contest",
     image:
@@ -122,7 +119,7 @@ const contestData = {
     ],
     tags: ["abstract", "modern", "conceptual"],
   },
-} satisfies Record<string, Contest>;
+};
 
 /** --------- Utils ---------- */
 function alpha(hex: string, a = "22") {
@@ -171,6 +168,32 @@ export default function ContestDetail() {
 
   const st = statusToken(C, contest.status);
 
+  // Pulsing backdrop (giống trang results)
+  const pulse = useRef(new Animated.Value(0)).current;
+  React.useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(pulse, {
+        toValue: 1,
+        duration: 5000,
+        useNativeDriver: false,
+      })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+  const g1 = pulse.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [C.primary, C.chart2 ?? "#22c55e", C.primary],
+  });
+  const g2 = pulse.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [
+      C.chart1 ?? "#8b5cf6",
+      C.chart3 ?? "#3b82f6",
+      C.chart1 ?? "#8b5cf6",
+    ],
+  });
+
   // Parallax + press-in scale for hero
   const scrollY = useRef(new Animated.Value(0)).current;
   const heroTranslateY = scrollY.interpolate({
@@ -201,6 +224,26 @@ export default function ContestDetail() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.background }}>
+      {/* Pulsing colorful backdrop */}
+      <Animated.View style={s.backdrop}>
+        <LinearGradient
+          colors={["transparent", "transparent"]}
+          style={StyleSheet.absoluteFill}
+        />
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: g1 as any, opacity: 0.12 },
+          ]}
+        />
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: g2 as any, opacity: 0.12 },
+          ]}
+        />
+      </Animated.View>
+
       <DetailHeader
         scheme={scheme}
         title={contest.title}
@@ -219,61 +262,47 @@ export default function ContestDetail() {
         }
       >
         {/* HERO */}
-        <View style={s.hero}>
-          <Pressable
-            onPressIn={onPressIn}
-            onPressOut={onPressOut}
-            android_ripple={{ color: "#00000022" }}
-          >
-            <Animated.View
-              style={{
-                transform: [
-                  { translateY: heroTranslateY },
-                  { scale: heroScale },
-                  { scale: pressScale },
-                ],
-              }}
+        <View style={{ paddingHorizontal: SPACE.screen }}>
+          <View style={s.hero}>
+            <Pressable
+              onPressIn={onPressIn}
+              onPressOut={onPressOut}
+              android_ripple={{ color: "#00000022" }}
             >
-              <LinearGradient
-                colors={[
-                  "#ff6b6b",
-                  "#f7d794",
-                  "#1dd1a1",
-                  "#54a0ff",
-                  "#5f27cd",
-                  "#ff6b6b",
-                ]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={s.gradientBorder}
+              <Animated.View
+                style={{
+                  transform: [
+                    { translateY: heroTranslateY },
+                    { scale: heroScale },
+                    { scale: pressScale },
+                  ],
+                }}
               >
-                {/* Nếu CHỈ muốn viền ở cạnh trên, giữ bottomMask; còn muốn viền cả 4 cạnh thì xóa View này */}
-
-                <View style={s.imageWrapper}>
-                  <Animated.Image
-                    source={{ uri: contest.image }}
-                    style={s.image}
-                  />
-
-                  <View style={s.innerStroke} pointerEvents="none" />
-                </View>
-              </LinearGradient>
-            </Animated.View>
-          </Pressable>
-
-          <View
-            style={[
-              s.statusBadge,
-              { backgroundColor: st.bg, borderColor: st.ring },
-            ]}
-          >
-            <Palette size={14} color={st.fg} strokeWidth={2.4} />
-            <Text style={[s.statusText, { color: st.fg }]}>
-              {contest.status}
-            </Text>
+                <LinearGradient
+                  colors={[
+                    "#ff6b6b",
+                    "#f7d794",
+                    "#1dd1a1",
+                    "#54a0ff",
+                    "#5f27cd",
+                    "#ff6b6b",
+                  ]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={s.gradientBorder}
+                >
+                  <View style={s.imageWrapper}>
+                    <Animated.Image
+                      source={{ uri: contest.image }}
+                      style={s.image}
+                    />
+                    <View style={s.innerStroke} pointerEvents="none" />
+                  </View>
+                </LinearGradient>
+              </Animated.View>
+            </Pressable>
           </View>
         </View>
-
         {/* CONTENT */}
         <View style={s.content}>
           {/* Row: Date + Participants */}
@@ -408,77 +437,43 @@ export default function ContestDetail() {
 }
 
 /** ---------------- Styles ---------------- */
-type StyleMap = {
-  hero: ViewStyle;
-  gradientBorder: ViewStyle;
-  imageWrapper: ViewStyle;
-  image: ImageStyle;
-  overlay: ViewStyle;
-  innerStroke: ViewStyle;
-  statusBadge: ViewStyle;
-  statusText: TextStyle;
-  content: ViewStyle;
-  row2: ViewStyle;
-  itemCol: ViewStyle;
-  block: ViewStyle;
-  blockTitle: TextStyle;
-  desc: TextStyle;
-  tagsRow: ViewStyle;
-  tag: ViewStyle;
-  tagText: TextStyle;
-  ctaBtn: ViewStyle;
-  ctaText: TextStyle;
-  rewardsBox: ViewStyle;
-  rewardsTitle: TextStyle;
-  rewardsBtn: ViewStyle;
-  rewardsBtnText: TextStyle;
-  rules: TextStyle;
-};
-
 const styles = (C: any) =>
-  StyleSheet.create<StyleMap>({
+  StyleSheet.create({
+    // Pulsing backdrop như results
+    backdrop: { ...StyleSheet.absoluteFillObject },
+
     // HERO
     hero: {
       height: 260,
-      // LƯU Ý: KHÔNG set overflow: "hidden" ở đây để khỏi cắt viền gradient
       borderRadius: 16,
       marginBottom: SPACE.section,
       backgroundColor: C.card,
+      paddingHorizontal: SPACE.screen,
     },
     gradientBorder: {
-      // Viền lộ rõ ở 2 góc trên
       borderTopLeftRadius: 18,
       borderTopRightRadius: 18,
       borderBottomLeftRadius: 16,
       borderBottomRightRadius: 16,
-      padding: 2.5, // độ dày viền
-      // Để gradient không bị cắt: KHÔNG đặt overflow ở đây
-
+      padding: 2.5,
       shadowOpacity: 0.12,
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 6 },
       elevation: 4,
     },
-
     imageWrapper: {
-      // Bo 2 góc trên cho ảnh để tiệp viền
       borderTopLeftRadius: 16,
       borderTopRightRadius: 16,
       borderBottomLeftRadius: 14,
       borderBottomRightRadius: 14,
-      overflow: "hidden", // CHỈ clip phần ảnh bên trong
+      overflow: "hidden",
       backgroundColor: C.card,
     },
     image: {
       width: "100%",
-      height: "100%",
+      height: 260,
       resizeMode: "cover",
       backfaceVisibility: "hidden",
-      // NOTE: translateZ is not a valid RN transform; removed to satisfy TS
-    },
-    overlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: "rgba(0,0,0,0.18)",
     },
     innerStroke: {
       ...StyleSheet.absoluteFillObject,
@@ -489,7 +484,7 @@ const styles = (C: any) =>
     },
     statusBadge: {
       position: "absolute",
-      left: 12,
+      left: SPACE.screen,
       top: 12,
       paddingHorizontal: 10,
       paddingVertical: 6,
@@ -510,24 +505,17 @@ const styles = (C: any) =>
     content: { paddingHorizontal: SPACE.screen, paddingTop: 8 },
 
     // Hàng 2 cột
-    row2: {
-      flexDirection: "row",
-      marginBottom: SPACE.section,
-    },
-    itemCol: {
-      flex: 1,
-      minWidth: 0,
-      marginRight: SPACE.between,
-    },
+    row2: { flexDirection: "row", marginBottom: SPACE.section },
+    itemCol: { flex: 1, minWidth: 0, marginRight: SPACE.between },
 
-    // Blocks
+    // Blocks (glass nhẹ để hoà nền rực rỡ)
     block: {
-      backgroundColor: C.card,
+      backgroundColor: "rgba(255,255,255,0.08)",
       borderRadius: 14,
       padding: SPACE.section,
       marginTop: SPACE.section,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: C.border,
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.16)",
       shadowColor: "#000",
       shadowOpacity: 0.06,
       shadowRadius: 10,
@@ -586,9 +574,9 @@ const styles = (C: any) =>
       marginTop: SPACE.section,
       padding: SPACE.section,
       borderRadius: 14,
-      backgroundColor: C.card,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: C.border,
+      backgroundColor: "rgba(255,255,255,0.08)",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.16)",
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",

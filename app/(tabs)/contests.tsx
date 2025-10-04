@@ -1,4 +1,5 @@
 // app/(tabs)/contests.tsx
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, {
   useCallback,
@@ -10,6 +11,7 @@ import React, {
 import {
   ActivityIndicator,
   Animated,
+  Easing,
   LayoutChangeEvent,
   RefreshControl,
   StyleSheet,
@@ -123,7 +125,6 @@ export default function ContestsScreen() {
       const y = e.nativeEvent.contentOffset.y;
       const threshold = headerHeight * 0.5;
       const target = y > threshold ? headerHeight : 0;
-      // Animated.FlatList có scrollToOffset
       listRef.current?.scrollToOffset?.({ offset: target, animated: true });
     },
     [headerHeight]
@@ -182,15 +183,62 @@ export default function ContestsScreen() {
             params: { id: String(item.contestId ?? item.id ?? index) },
           })
         }
-        // gợi ý: thêm accessibilityRole/Label trong ContestCard
       />
     ),
     []
   );
 
+  // ===== Colorful pulsing backdrop (giống results) =====
+  const pulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(pulse, {
+        toValue: 1,
+        duration: 5000,
+        easing: Easing.linear,
+        useNativeDriver: false, // animate colors
+      })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
+  const g1 = pulse.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [C.primary, C.chart2 ?? "#22c55e", C.primary],
+  });
+  const g2 = pulse.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [
+      C.chart1 ?? "#8b5cf6",
+      C.chart3 ?? "#3b82f6",
+      C.chart1 ?? "#8b5cf6",
+    ],
+  });
+
   /* ======================== UI ======================== */
   return (
     <View style={s.container}>
+      {/* Pulsing colorful backdrop */}
+      <Animated.View style={s.backdrop}>
+        <LinearGradient
+          colors={["transparent", "transparent"]}
+          style={StyleSheet.absoluteFill}
+        />
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: g1 as any, opacity: 0.12 },
+          ]}
+        />
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: g2 as any, opacity: 0.12 },
+          ]}
+        />
+      </Animated.View>
+
       <CollapsibleHeader
         scheme={scheme}
         translateY={translateY}
@@ -204,7 +252,6 @@ export default function ContestsScreen() {
         selectedFilter={selectedFilter}
         onSelectFilter={onChangeFilter}
         filterOptions={FILTERS}
-        // gợi ý: hiển thị hint nếu debouncedQuery.length === 1
       />
 
       {isLoading ? (
@@ -251,10 +298,6 @@ export default function ContestsScreen() {
               colors={[C.primary]}
             />
           }
-          // Nếu có pagination từ hook:
-          // onEndReachedThreshold={0.25}
-          // onEndReached={() => fetchNextPage?.()}
-          // ListFooterComponent={isFetchingNextPage ? <Spinner/> : null}
         />
       )}
 
@@ -273,11 +316,12 @@ const styles = (scheme: "light" | "dark") => {
   const C = Colors[scheme];
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: C.background },
+    backdrop: { ...StyleSheet.absoluteFillObject }, // nền động
     stateWrap: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: C.background,
+      backgroundColor: "transparent",
       padding: 16,
     },
     stateText: { marginTop: 10, color: C.mutedForeground, fontSize: 16 },
