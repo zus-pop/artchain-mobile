@@ -1,13 +1,7 @@
 // app/(tabs)/contests.tsx
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -26,6 +20,7 @@ import CollapsibleHeader, {
 } from "@/components/header/contest/CollapsibleHeader";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Contest } from "../../types";
 
 /* ======================== Types & helpers ======================== */
 type ContestStatus = "ALL" | "ACTIVE" | "UPCOMING" | "COMPLETED" | "ENDED";
@@ -44,15 +39,6 @@ const filterToStatus: Record<FilterOption, ContestStatus> = {
   "Sắp diễn ra": "UPCOMING",
   "Đã kết thúc": "ENDED",
   "Hoàn thành": "COMPLETED",
-};
-
-type Contest = {
-  id?: string | number;
-  contestId?: string | number;
-  title?: string;
-  name?: string;
-  subtitle?: string;
-  // ... các field khác dùng trong ContestCard
 };
 
 function useDebouncedValue<T>(value: T, delay = 260) {
@@ -79,23 +65,27 @@ export default function ContestsScreen() {
   const canQuery = debouncedQuery.length === 0 || debouncedQuery.length >= 2;
 
   // ===== API =====
-  const { data, isLoading, isFetching, error, refetch } = useContest({
+  const {
+    data: contests = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useContest({
     status: filterToStatus[selectedFilter],
-    query: canQuery ? debouncedQuery || undefined : undefined,
-  } as any);
-
-  const contests: Contest[] = useMemo(() => (data ?? []) as Contest[], [data]);
+    // query: canQuery ? debouncedQuery || undefined : undefined,
+  });
 
   // Fallback filter client-side nếu BE chưa hỗ trợ subtitle
-  const filtered: Contest[] = useMemo(() => {
-    if (!debouncedQuery) return contests;
-    const q = debouncedQuery.toLowerCase();
-    return contests.filter((c) => {
-      const title = (c?.title ?? c?.name ?? "").toLowerCase();
-      const subtitle = (c?.subtitle ?? "").toLowerCase();
-      return title.includes(q) || subtitle.includes(q);
-    });
-  }, [contests, debouncedQuery]);
+  //   const filtered: Contest[] = useMemo(() => {
+  //     if (!debouncedQuery) return contests;
+  //     const q = debouncedQuery.toLowerCase();
+  //     return contests.filter((c) => {
+  //       const title = (c?.title ?? "").toLowerCase();
+  //       const subtitle = (c?.description ?? "").toLowerCase();
+  //       return title.includes(q) || subtitle.includes(q);
+  //     });
+  //   }, [contests, debouncedQuery]);
 
   // ===== Collapsible header =====
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -154,10 +144,10 @@ export default function ContestsScreen() {
   }, []);
 
   // Đổi filter → refetch (nếu hook hỗ trợ)
-  useEffect(() => {
-    refetch?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFilter]);
+  //   useEffect(() => {
+  //     refetch?.();
+  //     // eslint-disable-next-line react-hooks/exhaustive-deps
+  //   }, [selectedFilter]);
 
   const onRefresh = useCallback(async () => {
     try {
@@ -169,20 +159,20 @@ export default function ContestsScreen() {
   }, [refetch]);
 
   const keyExtractor = useCallback(
-    (c: Contest, i: number) => String(c.contestId ?? c.id ?? i),
+    (c: Contest, i: number) => String(c.contestId ?? c.contestId ?? i),
     []
   );
 
   const renderItem = useCallback(
-    ({ item, index }: { item: Contest; index: number }) => (
+    ({ item }: { item: Contest }) => (
       <ContestCard
         contest={item}
-        onPress={() =>
+        onPress={() => {
           router.push({
             pathname: "/contest-detail",
-            params: { id: String(item.contestId ?? item.id ?? index) },
-          })
-        }
+            params: { contestId: item.contestId },
+          });
+        }}
       />
     ),
     []
@@ -265,7 +255,7 @@ export default function ContestsScreen() {
             Không tải được dữ liệu. Vui lòng thử lại.
           </Text>
         </View>
-      ) : filtered.length === 0 ? (
+      ) : contests.length === 0 ? (
         <View style={s.stateWrap}>
           <Text style={s.stateText}>
             {debouncedQuery && debouncedQuery.length === 1
@@ -276,7 +266,7 @@ export default function ContestsScreen() {
       ) : (
         <Animated.FlatList
           ref={listRef}
-          data={filtered}
+          data={contests}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           contentContainerStyle={{
@@ -302,7 +292,7 @@ export default function ContestsScreen() {
       )}
 
       {/* Fetching indicator nhỏ phía dưới khi refetch background */}
-      {isFetching && !isLoading && filtered.length > 0 && (
+      {isFetching && !isLoading && contests.length > 0 && (
         <View style={s.fetchingFoot}>
           <ActivityIndicator color={C.mutedForeground} />
         </View>

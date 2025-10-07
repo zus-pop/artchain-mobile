@@ -3,15 +3,28 @@ import myAxios from "../constants/custom-axios";
 import { Contest, ContestFilter } from "../types/contest";
 
 export function useContest(filter: ContestFilter) {
-  // cái filter Tất cả không ra gì hết là do API dưới đang lỏ,
-  // còn mấy filter khác bình thường nha em Trí
+  const params: ContestFilter = {};
+  if (filter.status != "ALL") {
+    params.status = filter.status;
+  }
   return useQuery({
-    queryKey: ["contest", filter],
+    queryKey: ["contests", filter],
     queryFn: async () => {
       const response = await myAxios.get<Contest[]>("/contests", {
-        params: filter,
+        params,
       });
       return response.data;
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useContestById(id: string) {
+  return useQuery({
+    queryKey: ["contest", id],
+    queryFn: async () => {
+      const response = await myAxios.get(`/contests/${id}`);
+      return response.data.data as Contest;
     },
   });
 }

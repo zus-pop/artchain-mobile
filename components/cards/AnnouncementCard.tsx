@@ -81,10 +81,10 @@ const styles = (scheme: "light" | "dark", THUMB = 64, R = 10) =>
     },
     thumbWrap: {
       width: THUMB,
-      height: THUMB,
-      borderRadius: R,
+      height: THUMB + 20,
       overflow: "hidden",
       marginRight: 12,
+      borderRadius: R,
       backgroundColor: Colors[scheme].muted,
     },
     thumb: { width: "100%", height: "100%" }, // KHÔNG cần 120%
@@ -115,9 +115,11 @@ const styles = (scheme: "light" | "dark", THUMB = 64, R = 10) =>
       fontWeight: "700",
       color: Colors[scheme].accentForeground,
     },
-      divider: {
+    divider: {
       height: 1,
+      width: "100%",
       backgroundColor: Colors[scheme].muted, // dùng màu nhạt từ theme
-      marginLeft: 14 + THUMB + 12,
+      //   marginLeft: 14 + THUMB + 12,
+      marginHorizontal: 20,
     },
   });

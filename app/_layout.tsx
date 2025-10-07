@@ -88,6 +88,18 @@ export default function RootLayout() {
                 name="results"
                 options={{ title: "Search Results", headerShown: false }}
               />
+              <Stack.Screen
+                name="competitor-signup"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="guard-signup"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="painting-upload"
+                options={{ title: "Bài vẽ dự thi", headerShown: true }}
+              />
             </Stack>
             <Toaster richColors />
           </ThemeProvider>

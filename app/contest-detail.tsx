@@ -2,15 +2,14 @@ import AnimatedSection, {
   sectionShadow,
 } from "@/components/header/contest/AnimatedSection";
 import DetailHeader from "@/components/header/contest/DetailHeader";
-import MetaItem from "@/components/header/contest/MetaItem";
-import ScheduleItem from "@/components/header/contest/ScheduleItem";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { Palette } from "lucide-react-native";
-import React, { useMemo, useRef } from "react";
+import React, { useRef } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Pressable,
   StyleSheet,
@@ -18,6 +17,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useContestById } from "../apis/contest";
+import { Contest } from "../types";
 
 /** --------- SPACING ---------- */
 const SPACE = {
@@ -38,88 +39,88 @@ const VIVID = {
 /** --------- Types ---------- */
 type ScheduleKind = "open" | "deadline" | "review" | "award";
 type Schedule = { label: string; date: string; kind: ScheduleKind };
-type Contest = {
-  title: string;
-  image: string;
-  date: string;
-  status: "Active" | "Upcoming" | "Closed";
-  organizer: string;
-  location: string;
-  prize: string;
-  participants: number;
-  description: string;
-  rules: string;
-  schedule: Schedule[];
-  tags: string[];
-};
+// type Contest = {
+//   title: string;
+//   image: string;
+//   date: string;
+//   status: "Active" | "Upcoming" | "Closed";
+//   organizer: string;
+//   location: string;
+//   prize: string;
+//   participants: number;
+//   description: string;
+//   rules: string;
+//   schedule: Schedule[];
+//   tags: string[];
+// };
 
 /** --------- Mock data ---------- */
-const contestData: Record<string, Contest> = {
-  "1": {
-    title: "Summer Painting Contest",
-    image:
-      "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=1600&q=80",
-    date: "July 20, 2024",
-    status: "Active",
-    organizer: "ArtChain Foundation",
-    location: "ArtChain Gallery, New York",
-    prize: "$2,000 + Gallery Exhibition",
-    participants: 120,
-    description:
-      "Join our summer painting contest and showcase your creativity! Open to all ages and styles. Submit your best work and stand a chance to win exciting prizes. Deadline: July 20, 2024.",
-    rules:
-      "Each participant may submit one painting. All styles and mediums are accepted. The painting must be original and not previously exhibited.",
-    schedule: [
-      { label: "Registration Opens", date: "May 10, 2024", kind: "open" },
-      { label: "Submission Deadline", date: "July 20, 2024", kind: "deadline" },
-      { label: "Jury Review", date: "July 22 – July 30, 2024", kind: "review" },
-      { label: "Award Ceremony", date: "August 2, 2024", kind: "award" },
-    ],
-    tags: ["painting", "summer", "gallery", "traditional"],
-  },
-  "2": {
-    title: "Winter Art Challenge",
-    image:
-      "https://images.unsplash.com/photo-1503676382389-4809596d5290?auto=format&fit=crop&w=1600&q=80",
-    date: "December 10, 2024",
-    status: "Upcoming",
-    organizer: "ArtChain Foundation",
-    location: "Online Event",
-    prize: "$1,000 + Feature in Magazine",
-    participants: 85,
-    description:
-      "Submit your winter-themed masterpieces and win prizes. Open to all ages. Deadline: December 10, 2024.",
-    rules:
-      "Artwork must be original and themed around winter. All mediums accepted. One entry per participant.",
-    schedule: [
-      { label: "Registration Opens", date: "Oct 15, 2024", kind: "open" },
-      { label: "Submission Deadline", date: "Dec 10, 2024", kind: "deadline" },
-      { label: "Jury Review", date: "Dec 12 – Dec 18, 2024", kind: "review" },
-      { label: "Award Ceremony", date: "Dec 20, 2024", kind: "award" },
-    ],
-    tags: ["winter", "digital", "online"],
-  },
-  "3": {
-    title: "Abstract Art Competition",
-    image:
-      "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1600&q=80",
-    date: "August 5, 2024",
-    status: "Closed",
-    organizer: "ArtChain Foundation",
-    location: "ArtChain Gallery, New York",
-    prize: "$1,500 + Art Supplies",
-    participants: 102,
-    description:
-      "Explore the world of abstract art. Winners announced soon. Thank you for your submissions!",
-    rules:
-      "Open to all styles of abstract art. One entry per participant. Deadline has passed.",
-    schedule: [
-      { label: "Submission Deadline", date: "Aug 5, 2024", kind: "deadline" },
-      { label: "Results", date: "Aug 12, 2024", kind: "award" },
-    ],
-    tags: ["abstract", "modern", "conceptual"],
-  },
-};
+// const contestData: Record<string, Contest> = {
+//   "1": {
+//     title: "Summer Painting Contest",
+//     image:
+//       "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=1600&q=80",
+//     date: "July 20, 2024",
+//     status: "Active",
+//     organizer: "ArtChain Foundation",
+//     location: "ArtChain Gallery, New York",
+//     prize: "$2,000 + Gallery Exhibition",
+//     participants: 120,
+//     description:
+//       "Join our summer painting contest and showcase your creativity! Open to all ages and styles. Submit your best work and stand a chance to win exciting prizes. Deadline: July 20, 2024.",
+//     rules:
+//       "Each participant may submit one painting. All styles and mediums are accepted. The painting must be original and not previously exhibited.",
+//     schedule: [
+//       { label: "Registration Opens", date: "May 10, 2024", kind: "open" },
+//       { label: "Submission Deadline", date: "July 20, 2024", kind: "deadline" },
+//       { label: "Jury Review", date: "July 22 – July 30, 2024", kind: "review" },
+//       { label: "Award Ceremony", date: "August 2, 2024", kind: "award" },
+//     ],
+//     tags: ["painting", "summer", "gallery", "traditional"],
+//   },
+//   "2": {
+//     title: "Winter Art Challenge",
+//     image:
+//       "https://images.unsplash.com/photo-1503676382389-4809596d5290?auto=format&fit=crop&w=1600&q=80",
+//     date: "December 10, 2024",
+//     status: "Upcoming",
+//     organizer: "ArtChain Foundation",
+//     location: "Online Event",
+//     prize: "$1,000 + Feature in Magazine",
+//     participants: 85,
+//     description:
+//       "Submit your winter-themed masterpieces and win prizes. Open to all ages. Deadline: December 10, 2024.",
+//     rules:
+//       "Artwork must be original and themed around winter. All mediums accepted. One entry per participant.",
+//     schedule: [
+//       { label: "Registration Opens", date: "Oct 15, 2024", kind: "open" },
+//       { label: "Submission Deadline", date: "Dec 10, 2024", kind: "deadline" },
+//       { label: "Jury Review", date: "Dec 12 – Dec 18, 2024", kind: "review" },
+//       { label: "Award Ceremony", date: "Dec 20, 2024", kind: "award" },
+//     ],
+//     tags: ["winter", "digital", "online"],
+//   },
+//   "3": {
+//     title: "Abstract Art Competition",
+//     image:
+//       "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1600&q=80",
+//     date: "August 5, 2024",
+//     status: "Closed",
+//     organizer: "ArtChain Foundation",
+//     location: "ArtChain Gallery, New York",
+//     prize: "$1,500 + Art Supplies",
+//     participants: 102,
+//     description:
+//       "Explore the world of abstract art. Winners announced soon. Thank you for your submissions!",
+//     rules:
+//       "Open to all styles of abstract art. One entry per participant. Deadline has passed.",
+//     schedule: [
+//       { label: "Submission Deadline", date: "Aug 5, 2024", kind: "deadline" },
+//       { label: "Results", date: "Aug 12, 2024", kind: "award" },
+//     ],
+//     tags: ["abstract", "modern", "conceptual"],
+//   },
+// };
 
 /** --------- Utils ---------- */
 function alpha(hex: string, a = "22") {
@@ -127,19 +128,19 @@ function alpha(hex: string, a = "22") {
 }
 function statusToken(C: any, status?: Contest["status"]) {
   switch (status) {
-    case "Active":
+    case "ACTIVE":
       return {
         fg: C.primary,
         bg: alpha(C.primary, "1F"),
         ring: alpha(C.primary, "55"),
       };
-    case "Upcoming":
+    case "UPCOMING":
       return {
         fg: C.chart1,
         bg: alpha(C.chart1, "1F"),
         ring: alpha(C.chart1, "55"),
       };
-    case "Closed":
+    case "ENDED":
       return {
         fg: C.mutedForeground,
         bg: alpha(C.mutedForeground, "1A"),
@@ -156,17 +157,16 @@ function statusToken(C: any, status?: Contest["status"]) {
 
 /** --------- Screen ---------- */
 export default function ContestDetail() {
-  const { id } = useLocalSearchParams();
+  const { contestId } = useLocalSearchParams<{ contestId: string }>();
+  const {
+    data: contest,
+    isLoading,
+    error,
+    refetch,
+  } = useContestById(contestId);
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const C = Colors[scheme];
   const s = styles(C);
-
-  const contest = useMemo(() => {
-    const key = ((id as string) ?? "1") as keyof typeof contestData;
-    return contestData[key] ?? contestData["1"];
-  }, [id]);
-
-  const st = statusToken(C, contest.status);
 
   // Pulsing backdrop (giống trang results)
   const pulse = useRef(new Animated.Value(0)).current;
@@ -221,6 +221,62 @@ export default function ContestDetail() {
       speed: 20,
       bounciness: 0,
     }).start();
+  //   const contest = useMemo(() => {
+  //     const key = ((id as string) ?? "1") as keyof typeof contestData;
+  //     return contestData[key] ?? contestData["1"];
+  //   }, [id]);
+
+  if (error) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: C.background,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ color: C.foreground, fontSize: 16, marginBottom: 10 }}>
+          {error.message}
+        </Text>
+        <TouchableOpacity
+          style={{
+            paddingVertical: 10,
+            paddingHorizontal: 20,
+            backgroundColor: C.primary,
+            borderRadius: 8,
+          }}
+          onPress={() => {
+            refetch();
+          }}
+        >
+          <Text style={{ color: C.primaryForeground, fontWeight: "bold" }}>
+            Retry
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: C.background,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <ActivityIndicator size="large" color={C.primary} />
+        <Text style={{ color: C.foreground, marginTop: 10, fontSize: 16 }}>
+          Loading contest details...
+        </Text>
+      </View>
+    );
+  }
+
+  const st = statusToken(C, contest?.status);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.background }}>
@@ -246,7 +302,7 @@ export default function ContestDetail() {
 
       <DetailHeader
         scheme={scheme}
-        title={contest.title}
+        title={contest?.title}
         onBack={() => router.back()}
       />
 
@@ -293,7 +349,7 @@ export default function ContestDetail() {
                 >
                   <View style={s.imageWrapper}>
                     <Animated.Image
-                      source={{ uri: contest.image }}
+                      source={{ uri: contest?.bannerUrl }}
                       style={s.image}
                     />
                     <View style={s.innerStroke} pointerEvents="none" />
@@ -306,12 +362,12 @@ export default function ContestDetail() {
         {/* CONTENT */}
         <View style={s.content}>
           {/* Row: Date + Participants */}
-          <AnimatedSection delay={60}>
+          {/* <AnimatedSection delay={60}>
             <View style={s.row2}>
               <View style={s.itemCol}>
                 <MetaItem
                   kind="date"
-                  value={contest.date}
+                  value={contest?.date}
                   scheme={scheme}
                   tint={VIVID.blue}
                   iconStroke={2.4}
@@ -327,10 +383,10 @@ export default function ContestDetail() {
                 />
               </View>
             </View>
-          </AnimatedSection>
+          </AnimatedSection> */}
 
           {/* Organizer / Location / Prize */}
-          <AnimatedSection delay={120}>
+          {/* <AnimatedSection delay={120}>
             <MetaItem
               kind="organizer"
               value={contest.organizer}
@@ -352,10 +408,10 @@ export default function ContestDetail() {
               tint={VIVID.amber}
               iconStroke={2.4}
             />
-          </AnimatedSection>
+          </AnimatedSection> */}
 
           {/* Tags */}
-          {contest.tags.length > 0 && (
+          {/* {contest.tags.length > 0 && (
             <AnimatedSection delay={180}>
               <View style={[s.block, sectionShadow.base]}>
                 <Text style={s.blockTitle}>Categories / Tags</Text>
@@ -368,10 +424,10 @@ export default function ContestDetail() {
                 </View>
               </View>
             </AnimatedSection>
-          )}
+          )} */}
 
           {/* Timeline */}
-          {contest.schedule.length > 0 && (
+          {/* {contest.schedule.length > 0 && (
             <AnimatedSection delay={240}>
               <View style={[s.block, sectionShadow.base]}>
                 <Text style={s.blockTitle}>Timeline</Text>
@@ -386,22 +442,22 @@ export default function ContestDetail() {
                 ))}
               </View>
             </AnimatedSection>
-          )}
+          )} */}
 
           {/* About */}
           <AnimatedSection delay={300}>
             <View style={[s.block, sectionShadow.base]}>
               <Text style={s.blockTitle}>About the contest</Text>
-              <Text style={s.desc}>{contest.description}</Text>
+              <Text style={s.desc}>{contest?.description}</Text>
             </View>
           </AnimatedSection>
 
           {/* CTA + Rewards */}
           <AnimatedSection delay={360}>
-            {contest.status === "Active" && (
+            {contest?.status === "ACTIVE" && (
               <TouchableOpacity
                 style={[s.ctaBtn, { backgroundColor: C.chart1 }]}
-                onPress={() => {}}
+                onPress={() => router.push("/painting-upload")}
                 activeOpacity={0.9}
               >
                 <Palette size={18} color={C.primaryForeground} />
@@ -409,7 +465,7 @@ export default function ContestDetail() {
               </TouchableOpacity>
             )}
 
-            {["Active", "Closed"].includes(contest.status) && (
+            {["ACTIVE", "ENDED"].includes(contest!.status) && (
               <View style={[s.rewardsBox, sectionShadow.base]}>
                 <Text style={s.rewardsTitle}>Award-Winning Paintings</Text>
                 <TouchableOpacity
@@ -424,12 +480,12 @@ export default function ContestDetail() {
           </AnimatedSection>
 
           {/* Rules */}
-          <AnimatedSection delay={420}>
+          {/* <AnimatedSection delay={420}>
             <View style={[s.block, sectionShadow.base]}>
               <Text style={s.blockTitle}>Rules</Text>
               <Text style={s.rules}>{contest.rules}</Text>
             </View>
-          </AnimatedSection>
+          </AnimatedSection> */}
         </View>
       </Animated.ScrollView>
     </View>
