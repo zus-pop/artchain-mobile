@@ -11,22 +11,10 @@ import {
   View,
 } from "react-native";
 
-
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { LinearGradient } from "expo-linear-gradient";
-/* ---------- Types ---------- */
-export type Contest = {
-  contestId?: string | number;
-  id?: string | number;
-  title?: string;
-  description?: string;
-  status?: "ACTIVE" | "UPCOMING" | "COMPLETED" | "ENDED" | "DRAFT" | string;
-  numOfAward?: number;
-  coverUrl?: string;
-  startDate?: string;
-  endDate?: string;
-};
+import { Contest } from "../types";
 
 type Props = {
   contest: Contest;
@@ -51,9 +39,10 @@ export function ContestCard({ contest, onPress, index = 0 }: Props) {
     []
   );
   const cover =
-    contest.coverUrl ||
+    contest.bannerUrl ||
     covers[
-      Number(String(contest.contestId ?? contest.id ?? 0)) % covers.length
+      Number(String(contest.contestId ?? contest.contestId ?? 0)) %
+        covers.length
     ];
 
   const status = String(contest.status ?? "UPCOMING").toUpperCase();

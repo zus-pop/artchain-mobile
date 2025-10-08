@@ -1,9 +1,9 @@
 import myAxios from "@/constants/custom-axios";
+import { useAuthStore } from "@/store";
 import { AuthResponse, LoginRequest, RegisterRequest, WhoAmI } from "@/types";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { toast } from "sonner-native";
-import { useAuthStore } from "../store";
 
 export function useWhoAmI() {
   return useQuery({
@@ -13,7 +13,6 @@ export function useWhoAmI() {
       return response.data;
     },
     staleTime: 0,
-    retry: false,
   });
 }
 
@@ -26,7 +25,7 @@ export function useLoginMutation() {
     },
     onSuccess: (result: AuthResponse) => {
       setAccessToken(result.access_token);
-      router.replace("/profile"); // Go back to profile
+      router.back(); // Go back to profile
     },
     onError: (error) => {
       toast.error(error.message);

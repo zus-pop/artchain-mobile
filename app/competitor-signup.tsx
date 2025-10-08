@@ -50,7 +50,7 @@ const competitorSchema = z
       .string({ message: "Lớp là bắt buộc" })
       .trim()
       .min(1, "Lớp là bắt buộc")
-      .refine((val) => ["1", "2", "3", "4", "5"].includes(val), {
+      .refine((val) => ["6", "7", "8", "9"].includes(val), {
         message: "Lớp phải là từ 1 đến 5",
       }),
     ward: z

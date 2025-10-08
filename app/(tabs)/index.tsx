@@ -368,8 +368,8 @@ export default function Home() {
           <HeroCarousel
             data={slides}
             height={200}
-            inset={16}
-            radius={16}
+            inset={20}
+            radius={3}
             autoPlayInterval={3500}
           />
         </View>
@@ -398,8 +398,8 @@ export default function Home() {
               key={item.id}
               item={item}
               thumbSize={96} // chỉnh 80–100 tuỳ ý
-              radius={12}
-              showDivider={i < announcements.length - 1}
+              radius={3}
+              showDivider={true}
             />
           ))}
         </View>

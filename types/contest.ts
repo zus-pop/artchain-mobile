@@ -1,6 +1,7 @@
 export interface Contest {
   contestId: string;
   title: string;
+  bannerUrl?: string;
   description: string;
   numOfAward: number;
   startDate: string;

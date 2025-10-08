@@ -46,7 +46,7 @@ export default function HeroCarousel({
           renderItem={({ item }) => (
             <Image
               source={{ uri: item.image }}
-              style={{ width: "100%", height: "100%"  , borderRadius: radius }}
+              style={{ width: "100%", height: "100%", borderRadius: radius }}
               resizeMode="cover"
             />
           )}

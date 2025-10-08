@@ -15,7 +15,7 @@ import {
 
 type Props = {
   scheme: "light" | "dark";
-  title: string;
+  title?: string;
   onBack: () => void;
   /** tùy chọn */
   subtitle?: string;

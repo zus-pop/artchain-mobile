@@ -1,5 +1,5 @@
-import PostCard from "@/components/cards/PostCard";
 import PillButton from "@/components/buttons/PillButton";
+import PostCard from "@/components/cards/PostCard";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
 import SegmentTabs from "@/components/tabs/SegmentedTabs";
 import { Colors } from "@/constants/theme";
@@ -26,22 +26,10 @@ import type {
   ColorTokens,
   EmptyProps,
   KPIProps,
-  RawProfile,
   TabKey,
   UserStats,
 } from "@/types/tabkey";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-
-// ---- JSON đầu vào (từ bạn) ----
-const rawProfile: RawProfile = {
-  fullName: "Nguyễn Văn An",
-  email: "an@example.com",
-  phone: "012323141242",
-  birthday: "2010-05-14T17:00:00.000Z",
-  schoolName: "Trường Tiểu học Hòa Bình",
-  ward: "Phường 7, Quận 3",
-  grade: "5",
-};
 
 export default function ProfileScreen() {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
@@ -152,6 +140,30 @@ export default function ProfileScreen() {
       ? "Đang xử lý"
       : "Bị từ chối";
 
+  const ICONS: Record<
+    "brush" | "trophy" | "eye" | "heart",
+    { fg: string; bg: string }
+  > = {
+    brush: { fg: "#F59E0B", bg: "rgba(245,158,11,0.14)" }, // amber
+    trophy: { fg: "#EAB308", bg: "rgba(234,179,8,0.14)" }, // yellow
+    eye: { fg: "#3B82F6", bg: "rgba(59,130,246,0.14)" }, // blue
+    heart: { fg: "#EF4444", bg: "rgba(239,68,68,0.14)" }, // red
+  };
+  // Show loading state while fetching user data
+  // Trước đây: const Avatar = (): JSX.Element => { ... }  // -> lỗi
+  const Avatar = () =>
+    user?.avatar ? (
+      <Image source={{ uri: user.avatar }} style={s.avatar} />
+    ) : (
+      <View
+        style={[s.avatar, { alignItems: "center", justifyContent: "center" }]}
+      >
+        <Ionicons name="person-outline" size={22} color={C.mutedForeground} />
+      </View>
+    );
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const scrollY = useRef(new Animated.Value(0)).current;
+
   if (!accessToken) {
     return (
       <View style={s.container}>
@@ -216,16 +228,6 @@ export default function ProfileScreen() {
     );
   }
 
-  const ICONS: Record<
-    "brush" | "trophy" | "eye" | "heart",
-    { fg: string; bg: string }
-  > = {
-    brush: { fg: "#F59E0B", bg: "rgba(245,158,11,0.14)" }, // amber
-    trophy: { fg: "#EAB308", bg: "rgba(234,179,8,0.14)" }, // yellow
-    eye: { fg: "#3B82F6", bg: "rgba(59,130,246,0.14)" }, // blue
-    heart: { fg: "#EF4444", bg: "rgba(239,68,68,0.14)" }, // red
-  };
-  // Show loading state while fetching user data
   if (isLoading || !user) {
     return (
       <View style={s.container}>
@@ -275,19 +277,6 @@ export default function ProfileScreen() {
     );
   }
 
-  // Trước đây: const Avatar = (): JSX.Element => { ... }  // -> lỗi
-  const Avatar = () =>
-    user.avatar ? (
-      <Image source={{ uri: user.avatar }} style={s.avatar} />
-    ) : (
-      <View
-        style={[s.avatar, { alignItems: "center", justifyContent: "center" }]}
-      >
-        <Ionicons name="person-outline" size={22} color={C.mutedForeground} />
-      </View>
-    );
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const scrollY = useRef(new Animated.Value(0)).current;
   return (
     <SafeAreaProvider style={s.container}>
       {/* Top bar */}
@@ -310,18 +299,16 @@ export default function ProfileScreen() {
         </View>
       </View> */}
 
-     
-
       <StickyProfileHeader
         title={user.fullName}
         colors={C}
         scrollY={scrollY}
         showAt={60} // đẩy thêm nếu muốn hiện muộn hơn
         onBack={() => router.back()}
+        showRight={true}
         onRightPress={() => router.push("/setting")}
       />
 
-      
       <Animated.ScrollView
         contentContainerStyle={{
           paddingBottom: 110,
@@ -354,23 +341,23 @@ export default function ProfileScreen() {
           <View style={{ flex: 1 }}>
             <Text style={s.name}>{user.fullName}</Text>
             <Text style={s.handle}>@{user.handle}</Text>
-            {!!user.subtitle && (
+            {/* {!!user.subtitle && (
               <Text style={s.followers}>{user.subtitle}</Text>
             )}
             {!!user.location && (
               <Text style={[s.followers, { marginTop: 4 }]}>
                 {user.location}
               </Text>
-            )}
+            )} */}
           </View>
 
-        <PillButton
-  label="Hồ sơ"
-  icon="person-outline"
-  colors={C}
-  variant="ghost"
-  onPress={() => router.push("/profile-detail")} // hoặc "/profile-screen" nếu bạn đặt tên vậy
-/>
+          <PillButton
+            label="Hồ sơ"
+            icon="person-outline"
+            colors={C}
+            variant="ghost"
+            onPress={() => router.push("/profile-detail")} // hoặc "/profile-screen" nếu bạn đặt tên vậy
+          />
         </View>
 
         <View style={s.kpiCard}>
