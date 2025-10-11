@@ -1,7 +1,22 @@
-import { PaintingUploadRequest } from "@/types";
-import { useMutation } from "@tanstack/react-query";
+import { Painting, PaintingUploadRequest } from "@/types";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner-native";
 import myAxios from "../constants/custom-axios";
+
+export function useMySubmission() {
+  return useQuery({
+    queryKey: ["me/submissions"],
+    queryFn: async () => {
+      try {
+        const response = await myAxios.get<Painting[]>("/users/me/submissions");
+        return response.data;
+      } catch (error) {
+        console.log(error);
+        return [];
+      }
+    },
+  });
+}
 
 export function useUploadPainting() {
   return useMutation({

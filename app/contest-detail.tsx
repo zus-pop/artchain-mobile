@@ -470,6 +470,9 @@ export default function ContestDetail() {
                       pathname: "/painting-upload",
                       params: {
                         type: "COMPETITOR",
+                        contestId: contest.contestId,
+                        competitorId: me.userId,
+                        roundId: contest.roundId,
                       },
                     });
                     return;

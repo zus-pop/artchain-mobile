@@ -1,3 +1,5 @@
+import { Contest } from "./contest";
+
 export interface PaintingUploadRequest {
   title: string;
   description?: string;
@@ -9,4 +11,19 @@ export interface PaintingUploadRequest {
     type: string;
   };
   roundId: string;
+}
+
+export interface Painting {
+  paintingId: string;
+  roundId: string;
+  awardId: string | null;
+  contest: Contest;
+  competitorId: string;
+  title: string;
+  description?: string;
+  imageUrl: string;
+  submissionDate: Date;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
 }

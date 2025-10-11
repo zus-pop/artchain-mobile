@@ -1,4 +1,3 @@
-import { useWhoAmI } from "@/apis/auth";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
@@ -27,6 +26,7 @@ import {
 } from "react-native";
 import z from "zod";
 import { useUploadPainting } from "../apis/painting";
+import { useUserById } from "../apis/user";
 const SIZE = 10;
 //                     B      KB    MB
 const MAX_FILE_SIZE = 1024 * 1024 * SIZE;
@@ -72,7 +72,7 @@ const createStyles = (colors: any) =>
       alignItems: "center",
       backgroundColor: colors.card,
       borderRadius: 6,
-      padding: 10,
+      paddingVertical: 10,
       marginBottom: 24,
       borderWidth: 1.2,
       borderColor: colors.border,
@@ -275,15 +275,23 @@ const getColorScheme = (colorScheme: "light" | "dark") => {
   };
 };
 
+type PaintingUploadParams = {
+  type: "COMPETITOR" | "GUARDIAN";
+  contestId: string;
+  competitorId: string;
+  roundId: string;
+};
+
 const PaintingUpload = () => {
-  const { type } = useLocalSearchParams<{ type: "COMPETITOR" | "GUARDIAN" }>();
+  const { type, contestId, competitorId, roundId } =
+    useLocalSearchParams<PaintingUploadParams>();
   console.log(`Type is: [${type}]`);
   const { control, handleSubmit, formState } = useForm<PaintingUploadForm>({
     mode: "all",
     resolver: zodResolver(paintingUploadSchema),
   });
 
-  const { data: currentUser, isLoading, isError } = useWhoAmI();
+  const { data: currentUser, isLoading, isError } = useUserById(competitorId);
   const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
   const bottomSheetAnimation = useRef(new Animated.Value(0)).current;
@@ -453,9 +461,9 @@ const PaintingUpload = () => {
         name: image.fileName ?? `Painting of ${currentUser?.fullName}`,
         type: image.mimeType ?? "image/jpeg",
       },
-      contestId: "12",
-      roundId: "round1",
-      competitorId: "fuck",
+      contestId: contestId,
+      roundId: roundId,
+      competitorId: competitorId,
     });
   };
   if (isLoading) {
