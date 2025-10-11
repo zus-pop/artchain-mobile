@@ -4,15 +4,19 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as ImagePicker from "expo-image-picker";
-import { router } from "expo-router";
-import React, { useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Dimensions,
   Image,
   KeyboardAvoidingView,
+  Linking,
+  Modal,
+  PanResponder,
   Platform,
   ScrollView,
   StyleSheet,
@@ -75,22 +79,27 @@ const createStyles = (colors: any) =>
     },
     userInfoLabel: {
       fontSize: 14,
+      fontWeight: "400",
       color: colors.mutedForeground,
       marginBottom: 4,
     },
     userInfoName: {
-      fontSize: 20,
+      fontSize: 18,
       fontWeight: "600",
       color: colors.foreground,
       marginBottom: 2,
     },
     userInfoDetail: {
-      fontSize: 15,
+      fontSize: 14,
+      fontWeight: "400",
+
       color: colors.mutedForeground,
       marginBottom: 1,
     },
     userInfoDetailLast: {
-      fontSize: 15,
+      fontSize: 14,
+      fontWeight: "400",
+
       color: colors.mutedForeground,
     },
     inputSection: {
@@ -196,12 +205,57 @@ const createStyles = (colors: any) =>
     infoNote: {
       borderRadius: 8,
       padding: 12,
-      marginBottom: 20,
+      marginBottom: 30,
     },
     infoNoteText: {
       fontSize: 12,
       textAlign: "center",
       lineHeight: 16,
+    },
+    // Bottom sheet styles
+    bottomSheetOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "flex-end",
+    },
+    bottomSheetContainer: {
+      backgroundColor: colors.card,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingTop: 20,
+      paddingHorizontal: 20,
+      paddingBottom: 40,
+      maxHeight: "40%",
+    },
+    bottomSheetHandle: {
+      width: 40,
+      height: 4,
+      backgroundColor: colors.mutedForeground,
+      borderRadius: 2,
+      alignSelf: "center",
+      marginBottom: 20,
+    },
+    bottomSheetTitle: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: colors.foreground,
+      textAlign: "center",
+      marginBottom: 24,
+    },
+    bottomSheetOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 16,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      marginBottom: 8,
+      backgroundColor: colors.muted + "20",
+    },
+    bottomSheetOptionText: {
+      fontSize: 16,
+      color: colors.foreground,
+      marginLeft: 12,
+      fontWeight: "500",
     },
   });
 
@@ -222,6 +276,8 @@ const getColorScheme = (colorScheme: "light" | "dark") => {
 };
 
 const PaintingUpload = () => {
+  const { type } = useLocalSearchParams<{ type: "COMPETITOR" | "GUARDIAN" }>();
+  console.log(`Type is: [${type}]`);
   const { control, handleSubmit, formState } = useForm<PaintingUploadForm>({
     mode: "all",
     resolver: zodResolver(paintingUploadSchema),
@@ -229,13 +285,58 @@ const PaintingUpload = () => {
 
   const { data: currentUser, isLoading, isError } = useWhoAmI();
   const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
+  const bottomSheetAnimation = useRef(new Animated.Value(0)).current;
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
   // Get colors and styles
   const colors = getColorScheme(colorScheme);
   const styles = createStyles(colors);
-  const { mutate } = useUploadPainting();
+  const { mutate, isPending } = useUploadPainting();
+
+  // Bottom sheet animation functions
+  const showBottomSheet = () => {
+    setIsBottomSheetVisible(true);
+    Animated.timing(bottomSheetAnimation, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const hideBottomSheet = () => {
+    Animated.timing(bottomSheetAnimation, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setIsBottomSheetVisible(false);
+    });
+  };
+
+  // Pan responder for drag to close
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        return Math.abs(gestureState.dy) > 20;
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        if (gestureState.dy > 0) {
+          bottomSheetAnimation.setValue(1 - gestureState.dy / 300);
+        }
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        if (gestureState.dy > 100) {
+          hideBottomSheet();
+        } else {
+          Animated.spring(bottomSheetAnimation, {
+            toValue: 1,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
   const pickImage = async () => {
     try {
       const permissionResult =
@@ -244,7 +345,11 @@ const PaintingUpload = () => {
       if (permissionResult.granted === false) {
         Alert.alert(
           "Thông báo",
-          "Cần quyền truy cập thư viện ảnh để tải lên tranh vẽ"
+          "Cần quyền truy cập thư viện ảnh để tải lên tranh vẽ",
+          [
+            { text: "Hủy", style: "cancel" },
+            { text: "Mở cài đặt", onPress: () => Linking.openSettings() },
+          ]
         );
         return;
       }
@@ -253,7 +358,7 @@ const PaintingUpload = () => {
         mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.8,
+        quality: 1,
         allowsMultipleSelection: false,
       });
 
@@ -288,7 +393,11 @@ const PaintingUpload = () => {
       if (permissionResult.granted === false) {
         Alert.alert(
           "Thông báo",
-          "Cần quyền truy cập camera để chụp ảnh tranh vẽ"
+          "Cần quyền truy cập camera để chụp ảnh tranh vẽ",
+          [
+            { text: "Hủy", style: "cancel" },
+            { text: "Mở cài đặt", onPress: () => Linking.openSettings() },
+          ]
         );
         return;
       }
@@ -323,16 +432,7 @@ const PaintingUpload = () => {
   };
 
   const showImageOptions = () => {
-    Alert.alert(
-      "Chọn ảnh",
-      "Bạn muốn tải ảnh từ đâu?",
-      [
-        { text: "Thư viện", onPress: pickImage },
-        { text: "Chụp ảnh", onPress: takePhoto },
-        { text: "Hủy", style: "cancel" },
-      ],
-      { cancelable: true }
-    );
+    showBottomSheet();
   };
 
   const removeImage = () => {
@@ -345,7 +445,6 @@ const PaintingUpload = () => {
       return;
     }
 
-    setIsSubmitting(true);
     mutate({
       title: data.title,
       description: data.description,
@@ -529,15 +628,15 @@ const PaintingUpload = () => {
         {/* Submit Button */}
         <TouchableOpacity
           onPress={handleSubmit(onSubmit)}
-          disabled={isSubmitting || !formState.isValid || !image}
+          disabled={isPending || !formState.isValid || !image}
           style={[
             styles.submitButton,
             {
               backgroundColor:
-                isSubmitting || !formState.isValid || !image
+                isPending || !formState.isValid || !image
                   ? colors.muted
                   : colors.primary,
-              opacity: isSubmitting || !formState.isValid || !image ? 0.6 : 1,
+              opacity: isPending || !formState.isValid || !image ? 0.6 : 1,
             },
           ]}
         >
@@ -546,13 +645,13 @@ const PaintingUpload = () => {
               styles.submitButtonText,
               {
                 color:
-                  isSubmitting || !formState.isValid || !image
+                  isPending || !formState.isValid || !image
                     ? colors.mutedForeground
                     : colors.primaryForeground,
               },
             ]}
           >
-            {isSubmitting ? "Đang gửi..." : "Gửi bài thi"}
+            {isPending ? "Đang gửi..." : "Gửi bài thi"}
           </Text>
         </TouchableOpacity>
 
@@ -568,6 +667,77 @@ const PaintingUpload = () => {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Bottom Sheet Modal */}
+      <Modal
+        visible={isBottomSheetVisible}
+        transparent={true}
+        animationType="none"
+        onRequestClose={hideBottomSheet}
+      >
+        <TouchableOpacity
+          style={styles.bottomSheetOverlay}
+          activeOpacity={1}
+          onPress={hideBottomSheet}
+        >
+          <Animated.View
+            style={[
+              styles.bottomSheetContainer,
+              {
+                transform: [
+                  {
+                    translateY: bottomSheetAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [300, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+            {...panResponder.panHandlers}
+          >
+            <View style={styles.bottomSheetHandle} />
+            <Text style={styles.bottomSheetTitle}>Chọn ảnh</Text>
+
+            <TouchableOpacity
+              style={styles.bottomSheetOption}
+              onPress={() => {
+                hideBottomSheet();
+                pickImage();
+              }}
+            >
+              <Ionicons name="images" size={24} color={colors.primary} />
+              <Text style={styles.bottomSheetOptionText}>Chọn từ thư viện</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.bottomSheetOption}
+              onPress={() => {
+                hideBottomSheet();
+                takePhoto();
+              }}
+            >
+              <Ionicons name="camera" size={24} color={colors.primary} />
+              <Text style={styles.bottomSheetOptionText}>Chụp ảnh mới</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.bottomSheetOption}
+              onPress={hideBottomSheet}
+            >
+              <Ionicons name="close" size={24} color={colors.mutedForeground} />
+              <Text
+                style={[
+                  styles.bottomSheetOptionText,
+                  { color: colors.mutedForeground },
+                ]}
+              >
+                Hủy
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </TouchableOpacity>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };

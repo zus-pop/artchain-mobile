@@ -1,7 +1,7 @@
 import myAxios from "@/constants/custom-axios";
 import { useAuthStore } from "@/store";
 import { AuthResponse, LoginRequest, RegisterRequest, WhoAmI } from "@/types";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { toast } from "sonner-native";
 
@@ -9,15 +9,20 @@ export function useWhoAmI() {
   return useQuery({
     queryKey: ["me"],
     queryFn: async () => {
-      const response = await myAxios.get<WhoAmI>("/users/me");
-      return response.data;
+      try {
+        const response = await myAxios.get<WhoAmI>("/users/me");
+        return response.data;
+      } catch (error) {
+        console.log(error);
+        return null;
+      }
     },
-    staleTime: 0,
   });
 }
 
 export function useLoginMutation() {
   const { setAccessToken } = useAuthStore.getState();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (loginRequest: LoginRequest) => {
       const response = await myAxios.post("/auth/login", loginRequest);
@@ -25,6 +30,7 @@ export function useLoginMutation() {
     },
     onSuccess: (result: AuthResponse) => {
       setAccessToken(result.access_token);
+      queryClient.invalidateQueries({ queryKey: ["me"] });
       router.back(); // Go back to profile
     },
     onError: (error) => {

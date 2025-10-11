@@ -1,5 +1,6 @@
 import { PaintingUploadRequest } from "@/types";
 import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner-native";
 import myAxios from "../constants/custom-axios";
 
 export function useUploadPainting() {
@@ -13,11 +14,20 @@ export function useUploadPainting() {
       formData.append("file", paintingUploadRequest.file as any);
       formData.append("competitorId", paintingUploadRequest.competitorId);
       formData.append("contestId", paintingUploadRequest.contestId);
+      formData.append("roundId", paintingUploadRequest.roundId);
       const response = await myAxios.post("/paintings/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success(`Upload painting successfully!`);
+      // TODO: Navigate to my submission
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }
