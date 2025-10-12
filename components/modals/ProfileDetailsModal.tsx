@@ -24,12 +24,10 @@ type Scheme = "light" | "dark";
 
 type UserShape = {
   name: string;
-  handle: string;
   email: string;
   phone: string;
   location: string;
-  avatar: string;
-  followers: number;
+  avatar?: string;
 };
 
 type Props = {
@@ -50,12 +48,12 @@ const FOOTER_H = 64;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
 
 const COLORFUL = {
-  blue: { bg: "rgba(37, 99, 235, 0.12)", fg: "#2563EB" },   // indigo-600
-  green: { bg: "rgba(5, 150, 105, 0.12)", fg: "#059669" },  // emerald-600
-  purple: { bg: "rgba(147, 51, 234, 0.12)", fg: "#9333EA" },// purple-600
+  blue: { bg: "rgba(37, 99, 235, 0.12)", fg: "#2563EB" }, // indigo-600
+  green: { bg: "rgba(5, 150, 105, 0.12)", fg: "#059669" }, // emerald-600
+  purple: { bg: "rgba(147, 51, 234, 0.12)", fg: "#9333EA" }, // purple-600
   amber: { bg: "rgba(245, 158, 11, 0.12)", fg: "#F59E0B" }, // amber-500
-  pink: { bg: "rgba(219, 39, 119, 0.12)", fg: "#DB2777" },  // pink-600
-  sky: { bg: "rgba(2, 132, 199, 0.12)", fg: "#0284C7" },    // sky-600
+  pink: { bg: "rgba(219, 39, 119, 0.12)", fg: "#DB2777" }, // pink-600
+  sky: { bg: "rgba(2, 132, 199, 0.12)", fg: "#0284C7" }, // sky-600
 };
 
 const ProfileDetailsModal: React.FC<Props> = ({
@@ -79,12 +77,10 @@ const ProfileDetailsModal: React.FC<Props> = ({
   const [form, setForm] = useState<UserShape>(user);
   const [touched, setTouched] = useState<Record<keyof UserShape, boolean>>({
     name: false,
-    handle: false,
     email: false,
     phone: false,
     location: false,
     avatar: false,
-    followers: false,
   });
 
   // reset form khi mở modal với user mới
@@ -93,12 +89,10 @@ const ProfileDetailsModal: React.FC<Props> = ({
       setForm(user);
       setTouched({
         name: false,
-        handle: false,
         email: false,
         phone: false,
         location: false,
         avatar: false,
-        followers: false,
       });
     }
   }, [visible, user]);
@@ -338,19 +332,6 @@ const ProfileDetailsModal: React.FC<Props> = ({
                     errors.name && touched.name ? local.inputError : null,
                   ]}
                 />
-                <View style={local.handleRow}>
-                  <Ionicons name="at" size={14} color={COLORFUL.purple.fg} />
-                  <Text style={[s.handle, { color: COLORFUL.purple.fg }]} numberOfLines={1}>
-                    {form.handle}
-                  </Text>
-                </View>
-
-                <View style={[s.followChip, { backgroundColor: COLORFUL.green.bg }]}>
-                  <Ionicons name="people" size={12} color={COLORFUL.green.fg} />
-                  <Text style={[s.followTxt, { color: COLORFUL.green.fg }]}>
-                    {user.followers} theo dõi
-                  </Text>
-                </View>
               </View>
             </View>
 
@@ -358,8 +339,6 @@ const ProfileDetailsModal: React.FC<Props> = ({
 
             {/* FORM FIELDS — icon nhiều màu */}
             <View style={s.sectionTight}>
-             
-
               <Field
                 icon="mail-outline"
                 iconColor={COLORFUL.blue.fg}
@@ -439,7 +418,10 @@ const ProfileDetailsModal: React.FC<Props> = ({
               <Text
                 style={[
                   s.primaryTxt,
-                  { color: C.primaryForeground, backgroundColor: COLORFUL.blue.fg },
+                  {
+                    color: C.primaryForeground,
+                    backgroundColor: COLORFUL.blue.fg,
+                  },
                 ]}
               >
                 Lưu thay đổi
@@ -497,7 +479,11 @@ function Field({
           { borderColor: C.border, backgroundColor: chipColor?.bg ?? C.card },
         ]}
       >
-        <Ionicons name={icon} size={16} color={iconColor ?? C.mutedForeground} />
+        <Ionicons
+          name={icon}
+          size={16}
+          color={iconColor ?? C.mutedForeground}
+        />
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -646,9 +632,8 @@ const local = StyleSheet.create({
   handleRow: {
     flexDirection: "row",
     alignItems: "center",
-  
+
     marginTop: 4,
     justifyContent: "flex-start",
-    
   },
 });

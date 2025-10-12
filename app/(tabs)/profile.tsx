@@ -1,16 +1,13 @@
 import PillButton from "@/components/buttons/PillButton";
-import PostCard from "@/components/cards/PostCard";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
-import SegmentTabs from "@/components/tabs/SegmentedTabs";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React, { useMemo, useRef, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Image,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -19,82 +16,24 @@ import {
 
 // ===== Types =====
 import { useWhoAmI } from "@/apis/auth";
-import StickyProfileHeader from "@/components/header/StickyProfileHeader";
 
+import { useMySubmission } from "@/apis/painting";
 import { useAuthStore } from "@/store/auth-store";
-import type {
-  ColorTokens,
-  EmptyProps,
-  KPIProps,
-  TabKey,
-  UserStats,
-} from "@/types/tabkey";
+import type { ColorTokens, KPIProps, UserStats } from "@/types/tabkey";
+import { formatDateDisplay } from "@/utils/date";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const accessToken = useAuthStore((state) => state.accessToken);
-  const { data: userData, isLoading } = useWhoAmI();
+  const { data: user, isLoading, refetch: reloadMe } = useWhoAmI();
   const C = Colors[scheme];
   const s = styles(C);
-
-  // Use real user data from API
-  const user = userData
-    ? {
-        fullName: userData.fullName,
-        email: userData.email,
-        phone: userData.phone,
-        birthday: userData.birthday,
-        schoolName: userData.schoolName,
-        ward: userData.ward,
-        grade: userData.grade,
-        // Keep some fake data for now until API provides it
-        avatar:
-          "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg",
-        followers: 2,
-        handle: userData.email.split("@")[0], // Generate handle from email
-      }
-    : null;
-
-  const recentSubmissions = useMemo(
-    () => [
-      {
-        id: "1",
-        title: "Bức tranh bình minh",
-        contest: "Vẽ Sài Gòn Xanh",
-        submissionDate: "2024-12-01",
-        status: "winner",
-        image:
-          "https://images.pexels.com/photos/417173/pexels-photo-417173.jpeg",
-        views: 320,
-        likes: 45,
-      },
-      {
-        id: "2",
-        title: "Phố đêm rực rỡ",
-        contest: "Nghệ Thuật Đường Phố",
-        submissionDate: "2024-11-15",
-        status: "accepted",
-        image:
-          "https://images.pexels.com/photos/210186/pexels-photo-210186.jpeg",
-        views: 210,
-        likes: 30,
-      },
-      {
-        id: "3",
-        title: "Sắc màu tuổi thơ",
-        contest: "Nghệ Sĩ Xuất Sắc",
-        submissionDate: "2024-10-20",
-        status: "pending",
-        image:
-          "https://images.pexels.com/photos/102127/pexels-photo-102127.jpeg",
-        views: 180,
-        likes: 22,
-      },
-    ],
-    []
-  );
-
+  const {
+    data: mySubmission = [],
+    isLoading: isMySubmissionLoading,
+    refetch: reloadSubmission,
+  } = useMySubmission();
   const userStats: UserStats = {
     totalSubmissions: 12,
     wins: 3,
@@ -103,43 +42,104 @@ export default function ProfileScreen() {
     rating: 4.7,
   };
 
-  const [active, setActive] = useState<TabKey>("threads");
   const [openDetails, setOpenDetails] = useState(false);
+  const [activeTab, setActiveTab] = useState<
+    "contests" | "achievements" | "submissions"
+  >("contests");
+
+  const ongoingContests = useMemo(
+    () => [
+      {
+        id: "contest1",
+        title: "Vẽ Sài Gòn Xanh",
+        progress: 75, // percentage
+        status: "active",
+        deadline: "2024-12-31",
+        submitted: true,
+        submissionCount: 1,
+        totalRounds: 2,
+        currentRound: 1,
+      },
+      {
+        id: "contest2",
+        title: "Nghệ Thuật Đường Phố",
+        progress: 45,
+        status: "active",
+        deadline: "2025-01-15",
+        submitted: false,
+        submissionCount: 0,
+        totalRounds: 1,
+        currentRound: 1,
+      },
+    ],
+    []
+  );
+
+  // Calculate contest participation stats
+  const contestStats = useMemo(() => {
+    const activeContests = ongoingContests.length;
+    const submittedContests = ongoingContests.filter((c) => c.submitted).length;
+    const avgProgress =
+      ongoingContests.length > 0
+        ? Math.round(
+            ongoingContests.reduce((sum, c) => sum + c.progress, 0) /
+              ongoingContests.length
+          )
+        : 0;
+
+    return {
+      activeContests,
+      submittedContests,
+      avgProgress,
+    };
+  }, [ongoingContests]);
 
   const achievements = useMemo(
     () => [
       {
         id: "a1",
-        title: `Giải Nhất "${recentSubmissions[0].contest}"`,
+        title: `Giải Nhất "${mySubmission[0]?.contest.title || "Cuộc thi"}"`,
         place: "2024 - TP. Hồ Chí Minh",
       },
       {
         id: "a2",
-        title: `Top 10 "${recentSubmissions[1].contest}"`,
+        title: `Top 10 "${mySubmission[1]?.contest.title || "Cuộc thi"}"`,
         place: "2024 - Quận 1",
       },
     ],
-    [recentSubmissions]
+    [mySubmission]
   );
 
   const getStatusColor = (status: string) =>
-    status === "winner"
-      ? C.chart1
-      : status === "accepted"
+    status === "winner" || status === "approved" || status === "accepted"
+      ? C.chart1 || C.primary
+      : status === "accepted" || status === "approved"
       ? C.primary
-      : status === "rejected"
+      : status === "rejected" || status === "denied"
       ? C.destructive
+      : status === "pending" || status === "reviewing" || status === "submitted"
+      ? C.mutedForeground
       : C.mutedForeground;
 
-  const getStatusText = (status: string) =>
-    status === "winner"
+  const getStatusText = (status: string) => {
+    return status === "WINNER" || status === "APPROVED"
       ? "Giải thưởng"
-      : status === "accepted"
+      : status === "ACCEPTED" || status === "APPROVED"
       ? "Được chấp nhận"
-      : status === "pending"
+      : status === "REJECTED" || status === "DENIED"
+      ? "Bị từ chối"
+      : status === "PENDING" || status === "REVIEWING"
       ? "Đang xử lý"
-      : "Bị từ chối";
-
+      : status === "SUBMITTED"
+      ? "Đã nộp"
+      : "Không xác định";
+  };
+  useFocusEffect(
+    useCallback(() => {
+      reloadMe();
+      reloadSubmission();
+    }, [])
+  );
   const ICONS: Record<
     "brush" | "trophy" | "eye" | "heart",
     { fg: string; bg: string }
@@ -151,27 +151,59 @@ export default function ProfileScreen() {
   };
   // Show loading state while fetching user data
   // Trước đây: const Avatar = (): JSX.Element => { ... }  // -> lỗi
-  const Avatar = () =>
-    user?.avatar ? (
-      <Image source={{ uri: user.avatar }} style={s.avatar} />
-    ) : (
-      <View
-        style={[s.avatar, { alignItems: "center", justifyContent: "center" }]}
-      >
-        <Ionicons name="person-outline" size={22} color={C.mutedForeground} />
-      </View>
-    );
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const Avatar = () => (
+    <View
+      style={[s.avatar, { alignItems: "center", justifyContent: "center" }]}
+    >
+      <Ionicons name="person-outline" size={22} color={C.mutedForeground} />
+    </View>
+  );
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  if (!accessToken) {
+  if (isLoading) {
     return (
       <View style={s.container}>
         <View style={s.topbar}>
           <Text style={s.headerTitle}>Hồ sơ</Text>
-          <TouchableOpacity style={{ padding: 8 }}>
-            <Ionicons name="settings-outline" size={22} color={C.foreground} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row" }}>
+            <TouchableOpacity style={s.iconBtn}>
+              <Ionicons
+                name="notifications-outline"
+                size={22}
+                color={C.foreground}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 32,
+          }}
+        >
+          <Ionicons name="person-circle-outline" size={80} color={C.muted} />
+          <Text
+            style={{
+              fontSize: 20,
+              fontWeight: "bold",
+              color: C.foreground,
+              marginTop: 16,
+            }}
+          >
+            Đang tải hồ sơ...
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (!accessToken || !user) {
+    return (
+      <View style={s.container}>
+        <View style={s.topbar}>
+          <Text style={s.headerTitle}>Hồ sơ</Text>
         </View>
         <View
           style={{
@@ -228,65 +260,19 @@ export default function ProfileScreen() {
     );
   }
 
-  if (isLoading || !user) {
-    return (
-      <View style={s.container}>
-        <View style={s.topbar}>
-          <Text style={s.headerTitle}>Hồ sơ</Text>
-          <View style={{ flexDirection: "row" }}>
-            <TouchableOpacity style={s.iconBtn}>
-              <Ionicons
-                name="notifications-outline"
-                size={22}
-                color={C.foreground}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => router.push("/setting")}
-              style={s.iconBtn}
-            >
-              <Ionicons
-                name="settings-outline"
-                size={22}
-                color={C.foreground}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View
-          style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 32,
-          }}
-        >
-          <Ionicons name="person-circle-outline" size={80} color={C.muted} />
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "bold",
-              color: C.foreground,
-              marginTop: 16,
-            }}
-          >
-            Đang tải hồ sơ...
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
   return (
     <SafeAreaProvider style={s.container}>
       {/* Top bar */}
-      {/* <View style={s.topbar}>
+      <View style={s.topbar}>
         <Text style={s.headerTitle}>Hồ sơ</Text>
         <View style={{ flexDirection: "row" }}>
-          <TouchableOpacity style={s.iconBtn}>
+          <TouchableOpacity
+            onPress={() => router.push("/notifications")}
+            style={s.iconBtn}
+          >
             <Ionicons
               name="notifications-outline"
-              size={22}
+              size={25}
               color={C.foreground}
             />
           </TouchableOpacity>
@@ -294,12 +280,12 @@ export default function ProfileScreen() {
             onPress={() => router.push("/setting")}
             style={s.iconBtn}
           >
-            <Ionicons name="settings-outline" size={22} color={C.foreground} />
+            <Ionicons name="settings-outline" size={25} color={C.foreground} />
           </TouchableOpacity>
         </View>
-      </View> */}
+      </View>
 
-      <StickyProfileHeader
+      {/* <StickyProfileHeader
         title={user.fullName}
         colors={C}
         scrollY={scrollY}
@@ -307,12 +293,11 @@ export default function ProfileScreen() {
         onBack={() => router.back()}
         showRight={true}
         onRightPress={() => router.push("/setting")}
-      />
+      /> */}
 
       <Animated.ScrollView
         contentContainerStyle={{
           paddingBottom: 110,
-          paddingTop: 56 /* độ cao header */,
         }}
         showsVerticalScrollIndicator={false}
         onScroll={Animated.event(
@@ -340,7 +325,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={s.name}>{user.fullName}</Text>
-            <Text style={s.handle}>@{user.handle}</Text>
+            <Text style={s.handle}>{user.email}</Text>
             {/* {!!user.subtitle && (
               <Text style={s.followers}>{user.subtitle}</Text>
             )}
@@ -380,96 +365,286 @@ export default function ProfileScreen() {
           />
           <View style={s.kpiDivider} />
           <KPI
-            icon="eye-outline"
-            label="Lượt xem"
-            value={userStats.views.toLocaleString()}
+            icon="time-outline"
+            label="Cuộc thi active"
+            value={String(contestStats.activeContests)}
             C={C}
-            iconColor={ICONS.eye.fg}
-            iconBg={ICONS.eye.bg}
-          />
-          <View style={s.kpiDivider} />
-          <KPI
-            icon="heart-outline"
-            label="Lượt thích"
-            value={String(userStats.likes)}
-            C={C}
-            iconColor={ICONS.heart.fg}
-            iconBg={ICONS.heart.bg}
+            iconColor="#8B5CF6"
+            iconBg="rgba(139,92,246,0.14)"
           />
         </View>
-
-        {/* Rating */}
-        <View style={s.ratingBox}>
-          <Ionicons name="star" size={18} color={C.chart1} />
-          <Text style={s.ratingText}>{userStats.rating}</Text>
-          <Text style={s.ratingSub}>Đánh giá trung bình</Text>
-        </View>
-
-        {/* Divider */}
-        <View style={s.sectionDivider} />
 
         {/* Tabs */}
-        <View style={{ marginHorizontal: 0 }}>
-          <SegmentTabs
-            tabs={[
-              { key: "threads", label: "Thread" },
-              { key: "replies", label: "Thread trả lời" },
-              { key: "media", label: "File phương tiện" },
-              { key: "reposts", label: "Bài đăng lại" },
-            ]}
-            activeKey={active}
-            onChange={(k) => setActive(k as TabKey)}
-            colors={{
-              background: C.background,
-              card: C.card,
-              foreground: C.foreground,
-              mutedForeground: C.mutedForeground,
-              border: C.border,
-              primary: C.primary,
-            }}
-          />
+        <View style={s.tabsContainer}>
+          <TouchableOpacity
+            style={[s.tab, activeTab === "contests" && s.activeTab]}
+            onPress={() => setActiveTab("contests")}
+          >
+            <Ionicons
+              name="time-outline"
+              size={18}
+              color={
+                activeTab === "contests"
+                  ? C.primaryForeground
+                  : C.mutedForeground
+              }
+            />
+            <Text
+              style={[s.tabText, activeTab === "contests" && s.activeTabText]}
+            >
+              Cuộc thi
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[s.tab, activeTab === "achievements" && s.activeTab]}
+            onPress={() => setActiveTab("achievements")}
+          >
+            <Ionicons
+              name="trophy-outline"
+              size={18}
+              color={
+                activeTab === "achievements"
+                  ? C.primaryForeground
+                  : C.mutedForeground
+              }
+            />
+            <Text
+              style={[
+                s.tabText,
+                activeTab === "achievements" && s.activeTabText,
+              ]}
+            >
+              Thành tích
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[s.tab, activeTab === "submissions" && s.activeTab]}
+            onPress={() => setActiveTab("submissions")}
+          >
+            <Ionicons
+              name="brush-outline"
+              size={18}
+              color={
+                activeTab === "submissions"
+                  ? C.primaryForeground
+                  : C.mutedForeground
+              }
+            />
+            <Text
+              style={[
+                s.tabText,
+                activeTab === "submissions" && s.activeTabText,
+              ]}
+            >
+              Bài dự thi
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Nội dung tab */}
-        {active === "threads" && (
-          <View style={{ padding: 12 }}>
-            {recentSubmissions.map((item) => (
-              <PostCard
-                key={item.id}
-                item={item}
-                C={C}
-                getStatusColor={getStatusColor}
-                getStatusText={getStatusText}
-                onPress={() => {
-                  // TODO: điều hướng chi tiết bài gửi
-                }}
-              />
-            ))}
-          </View>
-        )}
-        {active === "replies" && (
-          <Empty
-            label="Chưa có thread trả lời"
-            chips={[
-              "Khám phá nghệ sĩ",
-              "Viết thread",
-              "Theo dõi thêm",
-              "Tìm chủ đề",
-            ]}
-          />
-        )}
-        {active === "media" && (
-          <Empty
-            label="Chưa có file phương tiện"
-            chips={["Tải ảnh", "Tải video", "Tạo album", "Thêm tác phẩm"]}
-          />
-        )}
-        {active === "reposts" && (
-          <Empty
-            label="Chưa có bài đăng lại"
-            chips={["Khám phá feed", "Theo dõi tag", "Gợi ý hôm nay"]}
-          />
-        )}
+        {/* Tab Content */}
+        <View style={s.tabContent}>
+          {activeTab === "contests" && (
+            <View style={s.tabScrollContent}>
+              {ongoingContests.length > 0 ? (
+                <View style={s.contestsList}>
+                  {ongoingContests.map((contest) => (
+                    <View key={contest.id} style={s.contestCard}>
+                      <View style={s.contestHeader}>
+                        <Text style={s.contestTitle}>{contest.title}</Text>
+                        <View
+                          style={[
+                            s.contestStatus,
+                            {
+                              backgroundColor: contest.submitted
+                                ? C.primary + "20"
+                                : C.muted + "40",
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name={
+                              contest.submitted
+                                ? "checkmark-circle"
+                                : "time-outline"
+                            }
+                            size={14}
+                            color={
+                              contest.submitted
+                                ? C.primaryForeground
+                                : C.mutedForeground
+                            }
+                          />
+                          <Text
+                            style={[
+                              s.contestStatusText,
+                              {
+                                color: contest.submitted
+                                  ? C.primaryForeground
+                                  : C.mutedForeground,
+                              },
+                            ]}
+                          >
+                            {contest.submitted ? "Đã nộp" : "Chưa nộp"}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={s.contestProgress}>
+                        <View style={s.progressBar}>
+                          <View
+                            style={[
+                              s.progressFill,
+                              {
+                                width: `${contest.progress}%`,
+                                backgroundColor: contest.submitted
+                                  ? C.primary
+                                  : C.muted,
+                              },
+                            ]}
+                          />
+                        </View>
+                        <Text style={s.progressText}>
+                          {contest.progress}% hoàn thành
+                        </Text>
+                      </View>
+
+                      <View style={s.contestMeta}>
+                        <View style={s.metaChip}>
+                          <Ionicons
+                            name="calendar-outline"
+                            size={14}
+                            color={C.mutedForeground}
+                          />
+                          <Text style={s.metaTxt}>
+                            Hạn: {formatDateDisplay(contest.deadline)}
+                          </Text>
+                        </View>
+                        <View style={s.metaChip}>
+                          <Ionicons
+                            name="trophy-outline"
+                            size={14}
+                            color={C.mutedForeground}
+                          />
+                          <Text style={s.metaTxt}>
+                            Vòng {contest.currentRound}/{contest.totalRounds}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={s.emptyTab}>
+                  <Ionicons name="time-outline" size={64} color={C.muted} />
+                  <Text style={s.emptyTabText}>Chưa tham gia cuộc thi nào</Text>
+                  <TouchableOpacity style={s.exploreButton}>
+                    <Text style={s.exploreButtonText}>Khám phá cuộc thi</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+
+          {activeTab === "achievements" && (
+            <View style={s.tabScrollContent}>
+              {achievements.length > 0 ? (
+                <View style={s.achievementsList}>
+                  {achievements.map((achievement) => (
+                    <View key={achievement.id} style={s.achievementCard}>
+                      <View style={s.achievementIcon}>
+                        <Ionicons name="trophy" size={24} color={C.primary} />
+                      </View>
+                      <View style={s.achievementContent}>
+                        <Text style={s.achievementTitle}>
+                          {achievement.title}
+                        </Text>
+                        <Text style={s.achievementPlace}>
+                          {achievement.place}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={s.emptyTab}>
+                  <Ionicons name="trophy-outline" size={64} color={C.muted} />
+                  <Text style={s.emptyTabText}>Chưa có thành tích nào</Text>
+                  <TouchableOpacity style={s.exploreButton}>
+                    <Text style={s.exploreButtonText}>Tham gia cuộc thi</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+
+          {activeTab === "submissions" && (
+            <View style={s.tabScrollContent}>
+              {isMySubmissionLoading ? (
+                <View style={s.emptyTab}>
+                  <Ionicons name="brush-outline" size={64} color={C.muted} />
+                  <Text style={s.emptyTabText}>Đang tải bài dự thi...</Text>
+                </View>
+              ) : mySubmission.length > 0 ? (
+                <View style={s.submissionsList}>
+                  {mySubmission.map((item) => (
+                    <TouchableOpacity
+                      key={item.paintingId}
+                      style={s.submissionCard}
+                      onPress={() => {
+                        // TODO: điều hướng chi tiết bài gửi
+                      }}
+                    >
+                      <Image
+                        source={{ uri: item.imageUrl }}
+                        style={s.submissionImage}
+                      />
+                      <View style={s.submissionContent}>
+                        <Text style={s.submissionTitle}>{item.title}</Text>
+                        <Text style={s.submissionContest}>
+                          {item.contest.title}
+                        </Text>
+                        <View style={s.submissionMeta}>
+                          <View style={s.metaChip}>
+                            <Ionicons
+                              name="calendar-outline"
+                              size={14}
+                              color={C.mutedForeground}
+                            />
+                            <Text style={s.metaTxt}>
+                              {formatDateDisplay(item.submissionDate)}
+                            </Text>
+                          </View>
+                          <View
+                            style={[
+                              s.badge,
+                              { backgroundColor: getStatusColor(item.status) },
+                            ]}
+                          >
+                            <Text style={s.badgeTxt}>
+                              {getStatusText(item.status)}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <View style={s.emptyTab}>
+                  <Ionicons name="brush-outline" size={64} color={C.muted} />
+                  <Text style={s.emptyTabText}>Chưa có bài dự thi nào</Text>
+                  <TouchableOpacity style={s.exploreButton}>
+                    <Text style={s.exploreButtonText}>
+                      Tạo tác phẩm đầu tiên
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
       </Animated.ScrollView>
 
       {/* Modal hồ sơ cá nhân */}
@@ -479,12 +654,9 @@ export default function ProfileScreen() {
         scheme={scheme}
         user={{
           name: user.fullName,
-          handle: user.handle,
           email: user.email,
           phone: user.phone || "",
           location: `${user.ward}, ${user.schoolName}`,
-          avatar: user.avatar,
-          followers: user.followers,
         }}
         achievements={achievements}
       />
@@ -521,65 +693,6 @@ function KPI({
   );
 }
 
-function Empty({ label, chips = [] }: EmptyProps) {
-  return (
-    <View style={emptyStyles.wrap}>
-      <Text style={emptyStyles.text}>{label}</Text>
-
-      {chips.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={emptyStyles.chipsContent}
-        >
-          {chips.map((c, i) => (
-            <TouchableOpacity
-              key={i}
-              style={emptyStyles.chipBtn}
-              activeOpacity={0.85}
-            >
-              <Ionicons
-                name="add-circle-outline"
-                size={14}
-                style={{ marginRight: 6 }}
-              />
-              <Text style={emptyStyles.chipTxt}>{c}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
-    </View>
-  );
-}
-
-const emptyStyles = StyleSheet.create({
-  wrap: {
-    paddingVertical: 28,
-    alignItems: "center",
-    gap: 12,
-  },
-  text: {
-    opacity: 0.6,
-    fontSize: 14,
-  },
-  chipsContent: {
-    paddingHorizontal: 16,
-  },
-  chipBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginRight: 8,
-  },
-  chipTxt: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-});
-
 const styles = (C: ColorTokens) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: C.background },
@@ -588,12 +701,12 @@ const styles = (C: ColorTokens) =>
       justifyContent: "space-between",
       alignItems: "center",
       paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingVertical: 22,
       backgroundColor: C.card,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: C.border,
     },
-    headerTitle: { fontSize: 18, fontWeight: "800", color: C.foreground },
+    headerTitle: { fontSize: 25, fontWeight: "bold", color: C.foreground },
     iconBtn: { padding: 8, marginLeft: 4 },
 
     headerWrap: {
@@ -724,6 +837,75 @@ const styles = (C: ColorTokens) =>
       marginBottom: 2,
     },
 
+    // Tab styles
+    tabsContainer: {
+      flexDirection: "row",
+      marginHorizontal: 16,
+      marginTop: 8,
+      marginBottom: 16,
+      backgroundColor: C.card,
+      borderRadius: 12,
+      padding: 4,
+      shadowColor: "#000",
+      shadowOpacity: 0.06,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 1,
+    },
+    tab: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      borderRadius: 8,
+      gap: 6,
+    },
+    activeTab: {
+      backgroundColor: C.primary + "15",
+    },
+    tabText: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: C.mutedForeground,
+    },
+    activeTabText: {
+      color: C.primaryForeground,
+      fontWeight: "600",
+    },
+    tabContent: {
+      flex: 1,
+      minHeight: 400, // Ensure minimum height for tab content
+    },
+    tabScrollContent: {
+      paddingHorizontal: 16,
+      paddingBottom: 20,
+    },
+    emptyTab: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 60,
+    },
+    emptyTabText: {
+      fontSize: 16,
+      color: C.mutedForeground,
+      marginTop: 16,
+      marginBottom: 24,
+      textAlign: "center",
+    },
+    exploreButton: {
+      backgroundColor: C.primary,
+      borderRadius: 20,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+    },
+    exploreButtonText: {
+      color: C.primaryForeground,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+
     postRow: {
       flexDirection: "row",
       backgroundColor: C.card,
@@ -754,4 +936,147 @@ const styles = (C: ColorTokens) =>
     badgeTxt: { color: C.primaryForeground, fontSize: 10, fontWeight: "700" },
     metaChip: { flexDirection: "row", alignItems: "center", marginRight: 14 },
     metaTxt: { marginLeft: 4, color: C.mutedForeground, fontSize: 12 },
+
+    // New section styles
+    achievementsList: {
+      gap: 12,
+    },
+    achievementCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: C.card,
+      borderRadius: 12,
+      padding: 16,
+      shadowColor: "#000",
+      shadowOpacity: 0.06,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 1,
+    },
+    achievementIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: C.primary + "15",
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 12,
+    },
+    achievementContent: {
+      flex: 1,
+    },
+    achievementTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: C.foreground,
+      marginBottom: 4,
+    },
+    achievementPlace: {
+      fontSize: 14,
+      color: C.mutedForeground,
+    },
+    submissionsList: {
+      gap: 12,
+    },
+    submissionCard: {
+      flexDirection: "row",
+      backgroundColor: C.card,
+      borderRadius: 12,
+      padding: 12,
+      shadowColor: "#000",
+      shadowOpacity: 0.06,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 1,
+    },
+    submissionImage: {
+      width: 80,
+      height: 80,
+      borderRadius: 8,
+      marginRight: 12,
+    },
+    submissionContent: {
+      flex: 1,
+      justifyContent: "space-between",
+    },
+    submissionTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: C.foreground,
+      marginBottom: 4,
+    },
+    submissionContest: {
+      fontSize: 14,
+      color: C.primary,
+      fontWeight: "500",
+      marginBottom: 8,
+    },
+    submissionMeta: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+
+    // Contest participation styles
+    contestsList: {
+      gap: 12,
+    },
+    contestCard: {
+      backgroundColor: C.card,
+      borderRadius: 12,
+      padding: 16,
+      shadowColor: "#000",
+      shadowOpacity: 0.06,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 1,
+    },
+    contestHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 12,
+    },
+    contestTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: C.foreground,
+      flex: 1,
+      marginRight: 12,
+    },
+    contestStatus: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      gap: 4,
+    },
+    contestStatusText: {
+      fontSize: 12,
+      fontWeight: "500",
+    },
+    contestProgress: {
+      marginBottom: 12,
+    },
+    progressBar: {
+      height: 6,
+      backgroundColor: C.muted,
+      borderRadius: 3,
+      overflow: "hidden",
+      marginBottom: 6,
+    },
+    progressFill: {
+      height: "100%",
+      borderRadius: 3,
+    },
+    progressText: {
+      fontSize: 12,
+      color: C.mutedForeground,
+      textAlign: "right",
+    },
+    contestMeta: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
   });

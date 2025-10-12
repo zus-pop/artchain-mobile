@@ -17,6 +17,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { toast } from "sonner-native";
+import { useWhoAmI } from "../apis/auth";
 import { useContestById } from "../apis/contest";
 import { Contest } from "../types";
 
@@ -164,6 +166,7 @@ export default function ContestDetail() {
     error,
     refetch,
   } = useContestById(contestId);
+  const { data: me } = useWhoAmI();
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const C = Colors[scheme];
   const s = styles(C);
@@ -457,7 +460,28 @@ export default function ContestDetail() {
             {contest?.status === "ACTIVE" && (
               <TouchableOpacity
                 style={[s.ctaBtn, { backgroundColor: C.chart1 }]}
-                onPress={() => router.push("/painting-upload")}
+                onPress={() => {
+                  if (!me) {
+                    router.push("/login");
+                    return;
+                  }
+                  if (me.role === "COMPETITOR") {
+                    router.push({
+                      pathname: "/painting-upload",
+                      params: {
+                        type: "COMPETITOR",
+                        contestId: contest.contestId,
+                        competitorId: me.userId,
+                        roundId: contest.roundId,
+                      },
+                    });
+                    return;
+                  }
+
+                  if (me.role === "GUARDIAN") {
+                    toast.info("TODO: Not implemented yet!");
+                  }
+                }}
                 activeOpacity={0.9}
               >
                 <Palette size={18} color={C.primaryForeground} />

@@ -3,12 +3,14 @@ export interface LoginRequest {
   password: string;
 }
 
+export type UserRole = "COMPETITOR" | "GUARDIAN" | "ADMIN" | "STAFF";
+
 export interface RegisterRequest {
   username: string;
   password: string;
   email: string;
   fullName: string;
-  role: "COMPETITOR" | "GUARDIAN";
+  role: UserRole;
   // Competitor specific fields
   schoolName?: string;
   grade?: string;
@@ -24,11 +26,13 @@ export interface AuthResponse {
 }
 
 export interface WhoAmI {
+  userId: string;
   fullName: string;
   email: string;
+  role: UserRole;
   phone?: string;
-  birthday: string;
-  schoolName: string;
-  ward: string;
-  grade: string;
+  birthday?: string;
+  schoolName?: string;
+  ward?: string;
+  grade?: string;
 }
