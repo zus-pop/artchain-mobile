@@ -3,8 +3,8 @@ import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React, { useMemo, useRef, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Image,
@@ -26,11 +26,14 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 export default function ProfileScreen() {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const accessToken = useAuthStore((state) => state.accessToken);
-  const { data: user, isLoading } = useWhoAmI();
+  const { data: user, isLoading, refetch: reloadMe } = useWhoAmI();
   const C = Colors[scheme];
   const s = styles(C);
-  const { data: mySubmission = [], isLoading: isMySubmissionLoading } =
-    useMySubmission();
+  const {
+    data: mySubmission = [],
+    isLoading: isMySubmissionLoading,
+    refetch: reloadSubmission,
+  } = useMySubmission();
   const userStats: UserStats = {
     totalSubmissions: 12,
     wins: 3,
@@ -131,7 +134,12 @@ export default function ProfileScreen() {
       ? "Đã nộp"
       : "Không xác định";
   };
-
+  useFocusEffect(
+    useCallback(() => {
+      reloadMe();
+      reloadSubmission();
+    }, [])
+  );
   const ICONS: Record<
     "brush" | "trophy" | "eye" | "heart",
     { fg: string; bg: string }

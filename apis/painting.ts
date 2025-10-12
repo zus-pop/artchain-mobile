@@ -1,19 +1,15 @@
+import myAxios from "@/constants/custom-axios";
 import { Painting, PaintingUploadRequest } from "@/types";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { toast } from "sonner-native";
-import myAxios from "../constants/custom-axios";
 
 export function useMySubmission() {
   return useQuery({
     queryKey: ["me/submissions"],
     queryFn: async () => {
-      try {
-        const response = await myAxios.get<Painting[]>("/users/me/submissions");
-        return response.data;
-      } catch (error) {
-        console.log(error);
-        return [];
-      }
+      const response = await myAxios.get<Painting[]>("/users/me/submissions");
+      return response.data;
     },
   });
 }
@@ -40,6 +36,7 @@ export function useUploadPainting() {
     onSuccess: () => {
       toast.success(`Upload painting successfully!`);
       // TODO: Navigate to my submission
+      router.navigate("/(tabs)/profile");
     },
     onError: (error) => {
       toast.error(error.message);
