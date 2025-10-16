@@ -1,5 +1,5 @@
 import { useContest } from "@/apis/contest";
-import { ContestCard } from "@/components/ContestCard";
+import { ContestCard } from "@/components/cards/ContestCard";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { LinearGradient } from "expo-linear-gradient";
@@ -238,7 +238,10 @@ export default function SearchResultsScreen() {
             String(item.contestId ?? item.id ?? i)
           }
           ListHeaderComponent={ListHeader}
-          contentContainerStyle={{paddingTop: HEADER_H + 12,paddingBottom: 48 }}
+          contentContainerStyle={{
+            paddingTop: HEADER_H + 12,
+            paddingBottom: 48,
+          }}
           renderItem={({ item }) => (
             <View style={s.cardWrap}>
               {/* Glass wrap cho card */}
