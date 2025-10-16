@@ -1,13 +1,15 @@
 // components/header/contest/CollapsibleHeader.tsx
 import { Colors } from "@/constants/theme";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router"; // ⬅️ thêm
+import { router } from "expo-router";
 import { Filter, Search } from "lucide-react-native";
-import React, { useEffect, useMemo, useRef } from "react";
+import React from "react";
 import {
   Animated,
-  Easing,
+  ImageBackground,
+  ImageSourcePropType,
   LayoutChangeEvent,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,12 +26,15 @@ export type FilterOption =
 
 type Props = {
   scheme: "light" | "dark";
-  translateY: Animated.AnimatedInterpolation<number>; // [-headerHeight..0]
-  progress: Animated.AnimatedInterpolation<number>; // 0: mở, 1: ẩn
+  translateY: Animated.AnimatedInterpolation<number> | Animated.Value;
+  /** Tồn tại để tương thích API cũ; không dùng ở đây */
+  progress: Animated.AnimatedInterpolation<number>;
   headerOnLayout: (e: LayoutChangeEvent) => void;
 
+  /** Giữ prop để tương thích nơi gọi, dù header không nhập text trực tiếp */
   searchQuery: string;
-  onChangeSearch: (txt: string) => void; // vẫn giữ prop để tương thích nơi dùng
+  onChangeSearch: (txt: string) => void; // not used
+  onSubmitSearch?: () => void; // not used
 
   showFilters: boolean;
   onToggleFilters: () => void;
@@ -37,185 +42,51 @@ type Props = {
   selectedFilter: FilterOption;
   onSelectFilter: (opt: FilterOption) => void;
   filterOptions: FilterOption[];
+
+  /** Ảnh nền */
+  bgImage?: ImageSourcePropType; // require('...') hoặc { uri }
+  /** Safe-area top, dùng để tạo khoảng trắng riêng (không đẩy UI xuống) */
+  topInset?: number;
 };
 
 export default function CollapsibleHeader({
   scheme,
   translateY,
-  progress,
   headerOnLayout,
   searchQuery,
-  onChangeSearch, // hiện không dùng trực tiếp ở đây (search làm ở screen mới)
-  showFilters,
   onToggleFilters,
+  showFilters,
   selectedFilter,
   onSelectFilter,
   filterOptions,
+  bgImage = require("../../../assets/images/banner/bannerSearch.jpg"),
+  topInset = 0,
 }: Props) {
   const C = Colors[scheme];
   const s = styles(C);
 
-  // ====== Anim helpers (màu chuyển nhịp) ======
-  const pulse = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.timing(pulse, {
-        toValue: 1,
-        duration: 6000,
-        easing: Easing.linear,
-        useNativeDriver: false, // đổi màu => JS driver
-      })
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [pulse]);
-
-  // Bảng màu tươi
-  const palette = useMemo(
-    () => [
-      C.chart1 || "#F59E0B", // amber
-      C.chart2 || "#22C55E", // green
-      C.chart3 || "#3B82F6", // blue
-      C.primary || "#7C3AED", // violet
-      C.accent || "#EF4444", // red
-    ],
-    [C]
-  );
-
-  // Chu kỳ màu
-  const colorCycle = pulse.interpolate({
-    inputRange: [0, 0.25, 0.5, 0.75, 1],
-    outputRange: [palette[0], palette[1], palette[2], palette[3], palette[0]],
-  });
-
-  // Parallax blobs (native driver áp vào transform)
-  const blobScale = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0.9],
-    extrapolate: "clamp",
-  });
-  const blobTranslateY = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -6],
-    extrapolate: "clamp",
-  });
-
-  // Search row anim
-  const searchOpacity = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0.12],
-    extrapolate: "clamp",
-  });
-  const searchScale = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0.95],
-    extrapolate: "clamp",
-  });
-
-  // Chip nhấn mượt
-  const Chip = ({ label, active }: { label: string; active: boolean }) => {
-    const scale = useRef(new Animated.Value(1)).current;
-    const onIn = () =>
-      Animated.spring(scale, { toValue: 0.95, useNativeDriver: true }).start();
-    const onOut = () =>
-      Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
-
-    return (
-      <Animated.View style={{ transform: [{ scale }], marginRight: 10 }}>
-        <Pressable
-          onPressIn={onIn}
-          onPressOut={onOut}
-          onPress={() => onSelectFilter(label as FilterOption)}
-          style={[
-            s.filterOption,
-            active && s.filterOptionActive,
-            { borderColor: active ? "transparent" : C.border },
-          ]}
-        >
-          <Animated.View
-            style={[
-              s.chipDot,
-              { backgroundColor: active ? "#fff" : colorCycle },
-            ]}
-          />
-          <Text
-            style={[s.filterOptionText, active && s.filterOptionTextActive]}
-            numberOfLines={1}
-          >
-            {label}
-          </Text>
-        </Pressable>
-      </Animated.View>
-    );
-  };
-
-  // ====== Nền nghệ thuật (đÃ TÁCH LỚP) ======
-  const AccentBG = useMemo(
-    () => (
-      <>
-        {/* BLOB TRÁI */}
-        <Animated.View
-          style={[
-            s.blobOuter,
-            {
-              left: -60,
-              top: -26,
-              transform: [
-                { scale: blobScale }, // native
-                { translateY: blobTranslateY }, // native
-                { rotate: "-12deg" }, // native
-              ],
-            },
-          ]}
-        >
-          <Animated.View
-            style={[
-              s.blobInner,
-              { backgroundColor: colorCycle, opacity: 0.18 },
-            ]}
-          />
-        </Animated.View>
-
-        {/* BLOB PHẢI */}
-        <Animated.View
-          style={[
-            s.blobOuter,
-            {
-              right: -70,
-              top: -18,
-              transform: [
-                { scale: blobScale }, // native
-                { translateY: blobTranslateY }, // native
-                { rotate: "14deg" }, // native
-              ],
-            },
-          ]}
-        >
-          <Animated.View
-            style={[
-              s.blobInner,
-              { backgroundColor: palette[2], opacity: 0.14 },
-            ]}
-          />
-        </Animated.View>
-
-        {/* Dots pattern + rainbow */}
-        <View style={s.dotsWrap}>
-          {Array.from({ length: 18 }).map((_, i) => (
-            <View key={i} style={s.dot} />
-          ))}
-        </View>
-        <View style={s.rainbowRow}>
-          <View style={[s.rainbowBar, { backgroundColor: palette[0] }]} />
-          <View style={[s.rainbowBar, { backgroundColor: palette[1] }]} />
-          <View style={[s.rainbowBar, { backgroundColor: palette[2] }]} />
-          <View style={[s.rainbowBar, { backgroundColor: palette[3] }]} />
-          <View style={[s.rainbowBar, { backgroundColor: palette[4] }]} />
-        </View>
-      </>
-    ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [scheme, palette, colorCycle, blobScale, blobTranslateY]
+  const Chip = ({ label, active }: { label: string; active: boolean }) => (
+    <Pressable
+      onPress={() => onSelectFilter(label as FilterOption)}
+      style={({ pressed }) => [
+        s.filterOption,
+        active && s.filterOptionActive,
+        { opacity: pressed ? 0.9 : 1 },
+      ]}
+    >
+      <View
+        style={[
+          s.chipDot,
+          { backgroundColor: active ? C.primary : "rgba(255,255,255,0.9)" },
+        ]}
+      />
+      <Text
+        style={[s.filterOptionText, active && s.filterOptionTextActive]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 
   return (
@@ -224,105 +95,95 @@ export default function CollapsibleHeader({
       style={[
         s.header,
         {
-          transform: [{ translateY }],
+          transform: [{ translateY: translateY as any }],
           shadowColor: "#000",
-          shadowOpacity: 0.08,
-          shadowRadius: 10,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 3,
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 2,
         },
       ]}
     >
-      {/* Nền & kính mờ */}
-      <View style={s.accentWrap}>{AccentBG}</View>
-      <View style={s.glass} />
-<View style={s.colorHeaderWrap} accessible accessibilityRole="header">
-  <LinearGradient
-    colors={[palette[0], palette[2], palette[3]]}
-    start={{ x: 0, y: 0 }}
-    end={{ x: 1, y: 1 }}
-    style={s.colorHeader}
-  >
-    {/* vệt sáng nhịp màu */}
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        s.colorHeaderGlow,
-        { backgroundColor: colorCycle }
-      ]}
-    />
-
-    <Text style={s.colorHeaderTitle} numberOfLines={1}>
-      Khám phá cuộc thi
-    </Text>
-    <Text style={s.colorHeaderSubtitle} numberOfLines={1}>
-      Tìm kiếm & lọc nhanh chóng
-    </Text>
-  </LinearGradient>
-</View>
-
-      {/* Hàng tìm kiếm + nút filter */}
-      <Animated.View
-        style={[
-          s.searchRow,
-          { opacity: searchOpacity, transform: [{ scale: searchScale }] },
-        ]}
-      >
-        {/* ⬇️ Nút mở Search Screen (thay cho TextInput) */}
-        <Pressable
-          onPress={() =>
-            router.push({
-              pathname: "/searchContest",
-              params: { q: searchQuery ?? "" },
-            })
-          }
-          style={({ pressed }) => [
-            s.searchContainer,
-            { opacity: pressed ? 0.9 : 1 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Mở màn hình tìm kiếm"
-        >
-          <Search size={18} color={C.mutedForeground} style={s.searchIcon} />
-          <Text style={s.searchInput} numberOfLines={1}>
-            {searchQuery?.trim()?.length ? searchQuery : "Tìm kiếm cuộc thi..."}
-          </Text>
-
-          {/* viền nhịp sắc động giữ nguyên */}
-          <Animated.View
-            pointerEvents="none"
-            style={[s.searchBorderPulse, { backgroundColor: colorCycle }]}
-          />
-        </Pressable>
-
-        <Pressable
-          onPress={onToggleFilters}
-          style={({ pressed }) => [
-            s.filterBtn,
-            { opacity: pressed ? 0.88 : 1, backgroundColor: C.primary },
-          ]}
-        >
-          <Filter size={18} color={C.primaryForeground} />
-        </Pressable>
-      </Animated.View>
-
-      {/* Chips lọc */}
-      {showFilters && (
-        <Animated.View
-          style={{
-            paddingTop: 12,
-            opacity: searchOpacity,
-            transform: [{ scale: searchScale }],
-          }}
-        >
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {filterOptions.map((opt) => (
-              <Chip key={opt} label={opt} active={selectedFilter === opt} />
-            ))}
-          </ScrollView>
-        </Animated.View>
+      {/* Spacer trắng cho safe-area: KHÔNG đẩy nội dung tìm kiếm xuống */}
+      {topInset > 0 && (
+        <View
+          style={{ height: topInset, backgroundColor: "#fff", width: "100%" }}
+        />
       )}
 
+      {/* Ảnh nền + overlay đảm bảo tương phản chữ */}
+      <ImageBackground
+        source={bgImage}
+        defaultSource={Platform.OS === "ios" ? (bgImage as any) : undefined}
+        resizeMode="cover"
+        style={s.imageBg} // KHÔNG cộng topInset ở đây
+        imageStyle={s.imageBgImage}
+      >
+        <LinearGradient
+          pointerEvents="none"
+          colors={["rgba(0,0,0,0.55)", "rgba(0,0,0,0.35)", "rgba(0,0,0,0.20)"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.overlay}
+        />
+
+        {/* Tiêu đề */}
+        <View style={s.titleWrap} accessible accessibilityRole="header">
+          <Text style={s.title} numberOfLines={1}>
+            Khám phá cuộc thi
+          </Text>
+        </View>
+
+        {/* Search + Filter */}
+        <View style={s.searchRow}>
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: "/searchContest",
+                params: { q: searchQuery ?? "" },
+              })
+            }
+            style={({ pressed }) => [
+              s.searchContainer,
+              { opacity: pressed ? 0.9 : 1 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Mở màn hình tìm kiếm"
+          >
+            <Search size={18} color="#fff" style={s.searchIcon} />
+            <Text style={s.searchInput} numberOfLines={1}>
+              {searchQuery?.trim()?.length
+                ? searchQuery
+                : "Tìm kiếm cuộc thi..."}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={onToggleFilters}
+            style={({ pressed }) => [
+              s.filterBtn,
+              { opacity: pressed ? 0.88 : 1 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Mở bộ lọc"
+          >
+            <Filter size={18} color="#111" />
+          </Pressable>
+        </View>
+
+        {/* Chips */}
+        {showFilters && (
+          <View style={{ paddingTop: 12 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {filterOptions.map((opt) => (
+                <Chip key={opt} label={opt} active={selectedFilter === opt} />
+              ))}
+            </ScrollView>
+          </View>
+        )}
+      </ImageBackground>
+
+      {/* Hairline dưới cùng */}
       <View style={s.hairline} />
     </Animated.View>
   );
@@ -336,74 +197,38 @@ const styles = (C: any) =>
       left: 0,
       right: 0,
       zIndex: 10,
-      backgroundColor: "transparent",
+      borderBottomLeftRadius: 16,
+      borderBottomRightRadius: 16,
+      overflow: "hidden",
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: "rgba(255,255,255,0.2)",
+      backgroundColor: C.card,
+    },
+
+    imageBg: {
       paddingHorizontal: 16,
       paddingTop: 14,
       paddingBottom: 14,
     },
-
-    glass: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: C.card + (C.card?.length === 7 ? "E6" : ""), // nếu hex -> thêm alpha
-      borderBottomLeftRadius: 16,
-      borderBottomRightRadius: 16,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: C.border,
-    },
-
-    // ===== BG nghệ thuật =====
-    accentWrap: {
-      ...StyleSheet.absoluteFillObject,
-      overflow: "hidden",
+    imageBgImage: {
       borderBottomLeftRadius: 16,
       borderBottomRightRadius: 16,
     },
-
-    // TÁCH LỚP: outer nhận transform (native), inner nhận color (JS)
-    blobOuter: {
-      position: "absolute",
-      width: 200,
-      height: 100,
-      borderRadius: 30,
-      overflow: "hidden",
-    },
-    blobInner: {
-      position: "absolute",
-      left: 0,
-      top: 0,
-      right: 0,
-      bottom: 0,
-      borderRadius: 30,
+    overlay: {
+      ...StyleSheet.absoluteFillObject,
     },
 
-    dotsWrap: {
-      position: "absolute",
-      right: 14,
-      top: 12,
-      width: 80,
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 6,
-      opacity: 0.18,
+    titleWrap: { marginBottom: 10 },
+    title: {
+      fontSize: 18,
+      fontWeight: "800",
+      color: "#fff",
+      letterSpacing: 0.3,
+      textShadowColor: "rgba(0,0,0,0.35)",
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 2,
     },
-    dot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: C.border,
-    },
-    rainbowRow: {
-      position: "absolute",
-      left: 0,
-      right: 0,
-      bottom: 0,
-      height: 3,
-      flexDirection: "row",
-      opacity: 0.9,
-    },
-    rainbowBar: { flex: 1 },
 
-    // ===== Nội dung =====
     searchRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -411,37 +236,21 @@ const styles = (C: any) =>
     },
     searchContainer: {
       flex: 1,
-      position: "relative",
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: C.input,
+      backgroundColor: "rgba(255,255,255,0.14)",
       borderRadius: 16,
       paddingHorizontal: 12,
       paddingVertical: 10,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: C.border,
-      shadowColor: "#000",
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: 2,
-      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.28)",
     },
-    searchIcon: { marginRight: 8, opacity: 0.85 },
+    searchIcon: { marginRight: 8, opacity: 0.95 },
     searchInput: {
       flex: 1,
       paddingVertical: 4,
       fontSize: 15,
-      color: C.foreground,
-    },
-    searchBorderPulse: {
-      position: "absolute",
-      left: -2,
-      right: -2,
-      top: -2,
-      bottom: -2,
-      borderRadius: 18,
-      opacity: 0.12,
+      color: "#fff",
     },
 
     filterBtn: {
@@ -450,11 +259,9 @@ const styles = (C: any) =>
       borderRadius: 22,
       alignItems: "center",
       justifyContent: "center",
-      shadowColor: "#000",
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 2,
+      backgroundColor: "#fff",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.6)",
     },
 
     filterOption: {
@@ -463,22 +270,24 @@ const styles = (C: any) =>
       gap: 8,
       paddingHorizontal: 14,
       paddingVertical: 8,
-      backgroundColor: C.input,
+      backgroundColor: "rgba(255,255,255,0.12)",
       borderRadius: 999,
-      borderWidth: StyleSheet.hairlineWidth,
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.28)",
+      marginRight: 10,
     },
-    chipDot: { width: 8, height: 8, borderRadius: 4, opacity: 0.9 },
-    filterOptionActive: {
-      backgroundColor: C.primary,
-      borderColor: "transparent",
-    },
+    chipDot: { width: 8, height: 8, borderRadius: 4, opacity: 0.95 },
     filterOptionText: {
       fontSize: 13,
-      color: C.mutedForeground,
+      color: "#fff",
       fontWeight: "800",
       letterSpacing: 0.3,
     },
-    filterOptionTextActive: { color: C.primaryForeground },
+    filterOptionActive: {
+      backgroundColor: "#fff",
+      borderColor: "transparent",
+    },
+    filterOptionTextActive: { color: "#111" },
 
     hairline: {
       position: "absolute",
@@ -486,40 +295,6 @@ const styles = (C: any) =>
       right: 0,
       bottom: 0,
       height: StyleSheet.hairlineWidth * 2,
-      backgroundColor: C.border,
-      opacity: 0.5,
+      backgroundColor: "rgba(255,255,255,0.35)",
     },
-    colorHeaderWrap: {
-  marginBottom: 12,
-  borderRadius: 16,
-  overflow: "hidden",
-  // đổ bóng nhẹ để nổi khối
-  shadowColor: "#000",
-  shadowOpacity: 0.08,
-  shadowRadius: 10,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 3,
-},
-colorHeader: {
-  paddingHorizontal: 16,
-  paddingVertical: 14,
-  minHeight: 64,
-  justifyContent: "center",
-},
-colorHeaderGlow: {
-  ...StyleSheet.absoluteFillObject,
-  opacity: 0.18,
-},
-colorHeaderTitle: {
-  fontSize: 18,
-  fontWeight: "800",
-  color: "#fff",
-  letterSpacing: 0.3,
-},
-colorHeaderSubtitle: {
-  marginTop: 2,
-  fontSize: 13,
-  color: "rgba(255,255,255,0.9)",
-},
-
   });
