@@ -117,6 +117,10 @@ export default function RootLayout() {
                 name="painting-upload"
                 options={{ title: "Bài vẽ dự thi", headerShown: true }}
               />
+              <Stack.Screen
+                name="painting-evaluation"
+                options={{ title: "Chấm bài", headerShown: true }}
+              />
             </Stack>
             <Toaster richColors />
           </ThemeProvider>

@@ -9,13 +9,8 @@ export function useWhoAmI() {
   return useQuery({
     queryKey: ["me"],
     queryFn: async () => {
-      try {
-        const response = await myAxios.get<WhoAmI>("/users/me");
-        return response.data;
-      } catch (error) {
-        console.log(error);
-        return null;
-      }
+      const response = await myAxios.get<WhoAmI>("/users/me");
+      return response.data;
     },
   });
 }

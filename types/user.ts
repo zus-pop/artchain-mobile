@@ -11,3 +11,10 @@ export interface User {
   ward?: string;
   grade?: string;
 }
+
+export interface UpdateUserRequest {
+  userId: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+}

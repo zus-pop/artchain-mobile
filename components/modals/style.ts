@@ -5,7 +5,7 @@ const styles = (C: any) => {
   const SNAP = { OPEN: 0, DISMISS: SCREEN_H };
   const DRAG_CLOSE_THRESHOLD = 120;
   const VELOCITY_CLOSE_THRESHOLD = 1.0;
-  const FOOTER_H = 64;
+  const FOOTER_H = 100;
   return StyleSheet.create({
     wrap: { flex: 1, justifyContent: "flex-end" },
     backdrop: {
@@ -156,56 +156,56 @@ const styles = (C: any) => {
       borderRadius: 12,
     },
     camBtn: {
-    position: "absolute",
-    right: -4,
-    bottom: -4,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  row: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 0,
-    fontWeight: "600",
-  },
-  inputError: {
-    borderWidth: 1,
-    borderColor: "#EF4444",
-  },
-  label: {
-    fontSize: 12,
-    marginBottom: 6,
-    fontWeight: "600",
-    opacity: 0.8,
-  },
-  err: {
-    fontSize: 12,
-    marginTop: 6,
-    fontWeight: "600",
-  },
-  handleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 4,
-  },
+      position: "absolute",
+      right: -4,
+      bottom: -4,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 2,
+      shadowColor: "#000",
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 2,
+    },
+    row: {
+      borderWidth: StyleSheet.hairlineWidth,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    input: {
+      flex: 1,
+      paddingVertical: 0,
+      fontWeight: "600",
+    },
+    inputError: {
+      borderWidth: 1,
+      borderColor: "#EF4444",
+    },
+    label: {
+      fontSize: 12,
+      marginBottom: 6,
+      fontWeight: "600",
+      opacity: 0.8,
+    },
+    err: {
+      fontSize: 12,
+      marginTop: 6,
+      fontWeight: "600",
+    },
+    handleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 4,
+    },
   });
 };
 

@@ -12,7 +12,6 @@ import * as ImagePicker from "expo-image-picker";
 import React, { useMemo, useRef, useState } from "react";
 import {
   Animated,
-  Image,
   ImageBackground,
   Pressable,
   RefreshControl,
@@ -33,7 +32,7 @@ export default function ProfileDetailScreen() {
   const s = styles(C);
 
   // Hooks
-  const { data, isLoading, error } = useWhoAmI();
+  const { data: userUI, isLoading, error } = useWhoAmI();
   const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const [openDetails, setOpenDetails] = useState(false);
@@ -47,40 +46,6 @@ export default function ProfileDetailScreen() {
       setRefreshing(false);
     }
   };
-
-  // Map API -> UI
-  const userUI = useMemo(() => {
-    const handle = data?.email ? data.email.split("@")[0] : "user";
-    return {
-      fullName: data?.fullName ?? "Người dùng",
-      handle,
-      email: data?.email ?? "",
-      phone: data?.phone ?? "",
-      birthday: data?.birthday ?? "",
-      schoolName: data?.schoolName ?? "",
-      ward: data?.ward ?? "",
-      grade: data?.grade ?? "",
-      location: data
-        ? `${data.ward ?? ""}, ${data.schoolName ?? ""}`.trim()
-        : "",
-      avatar: (data as any)?.avatarUrl ?? "",
-      followers: (data as any)?.followersCount ?? 0,
-      likes: (data as any)?.totalLikes ?? 0,
-      following: (data as any)?.followingCount ?? 0,
-      coverUrl:
-        (data as any)?.coverUrl ||
-        "https://images.unsplash.com/photo-1508780709619-79562169bc64?q=80&w=1200&auto=format&fit=crop",
-    };
-  }, [data]);
-
-  const stats: Stat[] = useMemo(
-    () => [
-      { label: "lượt thích", value: String(userUI.likes) },
-      { label: "người theo dõi", value: String(userUI.followers) },
-      { label: "đang theo dõi", value: String(userUI.following) },
-    ],
-    [userUI.likes, userUI.followers, userUI.following]
-  );
 
   const achievements = useMemo(
     () => [
@@ -129,7 +94,7 @@ export default function ProfileDetailScreen() {
       </View>
     );
   }
-  if (!data || error) {
+  if (!userUI || error) {
     return (
       <View style={[s.container, center]}>
         <Text style={{ color: C.mutedForeground }}>
@@ -168,7 +133,7 @@ export default function ProfileDetailScreen() {
         {/* Banner */}
         <View>
           <ImageBackground
-            source={{ uri: userUI.coverUrl }}
+            source={{ uri: "https://via.placeholder.com/400x160" }}
             style={s.banner}
             imageStyle={s.bannerImg}
           >
@@ -184,13 +149,9 @@ export default function ProfileDetailScreen() {
 
           {/* Avatar nổi + nút máy ảnh góc dưới-phải */}
           <View style={s.avatarWrap}>
-            {userUI.avatar ? (
-              <Image source={{ uri: userUI.avatar }} style={s.avatar} />
-            ) : (
-              <View style={[s.avatar, { backgroundColor: C.muted }]}>
-                <Ionicons name="person" size={28} color={C.mutedForeground} />
-              </View>
-            )}
+            <View style={[s.avatar, { backgroundColor: C.muted }]}>
+              <Ionicons name="person" size={28} color={C.mutedForeground} />
+            </View>
 
             {/* Nút máy ảnh để đổi avatar */}
             <Pressable
@@ -217,15 +178,6 @@ export default function ProfileDetailScreen() {
             {userUI.fullName}
           </Text>
 
-          <View style={s.statsRow}>
-            {stats.map((st, i) => (
-              <View key={i} style={s.statBox}>
-                <Text style={s.statValue}>{st.value}</Text>
-                <Text style={s.statLabel}>{st.label}</Text>
-              </View>
-            ))}
-          </View>
-
           <Pressable
             onPress={() => setOpenDetails(true)}
             style={({ pressed }) => [
@@ -247,13 +199,6 @@ export default function ProfileDetailScreen() {
           ]}
         >
           <Text style={s.detailTitle}>Thông tin tài khoản</Text>
-
-          <InfoRow
-            icon="at-outline"
-            label="Username"
-            value={`@${userUI.handle}`}
-            C={C}
-          />
           <InfoRow
             icon="mail-outline"
             label="Email"
@@ -299,13 +244,10 @@ export default function ProfileDetailScreen() {
         onClose={() => setOpenDetails(false)}
         scheme={scheme}
         user={{
-          name: userUI.fullName,
-          handle: userUI.handle,
+          userId: userUI.userId,
+          fullname: userUI.fullName,
           email: userUI.email,
           phone: userUI.phone || "",
-          location: userUI.location,
-          avatar: userUI.avatar,
-          followers: userUI.followers,
         }}
         achievements={achievements}
       />
@@ -446,7 +388,7 @@ const styles = (C: ColorTokens) =>
     },
     camBtn: {
       position: "absolute",
-      right: "calc(50% - 76/2px)", // RN không hỗ trợ calc → dùng offset bằng số:
+      // right: "calc(50% - 76/2px)", // RN không hỗ trợ calc → dùng offset bằng số:
       // ↳ nên dùng tọa độ số tuyệt đối thay vì calc. Sửa lại như sau:
       // right: -4,
       // bottom: -4,

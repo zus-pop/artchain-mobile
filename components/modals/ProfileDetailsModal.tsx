@@ -1,7 +1,10 @@
+import { useUpdateUserById } from "@/apis/user";
 import { Colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
+import { zodResolver } from "@hookform/resolvers/zod";
 import * as ImagePicker from "expo-image-picker";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
+import { Controller, useForm } from "react-hook-form";
 import {
   Animated,
   Dimensions,
@@ -18,17 +21,33 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { z } from "zod";
 import styles from "./style";
 
 type Scheme = "light" | "dark";
 
 type UserShape = {
-  name: string;
+  userId: string;
+  fullname: string;
   email: string;
   phone: string;
-  location: string;
   avatar?: string;
 };
+
+const userSchema = z.object({
+  fullname: z.string().min(1, "Vui lòng nhập họ tên"),
+  email: z.string().email("Email không hợp lệ"),
+  phone: z
+    .string()
+    .optional()
+    .refine(
+      (val) => !val || val === "" || /^(0|\+84)[3-9]\d{8}$/.test(val),
+      "Số điện thoại không hợp lệ (VD: 0987654321 hoặc +84987654321)"
+    ),
+  avatar: z.string().optional(),
+});
+
+type UserFormData = z.infer<typeof userSchema>;
 
 type Props = {
   visible: boolean;
@@ -44,8 +63,6 @@ const SNAP = { OPEN: 0, DISMISS: SCREEN_H };
 const DRAG_CLOSE_THRESHOLD = 120;
 const VELOCITY_CLOSE_THRESHOLD = 1.0;
 const FOOTER_H = 64;
-
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
 
 const COLORFUL = {
   blue: { bg: "rgba(37, 99, 235, 0.12)", fg: "#2563EB" }, // indigo-600
@@ -74,53 +91,32 @@ const ProfileDetailsModal: React.FC<Props> = ({
   const scrollYRef = useRef(0);
 
   // ---------- FORM STATE ----------
-  const [form, setForm] = useState<UserShape>(user);
-  const [touched, setTouched] = useState<Record<keyof UserShape, boolean>>({
-    name: false,
-    email: false,
-    phone: false,
-    location: false,
-    avatar: false,
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isValid },
+    reset,
+    setValue,
+    watch,
+  } = useForm<UserFormData>({
+    resolver: zodResolver(userSchema),
+    defaultValues: user,
+    mode: "all",
   });
 
+  const formValues = watch();
   // reset form khi mở modal với user mới
   useEffect(() => {
     if (visible) {
-      setForm(user);
-      setTouched({
-        name: false,
-        email: false,
-        phone: false,
-        location: false,
-        avatar: false,
-      });
+      reset(user);
     }
-  }, [visible, user]);
+  }, [visible, user, reset]);
 
-  const setField = <K extends keyof UserShape>(key: K, val: UserShape[K]) => {
-    setForm((prev) => ({ ...prev, [key]: val }));
+  const setField = (key: keyof UserFormData, val: any) => {
+    setValue(key, val);
   };
 
-  const errors = useMemo(() => {
-    const e: Partial<Record<keyof UserShape, string>> = {};
-    if (!form.name.trim()) e.name = "Vui lòng nhập họ tên";
-    if (!emailRegex.test(form.email)) e.email = "Email không hợp lệ";
-    if (form.phone && form.phone.replace(/\D/g, "").length < 8)
-      e.phone = "Số điện thoại chưa đúng";
-    return e;
-  }, [form]);
-
-  const isDirty = useMemo(() => {
-    return (
-      form.name !== user.name ||
-      form.email !== user.email ||
-      form.phone !== user.phone ||
-      form.location !== user.location ||
-      form.avatar !== user.avatar
-    );
-  }, [form, user]);
-
-  const canSave = isDirty && Object.keys(errors).length === 0;
+  const canSave = isValid && Object.keys(errors).length === 0;
 
   // ---------- SHEET ANIM ----------
   const openSheet = () => {
@@ -163,6 +159,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
       onClose();
     });
   };
+  const { mutate, isPending } = useUpdateUserById(closeSheet);
 
   const animateTo = (to: number) => {
     if (to === SNAP.DISMISS) return closeSheet();
@@ -223,17 +220,19 @@ const ProfileDetailsModal: React.FC<Props> = ({
     });
     if (!result.canceled && result.assets?.[0]?.uri) {
       setField("avatar", result.assets[0].uri);
-      setTouched((t) => ({ ...t, avatar: true }));
     }
   };
 
   if (!visible) return null;
 
-  const handleSave = () => {
-    if (!canSave) return;
-    if (onSave) onSave(form);
-    closeSheet();
-  };
+  const handleSave = handleSubmit((data: UserFormData) => {
+    mutate({
+      userId: user.userId,
+      email: data.email,
+      fullName: data.fullname,
+      phone: data.phone,
+    });
+  });
 
   return (
     <Modal
@@ -286,8 +285,8 @@ const ProfileDetailsModal: React.FC<Props> = ({
             {/* INFO / AVATAR */}
             <View style={s.infoRow}>
               <View style={[s.avatarRing, { shadowColor: COLORFUL.sky.fg }]}>
-                {form.avatar ? (
-                  <Image source={{ uri: form.avatar }} style={s.avatar} />
+                {formValues.avatar ? (
+                  <Image source={{ uri: formValues.avatar }} style={s.avatar} />
                 ) : (
                   <View
                     style={[
@@ -302,9 +301,8 @@ const ProfileDetailsModal: React.FC<Props> = ({
                     />
                   </View>
                 )}
-
                 {/* Nút máy ảnh overlay — bấm để chọn ảnh trong máy */}
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   onPress={pickAvatar}
                   activeOpacity={0.9}
                   style={[
@@ -316,21 +314,27 @@ const ProfileDetailsModal: React.FC<Props> = ({
                   ]}
                 >
                   <Ionicons name="camera" size={14} color={"#fff"} />
-                </TouchableOpacity>
+                </TouchableOpacity> */}
               </View>
 
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <TextInput
-                  value={form.name}
-                  onChangeText={(t) => setField("name", t)}
-                  onBlur={() => setTouched((t) => ({ ...t, name: true }))}
-                  placeholder="Họ và tên"
-                  placeholderTextColor={C.mutedForeground}
-                  style={[
-                    local.input,
-                    { color: C.foreground, borderColor: C.border },
-                    errors.name && touched.name ? local.inputError : null,
-                  ]}
+                <Controller
+                  name="fullname"
+                  control={control}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <TextInput
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      placeholder="Họ và tên"
+                      placeholderTextColor={C.mutedForeground}
+                      style={[
+                        local.input,
+                        { color: C.foreground, borderColor: C.border },
+                        errors.fullname ? local.inputError : null,
+                      ]}
+                    />
+                  )}
                 />
               </View>
             </View>
@@ -344,12 +348,11 @@ const ProfileDetailsModal: React.FC<Props> = ({
                 iconColor={COLORFUL.blue.fg}
                 chipColor={COLORFUL.blue}
                 label="Email"
-                value={form.email}
-                onChangeText={(t) => setField("email", t)}
-                onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+                name="email"
+                control={control}
                 C={C}
                 keyboardType="email-address"
-                error={touched.email ? errors.email : undefined}
+                error={errors.email?.message}
               />
 
               <Field
@@ -357,46 +360,13 @@ const ProfileDetailsModal: React.FC<Props> = ({
                 iconColor={COLORFUL.green.fg}
                 chipColor={COLORFUL.green}
                 label="Điện thoại"
-                value={form.phone}
-                onChangeText={(t) => setField("phone", t)}
-                onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
+                name="phone"
+                control={control}
                 C={C}
                 keyboardType="phone-pad"
-                error={touched.phone ? errors.phone : undefined}
-              />
-
-              <Field
-                icon="location-outline"
-                iconColor={COLORFUL.purple.fg}
-                chipColor={COLORFUL.purple}
-                label="Địa chỉ / Khu vực"
-                value={form.location}
-                onChangeText={(t) => setField("location", t)}
-                onBlur={() => setTouched((t) => ({ ...t, location: true }))}
-                C={C}
-                placeholder="Phường, Quận"
-                last
+                error={errors.phone?.message}
               />
             </View>
-
-            {achievements.length > 0 && <View style={s.divider} />}
-
-            {/* ACHIEVEMENTS (read-only ở modal này) */}
-            {achievements.length > 0 && (
-              <View style={s.sectionTight}>
-                <Text style={s.sectionTitle}>Thành tích</Text>
-                {achievements.map((a, i) => (
-                  <DetailRow
-                    key={a.id}
-                    icon="trophy-outline"
-                    label={`${a.title} • ${a.place}`}
-                    C={C}
-                    tone="amber"
-                    last={i === achievements.length - 1}
-                  />
-                ))}
-              </View>
-            )}
           </ScrollView>
 
           {/* FOOTER STICKY */}
@@ -410,10 +380,13 @@ const ProfileDetailsModal: React.FC<Props> = ({
             ]}
           >
             <TouchableOpacity
-              style={[s.primaryBtn, canSave ? null : { opacity: 0.5 }]}
+              style={[
+                s.primaryBtn,
+                canSave && !isPending ? null : { opacity: 0.5 },
+              ]}
               onPress={handleSave}
               activeOpacity={0.9}
-              disabled={!canSave}
+              disabled={!canSave || isPending}
             >
               <Text
                 style={[
@@ -424,7 +397,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
                   },
                 ]}
               >
-                Lưu thay đổi
+                {!isPending ? "Lưu thay đổi" : "...Đang lưu"}
               </Text>
             </TouchableOpacity>
 
@@ -446,9 +419,8 @@ const ProfileDetailsModal: React.FC<Props> = ({
 function Field({
   icon,
   label,
-  value,
-  onChangeText,
-  onBlur,
+  name,
+  control,
   C,
   keyboardType,
   placeholder,
@@ -459,9 +431,8 @@ function Field({
 }: {
   icon: keyof typeof Ionicons.glyphMap | any;
   label: string;
-  value: string;
-  onChangeText: (t: string) => void;
-  onBlur?: () => void;
+  name: keyof UserFormData;
+  control: any;
   C: any;
   keyboardType?: "default" | "email-address" | "phone-pad";
   placeholder?: string;
@@ -484,14 +455,20 @@ function Field({
           size={16}
           color={iconColor ?? C.mutedForeground}
         />
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          onBlur={onBlur}
-          keyboardType={keyboardType}
-          placeholder={placeholder}
-          placeholderTextColor={C.mutedForeground}
-          style={[local.input, { color: C.foreground }]}
+        <Controller
+          name={name}
+          control={control}
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextInput
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              keyboardType={keyboardType}
+              placeholder={placeholder}
+              placeholderTextColor={C.mutedForeground}
+              style={[local.input, { color: C.foreground }]}
+            />
+          )}
         />
       </View>
       {!!error && (
