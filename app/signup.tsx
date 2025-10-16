@@ -69,7 +69,7 @@ export default function SignupScreen() {
             fontWeight: "bold",
           }}
         >
-          Người tham gia
+          Thí sinh
         </Text>
         <Text
           style={{
@@ -80,7 +80,7 @@ export default function SignupScreen() {
             marginTop: 4,
           }}
         >
-          Tham gia các cuộc thi nghệ thuật
+          Cá nhân tham gia dự thi
         </Text>
       </TouchableOpacity>
 
@@ -113,7 +113,7 @@ export default function SignupScreen() {
             fontWeight: "bold",
           }}
         >
-          Người giám sát
+          Người đại diện
         </Text>
         <Text
           style={{
@@ -124,7 +124,7 @@ export default function SignupScreen() {
             marginTop: 4,
           }}
         >
-          Giám sát và quản lý cuộc thi
+          Quản lí các thí sinh của mình
         </Text>
       </TouchableOpacity>
 
