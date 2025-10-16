@@ -1,6 +1,6 @@
 import AnnouncementCard from "@/components/cards/AnnouncementCard";
-import HeroCarousel from "@/components/carousels/HeroCarousel";
 
+import PodiumTop123, { Winner } from "@/assets/PodiumTop123";
 import CollapsibleHeader, {
   HEADER_COLLAPSED,
   HEADER_EXPANDED,
@@ -158,6 +158,23 @@ export default function Home() {
     },
   ];
 
+  const winners: [Winner, Winner, Winner] = [
+    {
+      name: "Nguyen An",
+      avatarUri: "https://i.pravatar.cc/150?img=1",
+      badgeText: "98 điểm",
+    },
+    {
+      name: "Tran Binh",
+      avatarUri: "https://i.pravatar.cc/150?img=2",
+      badgeText: "96 điểm",
+    },
+    {
+      name: "Le Chi",
+      avatarUri: "https://i.pravatar.cc/150?img=3",
+      badgeText: "94 điểm",
+    },
+  ];
   // giữ lại scrollY nếu bạn còn dùng cho thứ khác
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -365,12 +382,44 @@ export default function Home() {
         </View>
 
         <View>
-          <HeroCarousel
-            data={slides}
-            height={200}
-            inset={20}
-            radius={3}
-            autoPlayInterval={3500}
+          <PodiumTop123
+            winners={[
+              {
+                id: "art-001",
+                name: "Nguyen An",
+                avatarUri:
+                  "https://images.pexels.com/photos/3184192/pexels-photo-3184192.jpeg",
+                badgeText: "98 điểm",
+              },
+              {
+                id: "art-002",
+                name: "Tran Binh",
+                avatarUri:
+                  "https://images.pexels.com/photos/3184192/pexels-photo-3184192.jpeg",
+                badgeText: "96 điểm",
+              },
+              {
+                id: "art-003",
+                name: "Le Chi",
+                avatarUri:
+                  "https://images.pexels.com/photos/3184192/pexels-photo-3184192.jpeg",
+                badgeText: "94 điểm",
+              },
+            ]}
+            sizes={{ overallScale: 0.9, mainAvatar: 100, sideAvatar: 84 }}
+            avatarOffsetY={{ main: -12, side: -22 }}
+            ring={{ width: 3, innerWidth: 2 }}
+            halo={{ forAll: true, enabled: true, pulseMs: 1400, spread: 0.32 }} // cả 1/2/3 đều có halo
+            sparkle={{ enabled: true }} // cả 1/2/3 có sparkle dots
+            fireworks={{
+              enabled: true,
+              loopMs: 3000,
+              particleCount: 34,
+              durationMs: 1100,
+            }}
+            // onPressWinner={({ winner }) =>
+            //   winner.id && router.push(`/artworks/${winner.id}`)
+            // }
           />
         </View>
 

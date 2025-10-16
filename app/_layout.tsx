@@ -7,8 +7,12 @@ import { Colors, Fonts } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
+import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { View } from "react-native";
 import { Toaster } from "sonner-native";
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -18,6 +22,7 @@ const queryClient = new QueryClient();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
   const theme = {
     dark: colorScheme === "dark",
     colors: {
@@ -41,6 +46,18 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView>
       <SafeAreaProvider>
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: insets.top, // đúng bằng safe-area
+            backgroundColor: "#fff", // hoặc Colors[colorScheme].background
+            zIndex: 9999,
+          }}
+        />
         <QueryClientProvider client={queryClient}>
           <StatusBar translucent animated backgroundColor="transparent" />
           <ThemeProvider value={theme}>

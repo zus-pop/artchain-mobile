@@ -1,5 +1,5 @@
 // components/contest/ContestList.tsx
-import { ContestCard } from "@/components/ContestCard";
+import { ContestCard } from "@/components/cards/ContestCard";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import React from "react";
