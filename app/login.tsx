@@ -4,7 +4,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import {
@@ -46,6 +46,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const { mutate, isPending } = useLoginMutation();
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = (data: Schema) => {
     // Placeholder: Implement login logic
@@ -168,24 +169,46 @@ export default function LoginScreen() {
             control={control}
             name="password"
             render={({ field }) => (
-              <TextInput
-                placeholder="Mật khẩu"
-                onChangeText={field.onChange}
-                secureTextEntry
-                style={{
-                  width: "100%",
-                  borderWidth: 1,
-                  borderColor: Colors[colorScheme].border,
-                  backgroundColor: Colors[colorScheme].input,
-                  color: Colors[colorScheme].foreground,
-                  borderRadius: 12,
-                  marginBottom: 18,
-                  padding: 12,
-                  fontSize: 16,
-                }}
-                placeholderTextColor={Colors[colorScheme].mutedForeground}
-                {...field}
-              />
+              <View style={{ width: "100%", marginBottom: 18 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: Colors[colorScheme].border,
+                    backgroundColor: Colors[colorScheme].input,
+                    borderRadius: 12,
+                  }}
+                >
+                  <TextInput
+                    placeholder="Mật khẩu"
+                    onChangeText={field.onChange}
+                    secureTextEntry={!showPassword}
+                    style={{
+                      flex: 1,
+                      color: Colors[colorScheme].foreground,
+                      padding: 12,
+                      fontSize: 16,
+                    }}
+                    placeholderTextColor={Colors[colorScheme].mutedForeground}
+                    {...field}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={{
+                      padding: 12,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Ionicons
+                      name={!showPassword ? "eye-off" : "eye"}
+                      size={20}
+                      color={Colors[colorScheme].mutedForeground}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
             )}
           />
           {errors.password && (

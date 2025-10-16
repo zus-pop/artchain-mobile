@@ -3,7 +3,12 @@ export interface LoginRequest {
   password: string;
 }
 
-export type UserRole = "COMPETITOR" | "GUARDIAN" | "ADMIN" | "STAFF";
+export type UserRole =
+  | "COMPETITOR"
+  | "GUARDIAN"
+  | "ADMIN"
+  | "STAFF"
+  | "EXAMINER";
 
 export interface RegisterRequest {
   username: string;

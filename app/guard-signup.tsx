@@ -4,7 +4,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
@@ -56,6 +56,8 @@ export default function GuardSignupScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const { mutate, isPending } = useSignInMutation();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Guard form
   const guardForm = useForm<GuardForm>({
@@ -281,27 +283,46 @@ export default function GuardSignupScreen() {
             control={control}
             name="password"
             render={({ field }) => (
-              <TextInput
-                placeholder="Mật khẩu"
-                value={field.value}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-                secureTextEntry
-                style={{
-                  width: "100%",
-                  borderWidth: 1,
-                  borderColor: errors.password
-                    ? Colors[colorScheme].destructive
-                    : Colors[colorScheme].border,
-                  backgroundColor: Colors[colorScheme].input,
-                  color: Colors[colorScheme].foreground,
-                  borderRadius: 12,
-                  marginBottom: 14,
-                  padding: 12,
-                  fontSize: 16,
-                }}
-                placeholderTextColor={Colors[colorScheme].mutedForeground}
-              />
+              <View style={{ width: "100%", position: "relative" }}>
+                <TextInput
+                  placeholder="Mật khẩu"
+                  value={field.value}
+                  onChangeText={field.onChange}
+                  onBlur={field.onBlur}
+                  secureTextEntry={!showPassword}
+                  style={{
+                    width: "100%",
+                    borderWidth: 1,
+                    borderColor: errors.password
+                      ? Colors[colorScheme].destructive
+                      : Colors[colorScheme].border,
+                    backgroundColor: Colors[colorScheme].input,
+                    color: Colors[colorScheme].foreground,
+                    borderRadius: 12,
+                    marginBottom: 14,
+                    padding: 12,
+                    paddingRight: 50,
+                    fontSize: 16,
+                  }}
+                  placeholderTextColor={Colors[colorScheme].mutedForeground}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: [{ translateY: -20 }],
+                    padding: 4,
+                  }}
+                >
+                  <Ionicons
+                    name={!showPassword ? "eye-off" : "eye"}
+                    size={20}
+                    color={Colors[colorScheme].mutedForeground}
+                  />
+                </TouchableOpacity>
+              </View>
             )}
           />
           {errors.password && (
@@ -322,27 +343,46 @@ export default function GuardSignupScreen() {
             control={control}
             name="confirmPassword"
             render={({ field }) => (
-              <TextInput
-                placeholder="Xác nhận mật khẩu"
-                value={field.value}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-                secureTextEntry
-                style={{
-                  width: "100%",
-                  borderWidth: 1,
-                  borderColor: errors.confirmPassword
-                    ? Colors[colorScheme].destructive
-                    : Colors[colorScheme].border,
-                  backgroundColor: Colors[colorScheme].input,
-                  color: Colors[colorScheme].foreground,
-                  borderRadius: 12,
-                  marginBottom: 18,
-                  padding: 12,
-                  fontSize: 16,
-                }}
-                placeholderTextColor={Colors[colorScheme].mutedForeground}
-              />
+              <View style={{ width: "100%", position: "relative" }}>
+                <TextInput
+                  placeholder="Xác nhận mật khẩu"
+                  value={field.value}
+                  onChangeText={field.onChange}
+                  onBlur={field.onBlur}
+                  secureTextEntry={!showConfirmPassword}
+                  style={{
+                    width: "100%",
+                    borderWidth: 1,
+                    borderColor: errors.confirmPassword
+                      ? Colors[colorScheme].destructive
+                      : Colors[colorScheme].border,
+                    backgroundColor: Colors[colorScheme].input,
+                    color: Colors[colorScheme].foreground,
+                    borderRadius: 12,
+                    marginBottom: 18,
+                    padding: 12,
+                    paddingRight: 50,
+                    fontSize: 16,
+                  }}
+                  placeholderTextColor={Colors[colorScheme].mutedForeground}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: [{ translateY: -20 }],
+                    padding: 4,
+                  }}
+                >
+                  <Ionicons
+                    name={!showConfirmPassword ? "eye-off" : "eye"}
+                    size={20}
+                    color={Colors[colorScheme].mutedForeground}
+                  />
+                </TouchableOpacity>
+              </View>
             )}
           />
           {errors.confirmPassword && (
