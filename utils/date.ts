@@ -18,7 +18,7 @@ export function formatDate(
 ): string {
   const dateObj = typeof date === "string" ? new Date(date) : date;
 
-  if (isNaN(dateObj.getTime())) {
+  if (!dateObj || isNaN(dateObj.getTime())) {
     return "Invalid Date";
   }
 

@@ -37,6 +37,7 @@ export interface ThemeColors {
   sidebarAccentForeground: string;
   sidebarBorder: string;
   sidebarRing: string;
+  tint: string;
   // Opacity variants
   primary50: string; // 50% opacity
   primary20: string; // 20% opacity
@@ -86,6 +87,7 @@ export const Colors = {
     sidebarAccentForeground: "hsl(203.8863 88.2845% 53.1373%)",
     sidebarBorder: "hsl(205.0000 25.0000% 90.5882%)",
     sidebarRing: "hsl(202.8169 89.1213% 53.1373%)",
+    tint: "hsl(203.8863 88.2845% 53.1373%)",
     // Opacity variants
     primary50: "rgba(59, 130, 246, 0.5)", // 50% opacity blue
     primary20: "rgba(59, 130, 246, 0.2)", // 20% opacity blue
@@ -128,6 +130,7 @@ export const Colors = {
     sidebarAccentForeground: "hsl(203.7736 87.6033% 52.5490%)",
     sidebarBorder: "hsl(205.7143 15.7895% 26.0784%)",
     sidebarRing: "hsl(202.8169 89.1213% 53.1373%)",
+    tint: "hsl(203.7736 87.6033% 52.5490%)",
     // Opacity variants
     primary50: "rgba(56, 189, 248, 0.5)", // 50% opacity blue
     primary20: "rgba(56, 189, 248, 0.2)", // 20% opacity blue

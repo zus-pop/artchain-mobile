@@ -1,4 +1,5 @@
 import { Colors } from "@/constants/theme";
+import { Painting } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
@@ -16,42 +17,16 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { usePaintingEvaluations } from "../../apis/painting";
 import styles from "./style";
 
 type Scheme = "light" | "dark";
-
-type SubmissionShape = {
-  paintingId: string;
-  title: string;
-  imageUrl: string;
-  contest: {
-    title: string;
-    id: string;
-  };
-  submissionDate: string;
-  status: string;
-  description?: string;
-  evaluations?: {
-    id: string;
-    examinerName: string;
-    score: number;
-    maxScore: number;
-    comment: string;
-    evaluationDate: string;
-    criteria?: {
-      creativity: number;
-      technique: number;
-      composition: number;
-      originality: number;
-    };
-  }[];
-};
 
 type Props = {
   visible: boolean;
   onClose: () => void;
   scheme: Scheme;
-  submission: SubmissionShape | null;
+  submission: Painting;
 };
 
 const { height: SCREEN_H } = Dimensions.get("window");
@@ -76,6 +51,9 @@ const SubmissionDetailsModal: React.FC<Props> = ({
   scheme,
   submission,
 }) => {
+  const { data: evaluations = [] } = usePaintingEvaluations(
+    submission.paintingId
+  );
   const C = Colors[scheme];
   const s = styles(C);
 
@@ -204,13 +182,10 @@ const SubmissionDetailsModal: React.FC<Props> = ({
   };
 
   const averageScore = useMemo(() => {
-    if (!submission?.evaluations?.length) return 0;
-    const total = submission.evaluations.reduce(
-      (sum, foo) => sum + foo.score,
-      0
-    );
-    return Math.round((total / submission.evaluations.length) * 10) / 10;
-  }, [submission?.evaluations]);
+    if (evaluations.length) return 0;
+    const total = evaluations.reduce((sum, foo) => sum + foo.score, 0);
+    return Math.round((total / evaluations.length) * 10) / 10;
+  }, [evaluations]);
 
   if (!visible || !submission) return null;
 
@@ -326,7 +301,7 @@ const SubmissionDetailsModal: React.FC<Props> = ({
             </View>
 
             {/* EVALUATIONS SECTION */}
-            {submission.evaluations && submission.evaluations.length > 0 && (
+            {evaluations && evaluations.length > 0 && (
               <>
                 <View style={s.divider} />
                 <View style={s.sectionTight}>
@@ -346,13 +321,12 @@ const SubmissionDetailsModal: React.FC<Props> = ({
                           { color: COLORFUL.amber.fg },
                         ]}
                       >
-                        {averageScore}/
-                        {submission.evaluations[0]?.maxScore || 100}
+                        {averageScore}/10
                       </Text>
                     </View>
                   </View>
 
-                  {submission.evaluations.map((evaluation, index) => (
+                  {evaluations.map((evaluation) => (
                     <View key={evaluation.id} style={local.evaluationCard}>
                       <View style={local.evaluationHeaderRow}>
                         <View style={local.examinerInfo}>
@@ -368,7 +342,7 @@ const SubmissionDetailsModal: React.FC<Props> = ({
                                 { color: C.foreground },
                               ]}
                             >
-                              {evaluation.examinerName}
+                              {evaluation.examiner.examinerId}
                             </Text>
                             <Text
                               style={[
@@ -384,102 +358,15 @@ const SubmissionDetailsModal: React.FC<Props> = ({
                         </View>
                         <View style={local.scoreContainer}>
                           <Text style={[local.scoreText, { color: C.primary }]}>
-                            {evaluation.score}/{evaluation.maxScore}
+                            {evaluation.score}/10
                           </Text>
                         </View>
                       </View>
 
-                      {evaluation.comment && (
+                      {evaluation.feedback && (
                         <Text style={[local.comment, { color: C.foreground }]}>
-                          {evaluation.comment}
+                          {evaluation.feedback}
                         </Text>
-                      )}
-
-                      {evaluation.criteria && (
-                        <View style={local.criteriaContainer}>
-                          <Text
-                            style={[
-                              local.criteriaTitle,
-                              { color: C.mutedForeground },
-                            ]}
-                          >
-                            Chi tiết đánh giá:
-                          </Text>
-                          <View style={local.criteriaGrid}>
-                            <View style={local.criterion}>
-                              <Text
-                                style={[
-                                  local.criterionLabel,
-                                  { color: C.mutedForeground },
-                                ]}
-                              >
-                                Sáng tạo
-                              </Text>
-                              <Text
-                                style={[
-                                  local.criterionValue,
-                                  { color: C.foreground },
-                                ]}
-                              >
-                                {evaluation.criteria.creativity}/10
-                              </Text>
-                            </View>
-                            <View style={local.criterion}>
-                              <Text
-                                style={[
-                                  local.criterionLabel,
-                                  { color: C.mutedForeground },
-                                ]}
-                              >
-                                Kỹ thuật
-                              </Text>
-                              <Text
-                                style={[
-                                  local.criterionValue,
-                                  { color: C.foreground },
-                                ]}
-                              >
-                                {evaluation.criteria.technique}/10
-                              </Text>
-                            </View>
-                            <View style={local.criterion}>
-                              <Text
-                                style={[
-                                  local.criterionLabel,
-                                  { color: C.mutedForeground },
-                                ]}
-                              >
-                                Bố cục
-                              </Text>
-                              <Text
-                                style={[
-                                  local.criterionValue,
-                                  { color: C.foreground },
-                                ]}
-                              >
-                                {evaluation.criteria.composition}/10
-                              </Text>
-                            </View>
-                            <View style={local.criterion}>
-                              <Text
-                                style={[
-                                  local.criterionLabel,
-                                  { color: C.mutedForeground },
-                                ]}
-                              >
-                                Tính độc đáo
-                              </Text>
-                              <Text
-                                style={[
-                                  local.criterionValue,
-                                  { color: C.foreground },
-                                ]}
-                              >
-                                {evaluation.criteria.originality}/10
-                              </Text>
-                            </View>
-                          </View>
-                        </View>
                       )}
                     </View>
                   ))}
@@ -488,8 +375,7 @@ const SubmissionDetailsModal: React.FC<Props> = ({
             )}
 
             {/* NO EVALUATIONS YET */}
-            {(!submission.evaluations ||
-              submission.evaluations.length === 0) && (
+            {evaluations.length === 0 && (
               <>
                 <View style={s.divider} />
                 <View style={s.sectionTight}>

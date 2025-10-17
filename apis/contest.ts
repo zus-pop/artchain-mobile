@@ -28,3 +28,14 @@ export function useContestById(id: string) {
     },
   });
 }
+
+export function useExaminerContest(examinerId: string | undefined) {
+  return useQuery({
+    queryKey: ["/contests/examiner", examinerId],
+    queryFn: async () => {
+      const response = await myAxios.get(`/contests/examiner/${examinerId}`);
+      return response.data.data as Contest[];
+    },
+    enabled: !!examinerId,
+  });
+}

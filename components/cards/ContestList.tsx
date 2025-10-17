@@ -2,6 +2,7 @@
 import { ContestCard } from "@/components/cards/ContestCard";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Contest } from "@/types";
 import React from "react";
 import {
   ActivityIndicator,
@@ -10,12 +11,6 @@ import {
   Text,
   View,
 } from "react-native";
-
-export type Contest = {
-  contestId?: string | number;
-  id?: string | number;
-  // ... các field khác mà ContestCard cần (title, cover, status, ...)
-};
 
 type Props = {
   contests: Contest[];

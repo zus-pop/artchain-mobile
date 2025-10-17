@@ -7,10 +7,7 @@ import { Colors, Fonts } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { View } from "react-native";
 import { Toaster } from "sonner-native";
@@ -22,7 +19,6 @@ const queryClient = new QueryClient();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const insets = useSafeAreaInsets();
   const theme = {
     dark: colorScheme === "dark",
     colors: {
@@ -53,8 +49,6 @@ export default function RootLayout() {
             top: 0,
             left: 0,
             right: 0,
-            height: insets.top, // đúng bằng safe-area
-            backgroundColor: "#fff", // hoặc Colors[colorScheme].background
             zIndex: 9999,
           }}
         />
@@ -94,6 +88,10 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                name="profile-detail"
+                options={{ title: "Chi tiết hồ sơ", headerShown: true }}
+              />
+              <Stack.Screen
                 name="contest-detail"
                 options={{ title: "Contest Detail", headerShown: false }}
               />
@@ -119,7 +117,11 @@ export default function RootLayout() {
               />
               <Stack.Screen
                 name="painting-evaluation"
-                options={{ title: "Chấm bài", headerShown: true }}
+                options={{ title: "Chấm bài", headerShown: false }}
+              />
+              <Stack.Screen
+                name="contest-paintings"
+                options={{ headerShown: false }}
               />
             </Stack>
             <Toaster richColors />

@@ -1,6 +1,5 @@
 import PillButton from "@/components/buttons/PillButton";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
-import SubmissionDetailsModal from "@/components/modals/SubmissionDetailsModal";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,15 +7,17 @@ import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Easing,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-
 // ===== Types =====
 import { useWhoAmI } from "@/apis/auth";
+import { useExaminerContest } from "@/apis/contest";
 import { useAuthStore } from "@/store/auth-store";
+import { Contest } from "@/types";
 import type { ColorTokens, KPIProps } from "@/types/tabkey";
 import { formatDateDisplay } from "@/utils/date";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -28,77 +29,69 @@ export default function ExaminerProfileComponent() {
   const C = Colors[scheme];
   const s = styles(C);
 
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const headerTranslateY = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [0, -20],
+    extrapolate: "clamp",
+  });
+
   const [openDetails, setOpenDetails] = useState(false);
-  const [openSubmission, setOpenSubmission] = useState(false);
   const [activeTab, setActiveTab] = useState<"contests" | "schedules">(
     "contests"
   );
+  const { data: ongoingContests } = useExaminerContest(user?.userId);
 
-  const ongoingContests = useMemo(
-    () => [
-      {
-        id: "contest1",
-        title: "Vẽ Sài Gòn Xanh",
-        status: "reviewing",
-        deadline: "2024-12-31",
-        submissions: 45,
-        reviewed: 23,
-        totalRounds: 2,
-        currentRound: 1,
-        category: "Tranh vẽ",
-      },
-      {
-        id: "contest2",
-        title: "Nghệ Thuật Đường Phố",
-        status: "active",
-        deadline: "2025-01-15",
-        submissions: 67,
-        reviewed: 67,
-        totalRounds: 1,
-        currentRound: 1,
-        category: "Nghệ thuật đường phố",
-      },
-      {
-        id: "contest3",
-        title: "Thiết Kế Poster Môi Trường",
-        status: "completed",
-        deadline: "2024-11-30",
-        submissions: 89,
-        reviewed: 89,
-        totalRounds: 2,
-        currentRound: 2,
-        category: "Thiết kế đồ họa",
-      },
-    ],
-    []
+  const calendarRef = useRef<{ toggleCalendarPosition: () => boolean }>(null);
+  const rotation = useRef(new Animated.Value(0));
+
+  const toggleCalendarExpansion = useCallback(() => {
+    const isOpen = calendarRef.current?.toggleCalendarPosition();
+    Animated.timing(rotation.current, {
+      toValue: isOpen ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+      easing: Easing.out(Easing.ease),
+    }).start();
+  }, []);
+
+  const renderHeader = useCallback(
+    (date?: Date) => {
+      const rotationInDegrees = rotation.current.interpolate({
+        inputRange: [0, 1],
+        outputRange: ["0deg", "-180deg"],
+      });
+      return (
+        <TouchableOpacity onPress={toggleCalendarExpansion}>
+          <Text>{date?.toString()}</Text>
+        </TouchableOpacity>
+      );
+    },
+    [toggleCalendarExpansion]
   );
 
+  const onCalendarToggled = useCallback(
+    (isOpen: boolean) => {
+      rotation.current.setValue(isOpen ? 1 : 0);
+    },
+    [rotation]
+  );
   // Calculate examiner stats
   const examinerStats = useMemo(() => {
+    if (!ongoingContests) {
+      return {
+        activeContests: 0,
+      };
+    }
     const activeContests = ongoingContests.filter(
-      (c) => c.status === "active" || c.status === "reviewing"
+      (c) => c.status === "ACTIVE"
     ).length;
-    const totalSubmissions = ongoingContests.reduce(
-      (sum, c) => sum + c.submissions,
-      0
-    );
-    const reviewedSubmissions = ongoingContests.reduce(
-      (sum, c) => sum + c.reviewed,
-      0
-    );
-    const completionRate =
-      totalSubmissions > 0
-        ? Math.round((reviewedSubmissions / totalSubmissions) * 100)
-        : 0;
 
     return {
       activeContests,
-      totalSubmissions,
-      reviewedSubmissions,
-      completionRate,
     };
   }, [ongoingContests]);
-
   const schedules = useMemo(
     () => [
       {
@@ -139,32 +132,27 @@ export default function ExaminerProfileComponent() {
     heart: { fg: "#EF4444", bg: "rgba(239,68,68,0.14)" },
   };
 
+  const kpiConfigs = [
+    {
+      key: "activeContests",
+      icon: "time-outline" as const,
+      label: "Cuộc thi đang chấm",
+      iconColor: "#8B5CF6",
+      iconBg: "rgba(139,92,246,0.14)",
+      format: (value: number) => String(value),
+    },
+  ];
+
   // Examiner KPIs
   const kpis = useMemo(
-    () => [
-      {
-        icon: "time-outline" as const,
-        label: "Cuộc thi đang chấm",
-        value: String(examinerStats.activeContests),
-        iconColor: "#8B5CF6",
-        iconBg: "rgba(139,92,246,0.14)",
-      },
-      {
-        icon: "document-text-outline" as const,
-        label: "Bài nộp đã chấm",
-        value: String(examinerStats.reviewedSubmissions),
-        iconColor: "#10B981",
-        iconBg: "rgba(16,185,129,0.14)",
-      },
-      {
-        icon: "checkmark-circle-outline" as const,
-        label: "Tỷ lệ hoàn thành",
-        value: `${examinerStats.completionRate}%`,
-        iconColor: "#F59E0B",
-        iconBg: "rgba(245,158,11,0.14)",
-      },
-    ],
-    [examinerStats, ICONS]
+    () =>
+      kpiConfigs.map((config) => ({
+        ...config,
+        value: config.format(
+          examinerStats[config.key as keyof typeof examinerStats] as number
+        ),
+      })),
+    [examinerStats]
   );
 
   // Examiner tabs
@@ -189,7 +177,16 @@ export default function ExaminerProfileComponent() {
       <Ionicons name="person-outline" size={22} color={C.mutedForeground} />
     </View>
   );
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const getStatusInfo = (status: Contest["status"]) => {
+    switch (status) {
+      case "ACTIVE":
+        return { style: s.statusActive, text: "Đang diễn ra" };
+      case "COMPLETED":
+        return { style: s.statusCompleted, text: "Hoàn thành" };
+      default:
+        return { style: {}, text: status };
+    }
+  };
 
   if (isLoading) {
     return (
@@ -328,7 +325,12 @@ export default function ExaminerProfileComponent() {
         scrollEventThrottle={16}
       >
         {/* Header compact */}
-        <View style={s.headerWrap}>
+        <Animated.View
+          style={[
+            s.headerWrap,
+            { transform: [{ translateY: headerTranslateY }] },
+          ]}
+        >
           <TouchableOpacity
             onPress={() => setOpenDetails(true)}
             activeOpacity={0.9}
@@ -356,7 +358,7 @@ export default function ExaminerProfileComponent() {
             variant="ghost"
             onPress={() => router.push("/profile-detail")}
           />
-        </View>
+        </Animated.View>
 
         <View style={s.kpiCard}>
           {kpis.map((kpi, index) => (
@@ -404,26 +406,20 @@ export default function ExaminerProfileComponent() {
         <View style={s.tabContent}>
           {activeTab === "contests" && (
             <View style={s.tabScrollContent}>
-              {ongoingContests.length > 0 ? (
+              {ongoingContests && ongoingContests.length > 0 ? (
                 <View style={s.contestsList}>
                   {ongoingContests.map((contest) => (
-                    <View key={contest.id} style={s.contestCard}>
+                    <View key={contest.contestId} style={s.contestCard}>
                       <View style={s.contestHeader}>
                         <Text style={s.contestTitle}>{contest.title}</Text>
                         <View
                           style={[
                             s.contestStatus,
-                            contest.status === "active" && s.statusActive,
-                            contest.status === "reviewing" && s.statusReviewing,
-                            contest.status === "completed" && s.statusCompleted,
+                            getStatusInfo(contest.status).style,
                           ]}
                         >
                           <Text style={s.contestStatusText}>
-                            {contest.status === "active"
-                              ? "Đang diễn ra"
-                              : contest.status === "reviewing"
-                              ? "Đang chấm"
-                              : "Hoàn thành"}
+                            {getStatusInfo(contest.status).text}
                           </Text>
                         </View>
                       </View>
@@ -435,39 +431,17 @@ export default function ExaminerProfileComponent() {
                             color={C.mutedForeground}
                           />
                           <Text style={s.metaTxt}>
-                            Hạn: {formatDateDisplay(contest.deadline)}
+                            Bắt đầu: {formatDateDisplay(contest.startDate)}
                           </Text>
                         </View>
                         <View style={s.metaChip}>
                           <Ionicons
-                            name="trophy-outline"
+                            name="calendar-outline"
                             size={14}
                             color={C.mutedForeground}
                           />
                           <Text style={s.metaTxt}>
-                            Vòng {contest.currentRound}/{contest.totalRounds}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={s.contestStats}>
-                        <View style={s.statItem}>
-                          <Ionicons
-                            name="document-text-outline"
-                            size={16}
-                            color={C.mutedForeground}
-                          />
-                          <Text style={s.statText}>
-                            {contest.submissions} bài nộp
-                          </Text>
-                        </View>
-                        <View style={s.statItem}>
-                          <Ionicons
-                            name="checkmark-circle-outline"
-                            size={16}
-                            color={C.mutedForeground}
-                          />
-                          <Text style={s.statText}>
-                            {contest.reviewed} đã chấm
+                            Kết thúc: {formatDateDisplay(contest.endDate)}
                           </Text>
                         </View>
                       </View>
@@ -475,19 +449,12 @@ export default function ExaminerProfileComponent() {
                         <TouchableOpacity
                           style={s.evaluateButton}
                           onPress={() => {
-                            // Navigate to evaluation screen with mock painting data
-                            // In a real app, this would fetch paintings from the contest
-                            const mockPainting = {
-                              paintingId: `painting_${contest.id}_1`,
-                              contestId: contest.id,
-                              paintingTitle: `Sample Painting from ${contest.title}`,
-                              artistName: "Sample Artist",
-                              imageUrl:
-                                "https://via.placeholder.com/400x300/FF6B6B/FFFFFF?text=Sample+Painting",
-                            };
                             router.push({
-                              pathname: "/painting-evaluation",
-                              params: mockPainting,
+                              pathname: "/contest-paintings",
+                              params: {
+                                contestId: contest.contestId,
+                                contestTitle: contest.title,
+                              },
                             });
                           }}
                         >
@@ -521,60 +488,117 @@ export default function ExaminerProfileComponent() {
           {activeTab === "schedules" && (
             <View style={s.tabScrollContent}>
               {schedules.length > 0 ? (
-                <View style={s.schedulesList}>
-                  {schedules.map((schedule) => (
-                    <View key={schedule.id} style={s.scheduleCard}>
-                      <View style={s.scheduleHeader}>
-                        <View style={s.scheduleTime}>
-                          <Ionicons
-                            name="time-outline"
-                            size={16}
-                            color={C.primary}
-                          />
-                          <Text style={s.scheduleTimeText}>
-                            {schedule.time}
-                          </Text>
-                        </View>
+                <View>
+                  {/* Group schedules by date */}
+                  {Object.entries(
+                    schedules.reduce((groups, schedule) => {
+                      const date = schedule.date;
+                      if (!groups[date]) {
+                        groups[date] = [];
+                      }
+                      groups[date].push(schedule);
+                      return groups;
+                    }, {} as Record<string, typeof schedules>)
+                  )
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([date, daySchedules]) => (
+                      <View key={date} style={{ marginBottom: 24 }}>
+                        {/* Date Header */}
                         <View
-                          style={[
-                            s.scheduleStatus,
-                            schedule.status === "upcoming" && s.statusUpcoming,
-                            schedule.status === "completed" &&
-                              s.statusCompleted,
-                          ]}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            marginBottom: 12,
+                            paddingHorizontal: 4,
+                          }}
                         >
-                          <Text style={s.scheduleStatusText}>
-                            {schedule.status === "upcoming"
-                              ? "Sắp tới"
-                              : "Hoàn thành"}
+                          <View
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: 4,
+                              backgroundColor: C.primary,
+                              marginRight: 8,
+                            }}
+                          />
+                          <Text
+                            style={{
+                              fontSize: 16,
+                              fontWeight: "700",
+                              color: C.foreground,
+                            }}
+                          >
+                            {formatDateDisplay(date)}
+                          </Text>
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              color: C.mutedForeground,
+                              marginLeft: 8,
+                            }}
+                          >
+                            ({daySchedules.length} lịch trình)
                           </Text>
                         </View>
-                      </View>
-                      <View style={s.scheduleContent}>
-                        <Text style={s.scheduleTitle}>{schedule.title}</Text>
-                        <View style={s.scheduleMeta}>
-                          <View style={s.metaChip}>
-                            <Ionicons
-                              name="calendar-outline"
-                              size={14}
-                              color={C.mutedForeground}
-                            />
-                            <Text style={s.metaTxt}>
-                              {formatDateDisplay(schedule.date)}
-                            </Text>
-                          </View>
-                          <View style={s.metaChip}>
-                            <Ionicons
-                              name="location-outline"
-                              size={14}
-                              color={C.mutedForeground}
-                            />
-                            <Text style={s.metaTxt}>{schedule.location}</Text>
-                          </View>
+
+                        {/* Schedule Cards */}
+                        <View style={s.schedulesList}>
+                          {daySchedules
+                            .sort((a, b) => a.time.localeCompare(b.time))
+                            .map((schedule) => (
+                              <View key={schedule.id} style={s.scheduleCard}>
+                                <View style={s.scheduleHeader}>
+                                  <View style={s.scheduleTime}>
+                                    <Ionicons
+                                      name="time-outline"
+                                      size={16}
+                                      color={C.primary}
+                                    />
+                                    <Text style={s.scheduleTimeText}>
+                                      {schedule.time}
+                                    </Text>
+                                  </View>
+                                  <View
+                                    style={[
+                                      s.scheduleStatus,
+                                      schedule.status === "upcoming"
+                                        ? s.statusUpcoming
+                                        : schedule.status === "completed"
+                                        ? s.statusCompleted
+                                        : {},
+                                    ]}
+                                  >
+                                    <Text style={s.scheduleStatusText}>
+                                      {schedule.status === "upcoming"
+                                        ? "Sắp diễn ra"
+                                        : schedule.status === "completed"
+                                        ? "Hoàn thành"
+                                        : schedule.status}
+                                    </Text>
+                                  </View>
+                                </View>
+                                <View style={s.scheduleContent}>
+                                  <Text style={s.scheduleTitle}>
+                                    {schedule.title}
+                                  </Text>
+                                  <View style={s.scheduleMeta}>
+                                    <View style={s.metaChip}>
+                                      <Ionicons
+                                        name="location-outline"
+                                        size={14}
+                                        color={C.mutedForeground}
+                                      />
+                                      <Text style={s.metaTxt}>
+                                        {schedule.location}
+                                      </Text>
+                                    </View>
+                                  </View>
+                                </View>
+                              </View>
+                            ))}
                         </View>
                       </View>
-                    </View>
-                  ))}
+                    ))}
                 </View>
               ) : (
                 <View style={s.emptyTab}>
@@ -602,14 +626,6 @@ export default function ExaminerProfileComponent() {
           phone: user.phone || "",
         }}
         achievements={[]}
-      />
-
-      {/* Modal chi tiết bài nộp */}
-      <SubmissionDetailsModal
-        visible={openSubmission}
-        onClose={() => setOpenSubmission(false)}
-        submission={null}
-        scheme={scheme}
       />
     </SafeAreaProvider>
   );

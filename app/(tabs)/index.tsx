@@ -20,6 +20,7 @@ import {
 } from "react-native";
 import { usePagerView } from "react-native-pager-view";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useWhoAmI } from "../../apis/auth";
 import themedStyles from "../../components/styleSheet/themeSheet";
 
 interface Announcement {
@@ -102,6 +103,7 @@ const announcements: Announcement[] = [
 //   { id: "4", name: "Thiếu nhi", icon: "👶", color: "#EC4899" },
 // ];
 export default function Home() {
+  const { data } = useWhoAmI();
   const colorScheme = useColorScheme() ?? "light";
 
   const W = Dimensions.get("window").width;
@@ -175,6 +177,12 @@ export default function Home() {
       badgeText: "94 điểm",
     },
   ];
+
+  //   useFocusEffect(
+  //     useCallback(() => {
+  //       refetch();
+  //     }, [])
+  //   );
   // giữ lại scrollY nếu bạn còn dùng cho thứ khác
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -295,7 +303,7 @@ export default function Home() {
     <View style={themedStyles.container}>
       <CollapsibleHeader
         progress={headerProgress}
-        username="Hoàng Trí"
+        username={data ? data.fullName : "Guest"}
         gradientMode="rainbow" // hoặc "rainbow" | "neon"
       />
 
