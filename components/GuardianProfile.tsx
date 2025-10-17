@@ -6,11 +6,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
-    Animated,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 // ===== Types =====
@@ -303,11 +303,7 @@ export default function GuardianProfileComponent() {
             <View>
               <Avatar />
               <View style={s.addBadge}>
-                <Ionicons
-                  name="person-add-outline"
-                  size={12}
-                  color={C.primaryForeground}
-                />
+                <Ionicons name="brush" size={12} color={C.primaryForeground} />
               </View>
             </View>
           </TouchableOpacity>
@@ -534,7 +530,7 @@ export default function GuardianProfileComponent() {
         onClose={() => setOpenDetails(false)}
         scheme={scheme}
         user={{
-            userId: user.userId,
+          userId: user.userId,
           fullname: user.fullName,
           email: user.email,
           phone: user.phone || "",

@@ -321,11 +321,7 @@ export default function CompetitorProfileComponent() {
             <View>
               <Avatar />
               <View style={s.addBadge}>
-                <Ionicons
-                  name="person-add-outline"
-                  size={12}
-                  color={C.primaryForeground}
-                />
+                <Ionicons name="brush" size={12} color={C.primaryForeground} />
               </View>
             </View>
           </TouchableOpacity>

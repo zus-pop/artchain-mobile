@@ -1,8 +1,10 @@
+import { usePaintingEvaluations } from "@/apis/painting";
 import { Colors } from "@/constants/theme";
 import { Painting } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   Image,
@@ -17,7 +19,6 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
-import { usePaintingEvaluations } from "../../apis/painting";
 import styles from "./style";
 
 type Scheme = "light" | "dark";
@@ -35,27 +36,148 @@ const DRAG_CLOSE_THRESHOLD = 120;
 const VELOCITY_CLOSE_THRESHOLD = 1.0;
 const FOOTER_H = 64;
 
-const COLORFUL = {
-  blue: { bg: "rgba(37, 99, 235, 0.12)", fg: "#2563EB" }, // indigo-600
-  green: { bg: "rgba(5, 150, 105, 0.12)", fg: "#059669" }, // emerald-600
-  purple: { bg: "rgba(147, 51, 234, 0.12)", fg: "#9333EA" }, // purple-600
-  amber: { bg: "rgba(245, 158, 11, 0.12)", fg: "#F59E0B" }, // amber-500
-  pink: { bg: "rgba(219, 39, 119, 0.12)", fg: "#DB2777" }, // pink-600
-  sky: { bg: "rgba(2, 132, 199, 0.12)", fg: "#0284C7" }, // sky-600
-  red: { bg: "rgba(239, 68, 68, 0.12)", fg: "#EF4444" }, // red-500
-};
-
 const SubmissionDetailsModal: React.FC<Props> = ({
   visible,
   onClose,
   scheme,
   submission,
 }) => {
-  const { data: evaluations = [] } = usePaintingEvaluations(
+  const { data: evaluations = [], isLoading } = usePaintingEvaluations(
     submission.paintingId
   );
   const C = Colors[scheme];
   const s = styles(C);
+
+  const local = StyleSheet.create({
+    imageContainer: {
+      alignItems: "center",
+      paddingVertical: 16,
+    },
+    submissionImage: {
+      width: "100%",
+      height: 250,
+      borderRadius: 8,
+    },
+    description: {
+      fontSize: 14,
+      lineHeight: 20,
+      marginTop: 8,
+      marginBottom: 12,
+    },
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    metaText: {
+      fontSize: 14,
+      marginLeft: 8,
+      fontWeight: "500",
+    },
+    statusContainer: {
+      marginTop: 12,
+    },
+    statusBadge: {
+      alignSelf: "flex-start",
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+    },
+    statusText: {
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    evaluationHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    averageScore: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    averageScoreText: {
+      fontSize: 16,
+      fontWeight: "bold",
+      marginLeft: 4,
+    },
+    evaluationCard: {
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: C.border,
+    },
+    evaluationHeaderRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 12,
+      gap: 20,
+    },
+    examinerInfo: {
+      flexDirection: "row",
+      alignItems: "center",
+      flex: 1,
+    },
+    examinerName: {
+      fontSize: 16,
+      fontWeight: "600",
+      marginLeft: 8,
+      marginRight: 15,
+    },
+    evaluationDate: {
+      fontSize: 12,
+      marginLeft: 8,
+      marginTop: 2,
+    },
+    scoreContainer: {
+      backgroundColor: C.primary,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 10,
+    },
+    scoreText: {
+      fontSize: 14,
+      fontWeight: "bold",
+    },
+    comment: {
+      fontSize: 14,
+      lineHeight: 20,
+      marginBottom: 12,
+    },
+    noEvaluationContainer: {
+      alignItems: "center",
+      paddingVertical: 40,
+    },
+    noEvaluationText: {
+      fontSize: 16,
+      fontWeight: "600",
+      marginTop: 16,
+      marginBottom: 8,
+      textAlign: "center",
+    },
+    noEvaluationSubtext: {
+      fontSize: 14,
+      textAlign: "center",
+    },
+    loadingContainer: {
+      alignItems: "center",
+      paddingVertical: 40,
+    },
+    loadingText: {
+      fontSize: 16,
+      fontWeight: "600",
+      marginTop: 16,
+      marginBottom: 8,
+      textAlign: "center",
+    },
+    loadingSubtext: {
+      fontSize: 14,
+      textAlign: "center",
+    },
+  });
 
   // positions
   const translateY = useRef(new Animated.Value(SNAP.DISMISS)).current;
@@ -153,12 +275,11 @@ const SubmissionDetailsModal: React.FC<Props> = ({
   };
 
   const getStatusColor = (status: string) => {
-    if (status === "WINNER" || status === "APPROVED") return COLORFUL.green.fg;
-    if (status === "ACCEPTED" || status === "APPROVED") return COLORFUL.blue.fg;
-    if (status === "REJECTED" || status === "DENIED") return COLORFUL.red.fg;
-    if (status === "PENDING" || status === "REVIEWING")
-      return COLORFUL.amber.fg;
-    if (status === "SUBMITTED") return COLORFUL.sky.fg;
+    if (status === "WINNER" || status === "APPROVED") return "#ffffff"; // White text on colored background
+    if (status === "ACCEPTED" || status === "APPROVED") return "#ffffff"; // White text on colored background
+    if (status === "REJECTED" || status === "DENIED") return "#ffffff"; // White text on colored background
+    if (status === "PENDING" || status === "REVIEWING") return C.foreground; // Dark text on light background
+    if (status === "SUBMITTED") return C.foreground; // Dark text on light background
     return C.mutedForeground;
   };
 
@@ -172,17 +293,16 @@ const SubmissionDetailsModal: React.FC<Props> = ({
   };
 
   const getStatusBg = (status: string) => {
-    if (status === "WINNER" || status === "APPROVED") return COLORFUL.green.bg;
-    if (status === "ACCEPTED" || status === "APPROVED") return COLORFUL.blue.bg;
-    if (status === "REJECTED" || status === "DENIED") return COLORFUL.red.bg;
-    if (status === "PENDING" || status === "REVIEWING")
-      return COLORFUL.amber.bg;
-    if (status === "SUBMITTED") return COLORFUL.sky.bg;
-    return C.muted + "40";
+    if (status === "WINNER" || status === "APPROVED") return C.accent;
+    if (status === "ACCEPTED" || status === "APPROVED") return C.primary20;
+    if (status === "REJECTED" || status === "DENIED") return C.destructive;
+    if (status === "PENDING" || status === "REVIEWING") return C.chart3;
+    if (status === "SUBMITTED") return C.muted;
+    return C.muted;
   };
 
   const averageScore = useMemo(() => {
-    if (evaluations.length) return 0;
+    if (evaluations.length === 0) return 0;
     const total = evaluations.reduce((sum, foo) => sum + foo.score, 0);
     return Math.round((total / evaluations.length) * 10) / 10;
   }, [evaluations]);
@@ -221,7 +341,7 @@ const SubmissionDetailsModal: React.FC<Props> = ({
                 style={s.iconBtn}
                 activeOpacity={0.85}
               >
-                <Ionicons name="close" size={22} color={COLORFUL.pink.fg} />
+                <Ionicons name="close" size={22} color={C.mutedForeground} />
               </TouchableOpacity>
             </View>
 
@@ -250,7 +370,9 @@ const SubmissionDetailsModal: React.FC<Props> = ({
 
             {/* SUBMISSION INFO */}
             <View style={s.sectionTight}>
-              <Text style={[s.sectionTitle, { color: C.foreground }]}>
+              <Text
+                style={[s.sectionTitle, { color: C.foreground, fontSize: 20 }]}
+              >
                 {submission.title}
               </Text>
 
@@ -301,7 +423,27 @@ const SubmissionDetailsModal: React.FC<Props> = ({
             </View>
 
             {/* EVALUATIONS SECTION */}
-            {evaluations && evaluations.length > 0 && (
+            {isLoading ? (
+              <>
+                <View style={s.divider} />
+                <View style={s.sectionTight}>
+                  <View style={local.loadingContainer}>
+                    <ActivityIndicator size="large" color={C.primary} />
+                    <Text style={[local.loadingText, { color: C.foreground }]}>
+                      Đang tải đánh giá...
+                    </Text>
+                    <Text
+                      style={[
+                        local.loadingSubtext,
+                        { color: C.mutedForeground },
+                      ]}
+                    >
+                      Vui lòng đợi trong giây lát
+                    </Text>
+                  </View>
+                </View>
+              </>
+            ) : evaluations && evaluations.length > 0 ? (
               <>
                 <View style={s.divider} />
                 <View style={s.sectionTight}>
@@ -310,16 +452,9 @@ const SubmissionDetailsModal: React.FC<Props> = ({
                       Đánh giá từ Ban Giám khảo
                     </Text>
                     <View style={local.averageScore}>
-                      <Ionicons
-                        name="star"
-                        size={16}
-                        color={COLORFUL.amber.fg}
-                      />
+                      <Ionicons name="star" size={16} color={C.chart3} />
                       <Text
-                        style={[
-                          local.averageScoreText,
-                          { color: COLORFUL.amber.fg },
-                        ]}
+                        style={[local.averageScoreText, { color: C.chart3 }]}
                       >
                         {averageScore}/10
                       </Text>
@@ -332,7 +467,7 @@ const SubmissionDetailsModal: React.FC<Props> = ({
                         <View style={local.examinerInfo}>
                           <Ionicons
                             name="person-circle-outline"
-                            size={24}
+                            size={30}
                             color={C.primary}
                           />
                           <View>
@@ -357,7 +492,12 @@ const SubmissionDetailsModal: React.FC<Props> = ({
                           </View>
                         </View>
                         <View style={local.scoreContainer}>
-                          <Text style={[local.scoreText, { color: C.primary }]}>
+                          <Text
+                            style={[
+                              local.scoreText,
+                              { color: C.primaryForeground },
+                            ]}
+                          >
                             {evaluation.score}/10
                           </Text>
                         </View>
@@ -372,10 +512,7 @@ const SubmissionDetailsModal: React.FC<Props> = ({
                   ))}
                 </View>
               </>
-            )}
-
-            {/* NO EVALUATIONS YET */}
-            {evaluations.length === 0 && (
+            ) : (
               <>
                 <View style={s.divider} />
                 <View style={s.sectionTight}>
@@ -411,11 +548,16 @@ const SubmissionDetailsModal: React.FC<Props> = ({
             ]}
           >
             <TouchableOpacity
-              style={s.ghostBtn}
+              style={[s.ghostBtn, { backgroundColor: C.primary }]}
               onPress={closeSheet}
               activeOpacity={0.9}
             >
-              <Text style={[s.ghostTxt, { color: COLORFUL.pink.fg }]}>
+              <Text
+                style={[
+                  s.ghostTxt,
+                  { color: C.primaryForeground, fontWeight: "800" },
+                ]}
+              >
                 Đóng
               </Text>
             </TouchableOpacity>
@@ -427,143 +569,3 @@ const SubmissionDetailsModal: React.FC<Props> = ({
 };
 
 export default SubmissionDetailsModal;
-
-const local = StyleSheet.create({
-  imageContainer: {
-    alignItems: "center",
-    paddingVertical: 16,
-  },
-  submissionImage: {
-    width: "90%",
-    height: 250,
-    borderRadius: 12,
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  metaText: {
-    fontSize: 14,
-    marginLeft: 8,
-    fontWeight: "500",
-  },
-  statusContainer: {
-    marginTop: 12,
-  },
-  statusBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  evaluationHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  averageScore: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  averageScoreText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginLeft: 4,
-  },
-  evaluationCard: {
-    backgroundColor: "rgba(0,0,0,0.02)",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  evaluationHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
-  },
-  examinerInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  examinerName: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  evaluationDate: {
-    fontSize: 12,
-    marginLeft: 8,
-    marginTop: 2,
-  },
-  scoreContainer: {
-    backgroundColor: "rgba(37, 99, 235, 0.1)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  scoreText: {
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  comment: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  criteriaContainer: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0,0,0,0.1)",
-    paddingTop: 12,
-  },
-  criteriaTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  criteriaGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  criterion: {
-    flex: 1,
-    minWidth: "45%",
-  },
-  criterionLabel: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  criterionValue: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  noEvaluationContainer: {
-    alignItems: "center",
-    paddingVertical: 40,
-  },
-  noEvaluationText: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  noEvaluationSubtext: {
-    fontSize: 14,
-    textAlign: "center",
-  },
-});

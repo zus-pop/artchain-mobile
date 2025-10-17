@@ -55,7 +55,7 @@ const styles = (C: any) => {
     divider: {
       height: StyleSheet.hairlineWidth,
       backgroundColor: C.border,
-      opacity: 0.9,
+      opacity: 1,
       marginHorizontal: -14,
     },
 
