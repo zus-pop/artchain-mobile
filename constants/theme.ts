@@ -37,6 +37,7 @@ export interface ThemeColors {
   sidebarAccentForeground: string;
   sidebarBorder: string;
   sidebarRing: string;
+  tint: string;
   // Opacity variants
   primary50: string; // 50% opacity
   primary20: string; // 20% opacity
@@ -70,7 +71,7 @@ export const Colors = {
     accentForeground: "hsl(203.8863 88.2845% 53.1373%)",
     destructive: "hsl(356.3033 90.5579% 54.3137%)",
     destructiveForeground: "hsl(0 0% 100%)",
-    border: "hsl(201.4286 30.4348% 90.9804%)",
+    border: "hsla(204, 4%, 52%, 1.00)",
     input: "hsl(200 23.0769% 97.4510%)",
     ring: "hsl(202.8169 89.1213% 53.1373%)",
     chart1: "hsl(203.8863 88.2845% 53.1373%)",
@@ -86,6 +87,7 @@ export const Colors = {
     sidebarAccentForeground: "hsl(203.8863 88.2845% 53.1373%)",
     sidebarBorder: "hsl(205.0000 25.0000% 90.5882%)",
     sidebarRing: "hsl(202.8169 89.1213% 53.1373%)",
+    tint: "hsl(203.8863 88.2845% 53.1373%)",
     // Opacity variants
     primary50: "rgba(59, 130, 246, 0.5)", // 50% opacity blue
     primary20: "rgba(59, 130, 246, 0.2)", // 20% opacity blue
@@ -112,7 +114,7 @@ export const Colors = {
     accentForeground: "hsl(203.7736 87.6033% 52.5490%)",
     destructive: "hsl(356.3033 90.5579% 54.3137%)",
     destructiveForeground: "hsl(0 0% 100%)",
-    border: "hsl(210.0000 12.6582% 30.9804%)",
+    border: "hsla(210, 14%, 51%, 1.00)",
     input: "hsl(207.6923 27.6596% 18.4314%)",
     ring: "hsl(202.8169 89.1213% 53.1373%)",
     chart1: "hsl(203.8863 88.2845% 53.1373%)",
@@ -128,6 +130,7 @@ export const Colors = {
     sidebarAccentForeground: "hsl(203.7736 87.6033% 52.5490%)",
     sidebarBorder: "hsl(205.7143 15.7895% 26.0784%)",
     sidebarRing: "hsl(202.8169 89.1213% 53.1373%)",
+    tint: "hsl(203.7736 87.6033% 52.5490%)",
     // Opacity variants
     primary50: "rgba(56, 189, 248, 0.5)", // 50% opacity blue
     primary20: "rgba(56, 189, 248, 0.2)", // 20% opacity blue

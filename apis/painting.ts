@@ -1,5 +1,11 @@
 import myAxios from "@/constants/custom-axios";
-import { Painting, PaintingUploadRequest } from "@/types";
+import {
+  EvaluationRequest,
+  Painting,
+  PaintingEvaluation,
+  PaintingFilter,
+  PaintingUploadRequest,
+} from "@/types";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { toast } from "sonner-native";
@@ -9,6 +15,23 @@ export function useMySubmission() {
     queryKey: ["me/submissions"],
     queryFn: async () => {
       const response = await myAxios.get<Painting[]>("/users/me/submissions");
+      return response.data;
+    },
+  });
+}
+
+export function useGetPaintings(filters: PaintingFilter) {
+  const params: PaintingFilter = {};
+
+  if (filters.contestId) {
+    params.contestId = filters.contestId;
+  }
+  return useQuery({
+    queryKey: ["paintings", filters],
+    queryFn: async () => {
+      const response = await myAxios.get<Painting[]>("/paintings", {
+        params,
+      });
       return response.data;
     },
   });
@@ -41,5 +64,37 @@ export function useUploadPainting() {
     onError: (error) => {
       toast.error(error.message);
     },
+  });
+}
+
+export function useEvaluatePainting() {
+  return useMutation({
+    mutationFn: async (evaluationRequest: EvaluationRequest) => {
+      const response = await myAxios.post(
+        "/paintings/evaluate",
+        evaluationRequest
+      );
+      return response.data;
+    },
+    onSuccess: (value) => {
+      toast.success("Chấm bài thành công");
+      router.back();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
+}
+
+export function usePaintingEvaluations(paintingId: string) {
+  return useQuery({
+    queryKey: ["paintings/evaluations", paintingId],
+    queryFn: async () => {
+      const response = await myAxios.get<PaintingEvaluation[]>(
+        `/paintings/${paintingId}/evaluations`
+      );
+      return response.data;
+    },
+    enabled: !!paintingId,
   });
 }
