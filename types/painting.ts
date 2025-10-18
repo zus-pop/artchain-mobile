@@ -27,3 +27,31 @@ export interface Painting {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface PaintingFilter {
+  contestId?: string;
+}
+
+export interface EvaluationRequest {
+  paintingId: string;
+  examinerId: string;
+  score: number;
+  feedback: string;
+}
+
+export interface PaintingEvaluation {
+  id: string;
+  paintingId: string;
+  examinerId: string;
+  score: number;
+  feedback: string;
+  evaluationDate: Date;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+  examiner: {
+    examinerId: string;
+    specialization: string | null;
+    assignedScheduleId: string | null;
+  };
+}

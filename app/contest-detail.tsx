@@ -1,9 +1,12 @@
+import { useWhoAmI } from "@/apis/auth";
+import { useContestById } from "@/apis/contest";
 import AnimatedSection, {
   sectionShadow,
 } from "@/components/header/contest/AnimatedSection";
 import DetailHeader from "@/components/header/contest/DetailHeader";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Contest } from "@/types";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { Palette } from "lucide-react-native";
@@ -18,9 +21,6 @@ import {
   View,
 } from "react-native";
 import { toast } from "sonner-native";
-import { useWhoAmI } from "../apis/auth";
-import { useContestById } from "../apis/contest";
-import { Contest } from "../types";
 
 /** --------- SPACING ---------- */
 const SPACE = {

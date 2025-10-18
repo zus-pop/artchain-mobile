@@ -21,6 +21,7 @@ import type { ColorTokens, KPIProps } from "@/types/tabkey";
 import { formatDateDisplay } from "@/utils/date";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useMySubmission } from "../apis/painting";
+import { Painting } from "../types";
 import SubmissionDetailsModal from "./modals/SubmissionDetailsModal";
 
 export default function CompetitorProfileComponent() {
@@ -29,10 +30,13 @@ export default function CompetitorProfileComponent() {
   const { data: user, isLoading, refetch: reloadMe } = useWhoAmI();
   const C = Colors[scheme];
   const s = styles(C);
-  const { data, isLoading: submissionsLoading } = useMySubmission();
+  const { data: submissions = [], isLoading: submissionsLoading } =
+    useMySubmission();
   const [openDetails, setOpenDetails] = useState(false);
   const [openSubmission, setOpenSubmission] = useState(false);
-  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+  const [selectedSubmission, setSelectedSubmission] = useState<Painting | null>(
+    null
+  );
   const [activeTab, setActiveTab] = useState<
     "contests" | "achievements" | "submissions"
   >("contests");
@@ -108,8 +112,6 @@ export default function CompetitorProfileComponent() {
       ].filter((achievement) => achievement.awardId !== null),
     []
   );
-
-  const submissions = data || [];
 
   const ICONS: Record<
     "brush" | "trophy" | "eye" | "heart",
@@ -319,11 +321,7 @@ export default function CompetitorProfileComponent() {
             <View>
               <Avatar />
               <View style={s.addBadge}>
-                <Ionicons
-                  name="person-add-outline"
-                  size={12}
-                  color={C.primaryForeground}
-                />
+                <Ionicons name="brush" size={12} color={C.primaryForeground} />
               </View>
             </View>
           </TouchableOpacity>
@@ -622,12 +620,14 @@ export default function CompetitorProfileComponent() {
       />
 
       {/* Modal chi tiết bài nộp */}
-      <SubmissionDetailsModal
-        visible={openSubmission}
-        onClose={() => setOpenSubmission(false)}
-        submission={selectedSubmission}
-        scheme={scheme}
-      />
+      {selectedSubmission && (
+        <SubmissionDetailsModal
+          visible={openSubmission}
+          onClose={() => setOpenSubmission(false)}
+          submission={selectedSubmission}
+          scheme={scheme}
+        />
+      )}
     </SafeAreaProvider>
   );
 }
