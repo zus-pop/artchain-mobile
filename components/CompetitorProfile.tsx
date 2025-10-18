@@ -291,7 +291,7 @@ export default function CompetitorProfileComponent() {
             />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => router.push("/setting")}
+            onPress={() => router.push("/painting-evaluation")}
             style={s.iconBtn}
           >
             <Ionicons name="settings-outline" size={25} color={C.foreground} />
