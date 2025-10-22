@@ -76,7 +76,7 @@ export default function RootLayout() {
                 options={{
                   title: "Setting",
                   headerShown: false,
-                  presentation: "formSheet",
+                  // presentation: "formSheet",
                 }}
               />
               <Stack.Screen
