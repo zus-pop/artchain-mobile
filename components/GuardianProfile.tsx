@@ -19,6 +19,7 @@ import { useAuthStore } from "@/store/auth-store";
 import type { ColorTokens, KPIProps } from "@/types/tabkey";
 import { formatDateDisplay } from "@/utils/date";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useGuardianChildren } from "../apis/guardian";
 
 export default function GuardianProfileComponent() {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
@@ -27,6 +28,7 @@ export default function GuardianProfileComponent() {
   const C = Colors[scheme];
   const s = styles(C);
 
+  const { data: children } = useGuardianChildren(user?.userId);
   const [openDetails, setOpenDetails] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "children" | "contests" | "achievements"
@@ -105,32 +107,39 @@ export default function GuardianProfileComponent() {
     heart: { fg: "#EF4444", bg: "rgba(239,68,68,0.14)" },
   };
 
+  // Avatar icons and colors for children
+  const childAvatars = useMemo(
+    () => [
+      { icon: "person-outline" as const, bg: "#FF6B6B" },
+      { icon: "person-outline" as const, bg: "#4ECDC4" },
+      { icon: "person-outline" as const, bg: "#45B7D1" },
+      { icon: "person-outline" as const, bg: "#96CEB4" },
+      { icon: "person-outline" as const, bg: "#FFEAA7" },
+      { icon: "person-outline" as const, bg: "#DDA0DD" },
+      { icon: "person-outline" as const, bg: "#98D8C8" },
+      { icon: "person-outline" as const, bg: "#F7DC6F" },
+      { icon: "person-outline" as const, bg: "#BB8FCE" },
+      { icon: "person-outline" as const, bg: "#85C1E9" },
+    ],
+    []
+  );
+
+  const getChildAvatar = (index: number) => {
+    return childAvatars[index % childAvatars.length];
+  };
+
   // Guardian KPIs
   const kpis = useMemo(
     () => [
       {
         icon: "people-outline" as const,
         label: "Con tham gia",
-        value: "2",
+        value: String(children?.length || 0),
         iconColor: "#3B82F6",
         iconBg: "rgba(59,130,246,0.14)",
       },
-      {
-        icon: "trophy-outline" as const,
-        label: "Giải thưởng",
-        value: "5",
-        iconColor: ICONS.trophy.fg,
-        iconBg: ICONS.trophy.bg,
-      },
-      {
-        icon: "time-outline" as const,
-        label: "Cuộc thi active",
-        value: String(contestStats.activeContests),
-        iconColor: "#8B5CF6",
-        iconBg: "rgba(139,92,246,0.14)",
-      },
     ],
-    [contestStats, ICONS]
+    [children?.length]
   );
 
   // Guardian tabs
@@ -322,8 +331,8 @@ export default function GuardianProfileComponent() {
         </View>
 
         <View style={s.kpiCard}>
-          {kpis.map((kpi, index) => (
-            <React.Fragment key={kpi.label}>
+          {kpis.map((kpi) => (
+            <View key={kpi.label} style={{ flex: 1 }}>
               <KPI
                 icon={kpi.icon}
                 label={kpi.label}
@@ -332,8 +341,7 @@ export default function GuardianProfileComponent() {
                 iconColor={kpi.iconColor}
                 iconBg={kpi.iconBg}
               />
-              {index < kpis.length - 1 && <View style={s.kpiDivider} />}
-            </React.Fragment>
+            </View>
           ))}
         </View>
 
@@ -367,64 +375,77 @@ export default function GuardianProfileComponent() {
         <View style={s.tabContent}>
           {activeTab === "children" && (
             <View style={s.tabScrollContent}>
-              {[
-                {
-                  id: "1",
-                  name: "Nguyễn Văn A",
-                  grade: "Lớp 10",
-                  school: "THPT ABC",
-                  contests: 3,
-                  achievements: 2,
-                },
-                {
-                  id: "2",
-                  name: "Nguyễn Thị B",
-                  grade: "Lớp 8",
-                  school: "THCS XYZ",
-                  contests: 2,
-                  achievements: 1,
-                },
-              ].map((child) => (
-                <View key={child.id} style={s.childCard}>
-                  <View style={s.childHeader}>
-                    <View style={s.childAvatar}>
-                      <Ionicons
-                        name="person-outline"
-                        size={24}
-                        color={C.primary}
-                      />
+              {children && children.length > 0 ? (
+                children.map((child, index) => {
+                  const avatar = getChildAvatar(index);
+                  return (
+                    <View
+                      key={child.userId || child.username || `child-${index}`}
+                      style={s.childCard}
+                    >
+                      <View style={s.childHeader}>
+                        <View
+                          style={[
+                            s.childAvatar,
+                            { backgroundColor: avatar.bg },
+                          ]}
+                        >
+                          <Ionicons
+                            name={avatar.icon}
+                            size={24}
+                            color="white"
+                          />
+                        </View>
+                        <View style={s.childInfo}>
+                          <Text style={s.childName}>
+                            {child.fullName || "Tên chưa cập nhật"}
+                          </Text>
+                          <Text style={s.childDetails}>
+                            {child.grade || "Chưa cập nhật"} -{" "}
+                            {child.schoolName || "Chưa cập nhật"}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={s.childStats}>
+                        <View style={s.childStat}>
+                          <Ionicons
+                            name="time-outline"
+                            size={16}
+                            color={C.mutedForeground}
+                          />
+                          <Text style={s.childStatText}>0 cuộc thi</Text>
+                        </View>
+                        <View style={s.childStat}>
+                          <Ionicons
+                            name="trophy-outline"
+                            size={16}
+                            color={C.mutedForeground}
+                          />
+                          <Text style={s.childStatText}>0 thành tích</Text>
+                        </View>
+                      </View>
                     </View>
-                    <View style={s.childInfo}>
-                      <Text style={s.childName}>{child.name}</Text>
-                      <Text style={s.childDetails}>
-                        {child.grade} - {child.school}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={s.childStats}>
-                    <View style={s.childStat}>
-                      <Ionicons
-                        name="time-outline"
-                        size={16}
-                        color={C.mutedForeground}
-                      />
-                      <Text style={s.childStatText}>
-                        {child.contests} cuộc thi
-                      </Text>
-                    </View>
-                    <View style={s.childStat}>
-                      <Ionicons
-                        name="trophy-outline"
-                        size={16}
-                        color={C.mutedForeground}
-                      />
-                      <Text style={s.childStatText}>
-                        {child.achievements} thành tích
-                      </Text>
-                    </View>
-                  </View>
+                  );
+                })
+              ) : (
+                <View style={s.emptyTab}>
+                  <Ionicons name="people-outline" size={64} color={C.muted} />
+                  <Text style={s.emptyTabText}>Chưa có thông tin con em</Text>
+                  <Text style={s.emptyTabSubtext}>
+                    Thêm thông tin con em để theo dõi thành tích và tham gia
+                    cuộc thi
+                  </Text>
                 </View>
-              ))}
+              )}
+
+              {/* Add child button - always visible */}
+              <TouchableOpacity
+                style={s.addChildButton}
+                onPress={() => router.push("/add-child")}
+              >
+                <Ionicons name="add" size={20} color={C.primaryForeground} />
+                <Text style={s.addChildButtonText}>Thêm con em</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -688,8 +709,28 @@ const styles = (C: ColorTokens) =>
       fontSize: 16,
       color: C.mutedForeground,
       marginTop: 16,
+      marginBottom: 8,
+      textAlign: "center",
+    },
+    emptyTabSubtext: {
+      fontSize: 14,
+      color: C.muted,
       marginBottom: 24,
       textAlign: "center",
+    },
+    addChildButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: C.primary,
+      borderRadius: 20,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      gap: 8,
+    },
+    addChildButtonText: {
+      color: C.primaryForeground,
+      fontSize: 14,
+      fontWeight: "600",
     },
     exploreButton: {
       backgroundColor: C.primary,
@@ -724,7 +765,6 @@ const styles = (C: ColorTokens) =>
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: C.primary + "15",
       alignItems: "center",
       justifyContent: "center",
       marginRight: 12,

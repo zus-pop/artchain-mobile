@@ -477,7 +477,7 @@ const SubmissionDetailsModal: React.FC<Props> = ({
                                 { color: C.foreground },
                               ]}
                             >
-                              {evaluation.examiner.examinerId}
+                              {evaluation.examinerName}
                             </Text>
                             <Text
                               style={[

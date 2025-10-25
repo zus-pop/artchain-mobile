@@ -21,7 +21,7 @@ export type TabItem = {
 };
 
 type Props = {
-  tabs: [TabItem, TabItem]; // chỉ 2 tab
+  tabs: TabItem[]; // chỉ 2 tab
   activeKey: string;
   onChange: (key: string) => void;
   C: ColorTokens;

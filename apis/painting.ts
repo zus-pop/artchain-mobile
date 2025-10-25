@@ -7,6 +7,7 @@ import {
   PaintingUploadRequest,
 } from "@/types";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import { router } from "expo-router";
 import { toast } from "sonner-native";
 
@@ -62,7 +63,11 @@ export function useUploadPainting() {
       router.navigate("/(tabs)/profile");
     },
     onError: (error) => {
-      toast.error(error.message);
+      let message = error.message;
+      if (error instanceof AxiosError) {
+        message = error.response?.data.message;
+      }
+      toast.error(message);
     },
   });
 }

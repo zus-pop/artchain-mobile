@@ -59,7 +59,7 @@ export default function CollapsibleHeader({
   selectedFilter,
   onSelectFilter,
   filterOptions,
-  bgImage = require("../../../assets/images/banner/bannerSearch.jpg"),
+  bgImage = require("@/assets/images/banner/bannerSearch.jpg"),
   topInset = 0,
 }: Props) {
   const C = Colors[scheme];
@@ -105,11 +105,11 @@ export default function CollapsibleHeader({
       ]}
     >
       {/* Spacer trắng cho safe-area: KHÔNG đẩy nội dung tìm kiếm xuống */}
-      {topInset > 0 && (
+      {/* {topInset > 0 && (
         <View
-          style={{ height: topInset, backgroundColor: "#fff", width: "100%" }}
+          style={{ paddingTop: topInset, backgroundColor: "#fff", width: "100%" }}
         />
-      )}
+      )} */}
 
       {/* Ảnh nền + overlay đảm bảo tương phản chữ */}
       <ImageBackground
