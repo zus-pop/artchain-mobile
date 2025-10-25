@@ -1,4 +1,3 @@
-import BrushButton from "@/components/buttons/BrushButton";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
@@ -254,8 +253,6 @@ export default function LoginScreen() {
               {isPending ? "Đang đăng nhập..." : "Đăng nhập"}
             </Text>
           </TouchableOpacity>
-
-          <BrushButton title="Đăng nhập" />
 
           <TouchableOpacity
             onPress={() => router.replace("/signup")}

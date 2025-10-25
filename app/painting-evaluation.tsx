@@ -1,18 +1,27 @@
+// app/.../PaintingEvaluationScreen.tsx
 import BrushButton from "@/components/buttons/BrushButton";
+// import ArtworkViewer from "@/components/media/ArtworkViewer"; // <- bỏ
+import ReportFlagSheet from "@/components/modals/ReportFlagSheet";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Image } from "expo-image";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Image as ExpoImage, Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import React from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   Alert,
+  Animated,
+  ColorValue,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -24,15 +33,163 @@ import { z } from "zod";
 import { useWhoAmI } from "../apis/auth";
 import { useEvaluatePainting } from "../apis/painting";
 
-const evaluationSchema = z.object({
-  score: z
-    .number()
-    .min(1, "Điểm phải ít nhất là 1")
-    .max(10, "Điểm không được vượt quá 10"),
-  feedback: z.string().min(10, "Lời đánh giá phải ít nhất 10 ký tự"),
-});
+import { Zoomable } from "@likashefqet/react-native-image-zoom";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+
+/* ---------- Color helpers ---------- */
+const POOLS: [string, string][] = [
+  ["#FF6B6B", "#FFD166"],
+  ["#06B6D4", "#3B82F6"],
+  ["#22C55E", "#A3E635"],
+  ["#F472B6", "#A78BFA"],
+  ["#F59E0B", "#F97316"],
+  ["#14B8A6", "#84CC16"],
+  ["#60A5FA", "#F472B6"],
+  ["#F43F5E", "#FB7185"],
+];
+const hashStr = (s: string) => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+};
+const pickGrad = (seed?: string): [string, string] =>
+  POOLS[hashStr(seed || Math.random().toString()) % POOLS.length];
+
+/* ---------- Zoom modal (FULL) ---------- */
+function ZoomModal({
+  visible,
+  uri,
+  onClose,
+  minScale = 1,
+  maxScale = 6,
+  doubleTapScale = 2.5,
+}: {
+  visible: boolean;
+  uri: string;
+  onClose: () => void;
+  minScale?: number;
+  maxScale?: number;
+  doubleTapScale?: number;
+}) {
+  return (
+    <Modal
+      visible={visible}
+      onRequestClose={onClose}
+      animationType="fade"
+      presentationStyle="overFullScreen"
+      statusBarTranslucent
+      hardwareAccelerated
+      transparent={false}
+    >
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
+        <Zoomable
+          minScale={minScale}
+          maxScale={maxScale}
+          doubleTapScale={doubleTapScale}
+          isDoubleTapEnabled
+          style={{ flex: 1 }}
+        >
+          <ExpoImage
+            source={{ uri }}
+            style={{ width: "100%", height: "100%" }}
+            contentFit="contain"
+          />
+        </Zoomable>
+        <Pressable
+          onPress={onClose}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 48,
+          }}
+        />
+      </GestureHandlerRootView>
+    </Modal>
+  );
+}
+
+/* ---------- Helpers ---------- */
+const clamp = (v: number, min: number, max: number) =>
+  Math.min(Math.max(v, min), max);
+const STEP = 0.5;
+const roundToStep = (n: number, step = STEP) => Math.round(n / step) * step;
+
+const FEEDBACK_PRESETS = [
+  "Ý tưởng tốt",
+  "Bố cục chắc",
+  "Màu sắc hài hoà",
+  "Thông điệp chưa rõ",
+  "Cần trau chuốt chi tiết",
+  "Chưa sát chủ đề",
+];
+
+const QUICK_FEEDBACK: string[] = [
+  "👍 Tác phẩm nổi bật",
+  "🎨 Phối màu ấn tượng",
+  "🧭 Bố cục cân đối",
+  "✨ Điểm nhấn rõ",
+  "🧪 Cần thử nghiệm thêm",
+  "🧹 Nên tinh gọn chi tiết",
+  "🧩 Tỉ lệ cần chỉnh",
+  "🌗 Tương phản yếu",
+];
+
+/* ---------- Schema ---------- */
+const evaluationSchema = z
+  .object({
+    score: z
+      .number({ invalid_type_error: "Điểm phải là số" })
+      .min(1, "Điểm phải ít nhất là 1")
+      .max(10, "Điểm không được vượt quá 10"),
+    feedback: z.string().min(0),
+  })
+  .superRefine((val, ctx) => {
+    if (val.score <= 6 && (!val.feedback || val.feedback.trim().length < 10)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["feedback"],
+        message: "Bắt buộc nhập nhận xét tối thiểu 10 ký tự khi điểm ≤ 6",
+      });
+    }
+  });
 
 type EvaluationFormData = z.infer<typeof evaluationSchema>;
+
+/* ---------- Tiny pressable ---------- */
+const PressableScale: React.FC<
+  React.PropsWithChildren<{
+    onPress?: () => void;
+    style?: any;
+    disabled?: boolean;
+  }>
+> = ({ children, onPress, style, disabled }) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  const animate = (to: number) =>
+    Animated.spring(scale, {
+      toValue: to,
+      useNativeDriver: true,
+      friction: 5,
+      tension: 150,
+    }).start();
+  return (
+    <Pressable
+      disabled={disabled}
+      onPressIn={() => !disabled && animate(0.96)}
+      onPressOut={() => animate(1)}
+      onPress={onPress}
+      style={({ pressed }) => [
+        { transform: [{ scale: pressed ? 0.98 : 1 }] },
+        style,
+      ]}
+    >
+      <Animated.View style={{ transform: [{ scale }] }}>
+        {children}
+      </Animated.View>
+    </Pressable>
+  );
+};
 
 export default function PaintingEvaluationScreen() {
   const { paintingTitle, artistName, contestTitle, imageUrl, paintingId } =
@@ -43,167 +200,478 @@ export default function PaintingEvaluationScreen() {
       artistName: string;
       imageUrl: string;
     }>();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
+
+  const scheme = useColorScheme();
+  const colors = Colors[scheme ?? "light"];
+  const glassBg =
+    scheme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)";
+  const glassBgStrong =
+    scheme === "dark" ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.06)";
+
   const {
     control,
     handleSubmit,
+    setValue,
+    watch,
+    getValues,
     formState: { errors, isValid },
   } = useForm<EvaluationFormData>({
     resolver: zodResolver(evaluationSchema),
-    defaultValues: {
-      score: 5,
-      feedback: "",
-    },
+    defaultValues: { score: 5, feedback: "" },
     mode: "all",
   });
+
+  const scoreWatch = watch("score");
   const { data: examiner } = useWhoAmI();
   const { mutate, isPending } = useEvaluatePainting();
-  const onSubmit = async (data: EvaluationFormData) => {
+
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [showPresets, setShowPresets] = useState(false);
+
+  // Autosave
+  const draftKey = useMemo(
+    () => `draft_evaluation_${paintingId}`,
+    [paintingId]
+  );
+  const isDirtyRef = useRef(false);
+
+  // Flags
+  const FLAG_REASONS = [
+    "Không đúng chủ đề",
+    "Nghi vấn sao chép",
+    "Chứa nội dung nhạy cảm",
+    "Không phù hợp lứa tuổi",
+    "Biểu tượng/Thông điệp phản cảm",
+  ];
+  const [flagOpen, setFlagOpen] = useState(false);
+  const [selectedFlags, setSelectedFlags] = useState<string[]>([]);
+  const [flagNote, setFlagNote] = useState("");
+
+  // Confirm
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  /* ---------- Restore Draft ---------- */
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(draftKey);
+        if (raw) {
+          const parsed = JSON.parse(raw) as Partial<EvaluationFormData>;
+          if (typeof parsed.score === "number") {
+            setValue("score", clamp(roundToStep(parsed.score), 1, 10), {
+              shouldValidate: true,
+            });
+          }
+          if (typeof parsed.feedback === "string") {
+            setValue("feedback", parsed.feedback, { shouldValidate: true });
+          }
+          toast.message("Đã khôi phục bản nháp");
+        }
+      } catch {}
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
+
+  /* ---------- Autosave ---------- */
+  useEffect(() => {
+    const id = setInterval(async () => {
+      if (!isDirtyRef.current) return;
+      try {
+        await AsyncStorage.setItem(
+          draftKey,
+          JSON.stringify({
+            score: getValues("score"),
+            feedback: getValues("feedback"),
+          })
+        );
+      } catch {}
+    }, 2000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
+
+  const clearDraft = async () => {
+    await AsyncStorage.removeItem(draftKey);
+    toast.message("Đã xoá bản nháp cục bộ");
+  };
+
+  const handleBack = () => {
+    if (isDirtyRef.current) {
+      Alert.alert(
+        "Bạn có muốn thoát?",
+        "Bản nháp đã được lưu tự động, nhưng các thay đổi chưa gửi. Tiếp tục quay lại?",
+        [
+          { text: "Ở lại", style: "cancel" },
+          {
+            text: "Quay lại",
+            style: "destructive",
+            onPress: () => router.back(),
+          },
+        ]
+      );
+      return;
+    }
+    router.back();
+  };
+
+  /* ---------- Submit ---------- */
+  const onConfirmSubmit = (data: EvaluationFormData) => {
     if (!examiner) {
       toast.info("Không có thông tin giám khảo");
       return;
     }
-
     if (examiner.role !== "EXAMINER") {
-      toast.info("Người dùng đăng nhập không phải giảm khảo chấm thi");
+      toast.info("Người dùng đăng nhập không phải giám khảo chấm thi");
       return;
     }
-
-    Alert.alert(
-      "Xác nhận đánh giá",
-      `Bạn có chắc chắn muốn gửi đánh giá với điểm ${data.score}/10 cho bức tranh "${paintingTitle}" của ${artistName} trong cuộc thi "${contestTitle}"?`,
-      [
-        {
-          text: "Hủy",
-          style: "cancel",
+    mutate(
+      {
+        examinerId: examiner.userId,
+        paintingId: String(paintingId),
+        score: data.score,
+        feedback: data.feedback?.trim(),
+      },
+      {
+        onSuccess: async () => {
+          isDirtyRef.current = false;
+          await AsyncStorage.removeItem(draftKey);
+          setConfirmOpen(false);
+          toast.success("Đã gửi đánh giá");
+          router.back();
         },
-        {
-          text: "Xác nhận",
-          style: "default",
-          onPress: () => {
-            mutate({
-              examinerId: examiner.userId,
-              paintingId: paintingId,
-              score: data.score,
-              feedback: data.feedback,
-            });
-          },
-        },
-      ]
+      }
     );
   };
+  const onSubmit = () => setConfirmOpen(true);
+
+  /* ---------- Score Stepper ---------- */
+  const bumpScore = (delta: number) => {
+    const cur = Number(getValues("score") ?? 0);
+    const next = clamp(roundToStep(cur + delta), 1, 10);
+    setValue("score", next, { shouldValidate: true });
+    isDirtyRef.current = true;
+  };
+
+  /* ---------- Preset & Quick feedback ---------- */
+  const appendPreset = (txt: string) => {
+    const cur = getValues("feedback") ?? "";
+    const joiner = cur.trim().length ? "; " : "";
+    setValue("feedback", `${cur.trim()}${joiner}${txt}`.trim(), {
+      shouldValidate: true,
+    });
+    isDirtyRef.current = true;
+  };
+
+  /* ---------- BG gradient ---------- */
+  const gradientColors = (
+    scheme === "dark"
+      ? ["#1b1b2f", "#162447", "#1f4068", "#53354a"]
+      : ["#a1c4fd", "#c2e9fb", "#fbc2eb", "#a6c0fe"]
+  ) as [ColorValue, ColorValue, ...ColorValue[]];
+
+  /* ---------- Seeds cho gradient theo tranh ---------- */
+  const [g0, g1] = pickGrad(String(paintingId) + paintingTitle);
 
   return (
-    <ThemedView style={styles(colors).container}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+    <View style={{ flex: 1 }}>
+      {/* NỀN gradient — full màn hình */}
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      {/* Orbs tròn trang trí */}
+      <LinearGradient
+        colors={[g0 + "33", g1 + "22"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={orb.orbTL}
+      />
+      <LinearGradient
+        colors={["#fda4af33", "#fde68a33"]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={orb.orbBR}
+      />
+
+      <ThemedView
+        style={[styles(colors).container, { backgroundColor: "transparent" }]}
       >
-        {/* Header */}
-        <View style={styles(colors).header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles(colors).backButton}
-          >
-            <Ionicons name="chevron-back" size={20} color={colors.foreground} />
-          </TouchableOpacity>
-          <ThemedText style={styles(colors).headerTitle}>
-            Đánh giá Tranh
-          </ThemedText>
-          <View style={styles(colors).headerSpacer} />
-        </View>
-
-        <ScrollView
-          contentContainerStyle={styles(colors).scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
         >
-          {/* Painting Details */}
-          <View style={styles(colors).paintingSection}>
-            <View style={styles(colors).paintingContainer}>
-              <View style={styles(colors).paintingFrame}>
-                <Image
-                  source={{
-                    uri: imageUrl,
-                  }}
-                  style={styles(colors).paintingImage}
-                  placeholder={require("@/assets/images/partial-react-logo.png")}
-                  contentFit="cover"
-                />
-              </View>
+          {/* Header kính + nút tròn */}
+          <View
+            style={[styles(colors).header, { backgroundColor: glassBgStrong }]}
+          >
+            <PressableScale
+              onPress={handleBack}
+              style={styles(colors).circleBtn}
+            >
+              <Ionicons name="chevron-back" size={18} color={colors.primary} />
+            </PressableScale>
 
-              <View style={styles(colors).paintingDetails}>
-                <View style={styles(colors).titleSection}>
-                  <ThemedText style={styles(colors).paintingTitle}>
-                    {paintingTitle}
-                  </ThemedText>
-                  <View style={styles(colors).artistSection}>
-                    <Ionicons
-                      name="person-outline"
-                      size={16}
-                      color={colors.mutedForeground}
-                    />
-                    <ThemedText style={styles(colors).artistName}>
-                      {artistName}
-                    </ThemedText>
-                  </View>
-                  <View style={styles(colors).contestSection}>
-                    <Ionicons
-                      name="trophy-outline"
-                      size={16}
-                      color={colors.mutedForeground}
-                    />
-                    <ThemedText style={styles(colors).contestName}>
-                      {contestTitle}
-                    </ThemedText>
-                  </View>
-                </View>
-              </View>
+            <ThemedText style={styles(colors).headerTitle}>
+              Đánh giá Tranh
+            </ThemedText>
+
+            <View style={styles(colors).headerRight}>
+              <PressableScale
+                onPress={clearDraft}
+                style={styles(colors).circleBtn}
+              >
+                <Ionicons
+                  name="trash-outline"
+                  size={16}
+                  color={colors.mutedForeground}
+                />
+              </PressableScale>
             </View>
           </View>
 
-          {/* Evaluation Form */}
-          <View style={styles(colors).formSection}>
-            <View style={styles(colors).decorativeDivider} />
-            <ThemedText type="subtitle" style={styles(colors).formTitle}>
-              Đánh giá của Bạn
-            </ThemedText>
+          {/* Nội dung */}
+          <ScrollView
+            contentContainerStyle={[
+              styles(colors).scrollContent,
+              { paddingBottom: 28 },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* 1) Ảnh + meta + details đẹp */}
+            <View style={styles(colors).section}>
+              {/* Khung ảnh viền gradient */}
+              <View style={styles(colors).frameWrap}>
+                <LinearGradient
+                  colors={[g0, g1]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles(colors).frameBorder}
+                />
+                <View
+                  style={[
+                    styles(colors).paintingCard,
+                    { backgroundColor: glassBg },
+                  ]}
+                >
+                  {/* Overlay report: pill tròn gradient viền */}
+                  <View style={styles(colors).overlayTopRightRow}>
+                    <PressableScale
+                      onPress={() => setFlagOpen(true)}
+                      style={styles(colors).pillBorderWrap}
+                    >
+                      <LinearGradient
+                        colors={[g0, g1]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles(colors).pillBorder}
+                      />
+                      <View
+                        style={[
+                          styles(colors).pillInner,
+                          { backgroundColor: colors.card },
+                        ]}
+                      >
+                        <Ionicons
+                          name="flag"
+                          size={16}
+                          color={colors.primary}
+                        />
+                        <ThemedText style={styles(colors).pillText}>
+                          Báo cáo
+                        </ThemedText>
+                      </View>
+                    </PressableScale>
+                  </View>
 
-            {/* Score Input */}
-            <View style={styles(colors).inputGroup}>
-              <ThemedText style={styles(colors).label}>Điểm (1-10)</ThemedText>
-              <View
-                style={[
-                  styles(colors).inputContainer,
-                  errors.score && styles(colors).inputError,
-                ]}
-              >
-                <Ionicons
-                  name="star"
-                  size={20}
-                  color={colors.primary}
-                  style={styles(colors).inputIcon}
-                />
-                <Controller
-                  control={control}
-                  name="score"
-                  render={({ field: { onChange, value } }) => (
-                    <TextInput
-                      placeholder="Nhập điểm"
-                      value={value?.toString()}
-                      onChangeText={(text) => onChange(parseInt(text) || 0)}
-                      keyboardType="numeric"
-                      style={[
-                        styles(colors).input,
-                        { color: colors.foreground },
-                      ]}
-                      placeholderTextColor={colors.mutedForeground}
+                  <PressableScale
+                    onPress={() => setViewerOpen(true)}
+                    style={{ borderRadius: 14 }}
+                  >
+                    <Image
+                      source={{ uri: String(imageUrl) }}
+                      style={styles(colors).paintingImage}
+                      placeholder={require("@/assets/images/partial-react-logo.png")}
+                      contentFit="cover"
+                      transition={150}
                     />
-                  )}
-                />
+                  </PressableScale>
+
+                  {/* Chi tiết tác phẩm */}
+                  <View style={styles(colors).detailsCard}>
+                    <View style={styles(colors).detailItem}>
+                      <View style={styles(colors).detailIconCircle}>
+                        <Ionicons
+                          name="pricetag-outline"
+                          size={16}
+                          color="#fff"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <ThemedText style={styles(colors).detailLabel}>
+                          Mã tác phẩm
+                        </ThemedText>
+                        <ThemedText style={styles(colors).detailValue}>
+                          {paintingId}
+                        </ThemedText>
+                      </View>
+                    </View>
+
+                    <View style={styles(colors).detailItem}>
+                      <View style={styles(colors).detailIconCircle}>
+                        <Ionicons
+                          name="person-outline"
+                          size={16}
+                          color="#fff"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <ThemedText style={styles(colors).detailLabel}>
+                          Tác giả
+                        </ThemedText>
+                        <ThemedText style={styles(colors).detailValue}>
+                          {artistName}
+                        </ThemedText>
+                      </View>
+                    </View>
+
+                    <View style={styles(colors).detailItem}>
+                      <View style={styles(colors).detailIconCircle}>
+                        <Ionicons
+                          name="trophy-outline"
+                          size={16}
+                          color="#fff"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <ThemedText style={styles(colors).detailLabel}>
+                          Cuộc thi
+                        </ThemedText>
+                        <ThemedText style={styles(colors).detailValue}>
+                          {contestTitle}
+                        </ThemedText>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Meta pills viền gradient (thêm vibe) */}
+                  <View style={styles(colors).paintingMetaRow}>
+                    <View style={styles(colors).pillBorderWrap}>
+                      <LinearGradient
+                        colors={[g0, g1]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles(colors).pillBorder}
+                      />
+                      <View
+                        style={[
+                          styles(colors).pillInner,
+                          { backgroundColor: colors.card },
+                        ]}
+                      >
+                        <Ionicons
+                          name="color-palette-outline"
+                          size={14}
+                          color={colors.mutedForeground}
+                        />
+                        <ThemedText style={styles(colors).metaText}>
+                          {paintingTitle}
+                        </ThemedText>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles(colors).microDivider} />
+                </View>
               </View>
+            </View>
+
+            {/* 2) Điểm số */}
+            <View
+              style={[
+                styles(colors).card,
+                styles(colors).section,
+                { backgroundColor: glassBg },
+              ]}
+            >
+              <ThemedText type="subtitle" style={styles(colors).sectionTitle}>
+                Điểm số
+              </ThemedText>
+
+              <View style={styles(colors).scoreRow}>
+                <PressableScale
+                  onPress={() => bumpScore(-STEP)}
+                  style={styles(colors).circleBtnLg}
+                >
+                  <Ionicons name="remove" size={20} color={colors.primary} />
+                </PressableScale>
+
+                <View style={styles(colors).pillBorderWrapWide}>
+                  <LinearGradient
+                    colors={[g0, g1]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles(colors).pillBorderWide}
+                  />
+                  <View
+                    style={[
+                      styles(colors).scorePill,
+                      { backgroundColor: colors.card },
+                    ]}
+                  >
+                    <Ionicons name="star" size={18} color={colors.primary} />
+                    <Controller
+                      control={control}
+                      name="score"
+                      render={({ field: { onChange, value } }) => (
+                        <TextInput
+                          placeholder="—"
+                          value={
+                            value === undefined ? "" : Number(value).toString()
+                          }
+                          onChangeText={(text) => {
+                            const t = text.replace(",", ".").trim();
+                            if (t === "") {
+                              onChange(undefined as any);
+                              isDirtyRef.current = true;
+                              return;
+                            }
+                            const n = Number(t);
+                            const safe = Number.isFinite(n)
+                              ? clamp(roundToStep(n), 1, 10)
+                              : 1;
+                            onChange(safe);
+                            isDirtyRef.current = true;
+                          }}
+                          keyboardType="numeric"
+                          style={styles(colors).scoreInput}
+                          placeholderTextColor={colors.mutedForeground}
+                        />
+                      )}
+                    />
+                    <ThemedText style={styles(colors).scoreSuffix}>
+                      /10
+                    </ThemedText>
+                  </View>
+                </View>
+
+                <PressableScale
+                  onPress={() => bumpScore(STEP)}
+                  style={styles(colors).circleBtnLg}
+                >
+                  <Ionicons name="add" size={20} color={colors.primary} />
+                </PressableScale>
+              </View>
+
+              {typeof scoreWatch === "number" && scoreWatch <= 6 && (
+                <ThemedText style={styles(colors).hintText}>
+                  Gợi ý: với điểm ≤ 6 cần nhận xét tối thiểu 10 ký tự.
+                </ThemedText>
+              )}
               {errors.score && (
                 <ThemedText style={styles(colors).errorText}>
                   {errors.score.message}
@@ -211,9 +679,159 @@ export default function PaintingEvaluationScreen() {
               )}
             </View>
 
-            {/* Feedback Input */}
-            <View style={styles(colors).inputGroup}>
-              <ThemedText style={styles(colors).label}>Đánh giá</ThemedText>
+            {/* 3) QUICK FEEDBACK */}
+            <View
+              style={[
+                styles(colors).card,
+                styles(colors).section,
+                { backgroundColor: glassBg },
+              ]}
+            >
+              <ThemedText type="subtitle" style={styles(colors).sectionTitle}>
+                Feedback nhanh
+              </ThemedText>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingRight: 6 }}
+                style={{ marginBottom: 8 }}
+              >
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  {QUICK_FEEDBACK.map((q, i) => {
+                    const [c0, c1] = pickGrad(q + i);
+                    return (
+                      <PressableScale
+                        key={q}
+                        onPress={() => appendPreset(q)}
+                        style={styles(colors).chipWrap}
+                      >
+                        <LinearGradient
+                          colors={[c0, c1]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles(colors).chipBorder}
+                        />
+                        <View
+                          style={[
+                            styles(colors).chipInner,
+                            { backgroundColor: colors.card },
+                          ]}
+                        >
+                          <ThemedText style={styles(colors).chipText}>
+                            {q}
+                          </ThemedText>
+                        </View>
+                      </PressableScale>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+              >
+                {["❤️", "👏", "🔥", "🤔", "🛠️"].map((emo, i) => {
+                  const [e0, e1] = pickGrad("emo" + i);
+                  return (
+                    <PressableScale
+                      key={emo}
+                      onPress={() => appendPreset(emo)}
+                      style={{ borderRadius: 999, overflow: "hidden" }}
+                    >
+                      <LinearGradient
+                        colors={[e0, e1]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 999,
+                        }}
+                      >
+                        <ThemedText
+                          style={{ color: "#fff", fontWeight: "800" }}
+                        >
+                          {emo}
+                        </ThemedText>
+                      </LinearGradient>
+                    </PressableScale>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* 4) Đánh giá chi tiết + presets mở rộng */}
+            <View
+              style={[
+                styles(colors).card,
+                styles(colors).section,
+                { backgroundColor: glassBg },
+              ]}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 12,
+                }}
+              >
+                <ThemedText
+                  type="subtitle"
+                  style={[styles(colors).sectionTitle, { marginBottom: 0 }]}
+                >
+                  Đánh giá chi tiết
+                </ThemedText>
+                <PressableScale
+                  onPress={() => setShowPresets((v) => !v)}
+                  style={styles(colors).circleBtn}
+                >
+                  <Ionicons
+                    name={showPresets ? "close" : "add"}
+                    size={16}
+                    color={colors.primary}
+                  />
+                </PressableScale>
+              </View>
+
+              {showPresets && (
+                <View style={[styles(colors).chipsWrap, { marginBottom: 10 }]}>
+                  {FEEDBACK_PRESETS.map((p, idx) => {
+                    const [c0, c1] = pickGrad(p + idx);
+                    return (
+                      <PressableScale
+                        key={p}
+                        onPress={() => appendPreset(p)}
+                        style={styles(colors).chipWrap}
+                      >
+                        <LinearGradient
+                          colors={[c0, c1]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles(colors).chipBorder}
+                        />
+                        <View
+                          style={[
+                            styles(colors).chipInner,
+                            { backgroundColor: colors.card },
+                          ]}
+                        >
+                          <Ionicons
+                            name="add"
+                            size={14}
+                            color={colors.primary}
+                          />
+                          <ThemedText style={styles(colors).chipText}>
+                            {p}
+                          </ThemedText>
+                        </View>
+                      </PressableScale>
+                    );
+                  })}
+                </View>
+              )}
+
               <View
                 style={[
                   styles(colors).textareaContainer,
@@ -224,7 +842,7 @@ export default function PaintingEvaluationScreen() {
                   name="chatbubble-outline"
                   size={20}
                   color={colors.primary}
-                  style={[styles(colors).inputIcon, { marginTop: 16 }]}
+                  style={{ marginTop: 16, marginRight: 10 }}
                 />
                 <Controller
                   control={control}
@@ -233,7 +851,10 @@ export default function PaintingEvaluationScreen() {
                     <TextInput
                       placeholder="Cung cấp đánh giá chi tiết về bức tranh này..."
                       value={value}
-                      onChangeText={onChange}
+                      onChangeText={(t) => {
+                        onChange(t);
+                        isDirtyRef.current = true;
+                      }}
                       multiline
                       numberOfLines={6}
                       style={[
@@ -253,292 +874,458 @@ export default function PaintingEvaluationScreen() {
               )}
             </View>
 
-            {/* Submit Button */}
-            <View style={styles(colors).buttonContainer}>
-              <BrushButton
-                title={isPending ? "Đang gửi..." : "Gửi Đánh giá"}
-                onPress={handleSubmit(onSubmit)}
-                disabled={isPending || !isValid}
-                palette="pastel"
-                size="lg"
-              />
+            {/* 5) Submit */}
+            <View
+              style={{ alignItems: "center", marginTop: 6, marginBottom: 36 }}
+            >
+              <View style={{ width: 230 }}>
+                <BrushButton
+                  title={isPending ? "Đang gửi..." : "Nộp đánh giá"}
+                  onPress={handleSubmit(onSubmit)}
+                  disabled={isPending || !isValid}
+                  palette="pastel"
+                  size="md"
+                />
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+
+        {/* Viewer */}
+        <ZoomModal
+          visible={viewerOpen}
+          onClose={() => setViewerOpen(false)}
+          uri={String(imageUrl)}
+          minScale={1}
+          maxScale={6}
+          doubleTapScale={2.5}
+        />
+
+        {/* Report sheet (component riêng) */}
+        <ReportFlagSheet
+          visible={flagOpen}
+          onClose={() => setFlagOpen(false)}
+          reasons={FLAG_REASONS}
+          selected={selectedFlags}
+          onToggle={(r) =>
+            setSelectedFlags((p) =>
+              p.includes(r) ? p.filter((x) => x !== r) : [...p, r]
+            )
+          }
+          note={flagNote}
+          onChangeNote={setFlagNote}
+          onSubmit={() => {
+            if (selectedFlags.length === 0) {
+              toast.info("Vui lòng chọn ít nhất 1 lý do vi phạm");
+              return;
+            }
+            setFlagOpen(false);
+            toast.message("Đã ghi nhận gắn cờ (UI).");
+          }}
+        />
+
+        {/* Confirm — FULL overlay */}
+        <Modal
+          visible={confirmOpen}
+          presentationStyle="overFullScreen"
+          transparent
+          animationType="fade"
+          statusBarTranslucent
+          hardwareAccelerated
+          onRequestClose={() => setConfirmOpen(false)}
+        >
+          <Pressable
+            style={[StyleSheet.absoluteFillObject, styles(colors).backdrop]}
+            onPress={() => setConfirmOpen(false)}
+          />
+          <View
+            style={[styles(colors).miniSheet, { backgroundColor: colors.card }]}
+          >
+            <ThemedText style={styles(colors).miniTitle}>
+              Gửi đánh giá?
+            </ThemedText>
+            <ThemedText style={styles(colors).miniBody}>
+              Xác nhận nộp điểm và nhận xét cho bài “{paintingTitle}”.
+            </ThemedText>
+            <View style={styles(colors).miniActions}>
+              <TouchableOpacity
+                onPress={() => setConfirmOpen(false)}
+                style={styles(colors).miniGhost}
+              >
+                <ThemedText
+                  style={{ color: colors.mutedForeground, fontWeight: "700" }}
+                >
+                  Huỷ
+                </ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() =>
+                  onConfirmSubmit({
+                    score: getValues("score")!,
+                    feedback: getValues("feedback") || "",
+                  })
+                }
+                style={styles(colors).miniPrimary}
+              >
+                <ThemedText style={{ color: "#fff", fontWeight: "800" }}>
+                  Gửi
+                </ThemedText>
+              </TouchableOpacity>
             </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </ThemedView>
+        </Modal>
+      </ThemedView>
+    </View>
   );
 }
 
+/* ---------- Styles ---------- */
 const styles = (colors: typeof Colors.light) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
+    container: { flex: 1 },
+
+    /* Header */
     header: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: 24,
-      paddingVertical: 20,
-      paddingTop: Platform.OS === "ios" ? 50 : 20,
-      backgroundColor: colors.card,
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      paddingTop: Platform.OS === "ios" ? 52 : 18,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      elevation: 3,
-    },
-    backButton: {
-      padding: 12,
-      marginRight: 16,
-      borderRadius: 20,
-      backgroundColor: colors.input,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
+      gap: 10,
     },
     headerTitle: {
       fontSize: 20,
-      fontWeight: "700",
+      fontWeight: "900",
       color: colors.foreground,
       flex: 1,
       textAlign: "center",
-      letterSpacing: 0.5,
+      letterSpacing: 0.4,
     },
-    headerSpacer: {
-      width: 48,
-    },
-    scrollContent: {
-      flexGrow: 1,
-      paddingHorizontal: 24,
-      paddingVertical: 20,
-    },
-    paintingSection: {
-      marginBottom: 40,
-    },
-    paintingContainer: {
+    headerRight: { width: 48, alignItems: "flex-end" },
+
+    /* Circles */
+    circleBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 999,
       alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
-    paintingFrame: {
+    circleBtnLg: {
+      width: 44,
+      height: 44,
+      borderRadius: 999,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: "#000",
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 2,
+    },
+
+    /* Layout */
+    scrollContent: { flexGrow: 1, paddingHorizontal: 18, paddingTop: 12 },
+    section: { marginBottom: 16 },
+
+    /* Frame + image */
+    frameWrap: { position: "relative", borderRadius: 16 },
+    frameBorder: {
+      position: "absolute",
+      inset: 0,
+      borderRadius: 16,
+      opacity: 0.85,
+    },
+    paintingCard: {
+      borderRadius: 16,
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: "rgba(148, 163, 184, 0.35)",
       position: "relative",
-      marginBottom: 24,
+      paddingBottom: 8,
     },
     paintingImage: {
-      width: 350,
+      width: "100%",
       height: 280,
-      borderRadius: 8,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.2,
-      shadowRadius: 16,
-      elevation: 8,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
     },
-    paintingOverlay: {
-      position: "absolute",
-      top: 16,
-      right: 16,
-    },
-    paintingBadge: {
-      flexDirection: "row",
-      alignItems: "center",
+
+    /* Details đẹp */
+    detailsCard: {
+      marginTop: 10,
+      marginHorizontal: 12,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
       backgroundColor: colors.card,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
-      borderWidth: 1,
-      borderColor: colors.border,
+      padding: 10,
+      gap: 10,
     },
-    paintingBadgeText: {
-      fontSize: 12,
-      fontWeight: "600",
-      color: colors.primary,
-      marginLeft: 6,
-      letterSpacing: 0.5,
-    },
-    paintingDetails: {
+    detailItem: {
+      flexDirection: "row",
       alignItems: "center",
-      width: "100%",
-      maxWidth: 320,
+      gap: 10,
     },
-    titleSection: {
+    detailIconCircle: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
       alignItems: "center",
-      marginBottom: 16,
+      justifyContent: "center",
+      backgroundColor: "#6366F1",
+      shadowColor: "#6366F1",
+      shadowOpacity: 0.25,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
     },
-    paintingTitle: {
-      fontSize: 24,
+    detailLabel: {
+      fontSize: 11,
+      color: colors.mutedForeground,
       fontWeight: "700",
-      color: colors.foreground,
-      textAlign: "center",
-      marginBottom: 12,
-      lineHeight: 32,
-      letterSpacing: 0.5,
     },
-    artistSection: {
-      flexDirection: "row",
+    detailValue: { fontSize: 14, color: colors.foreground, fontWeight: "800" },
+
+    overlayTopRightRow: {
+      position: "absolute",
+      top: 12,
+      right: 12,
+      zIndex: 2,
+      gap: 8,
       alignItems: "center",
-      backgroundColor: colors.input,
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
-    artistName: {
-      fontSize: 16,
-      color: colors.mutedForeground,
-      fontWeight: "500",
-      marginLeft: 8,
-      letterSpacing: 0.2,
+
+    /* Pill border fake */
+    pillBorderWrap: { position: "relative", borderRadius: 999 },
+    pillBorder: {
+      position: "absolute",
+      left: 0,
+      top: 0,
+      right: 0,
+      bottom: 0,
+      borderRadius: 999,
     },
-    contestSection: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: colors.input,
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: colors.border,
-      marginTop: 8,
-    },
-    contestName: {
-      fontSize: 16,
-      color: colors.mutedForeground,
-      fontWeight: "500",
-      marginLeft: 8,
-      letterSpacing: 0.2,
-    },
-    paintingMeta: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      width: "100%",
-      marginTop: 8,
-    },
-    metaItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: colors.input,
+    pillInner: {
+      position: "relative",
+      margin: 1.5,
+      borderRadius: 999,
       paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
+      paddingVertical: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    pillText: { fontSize: 12, fontWeight: "800", color: colors.primary },
+
+    paintingMetaRow: {
+      flexDirection: "row",
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingTop: 8,
+      flexWrap: "wrap",
     },
     metaText: {
       fontSize: 12,
       color: colors.mutedForeground,
-      fontWeight: "500",
-      marginLeft: 6,
-      letterSpacing: 0.2,
+      fontWeight: "700",
     },
-    formSection: {
-      flex: 1,
+    microDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: "rgba(2, 6, 23, 0.08)",
+      marginHorizontal: 12,
+      marginTop: 8,
     },
-    decorativeDivider: {
-      height: 1,
-      backgroundColor: colors.border,
-      marginBottom: 32,
-      marginHorizontal: 40,
-      borderRadius: 0.5,
-    },
-    formTitle: {
-      marginBottom: 32,
-      color: colors.foreground,
-      fontSize: 22,
-      fontWeight: "600",
-      textAlign: "center",
-      letterSpacing: 0.5,
-    },
-    inputGroup: {
-      marginBottom: 28,
-    },
-    label: {
-      fontSize: 17,
-      fontWeight: "600",
-      marginBottom: 16,
-      color: colors.foreground,
-      letterSpacing: 0.3,
-      marginLeft: 4,
-    },
-    inputContainer: {
-      borderWidth: 2,
+
+    /* Card shell */
+    card: {
+      borderRadius: 18,
+      borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 16,
-      paddingHorizontal: 20,
-      paddingVertical: 16,
+      padding: 14,
+      backgroundColor: "transparent",
+    },
+    sectionTitle: {
+      marginBottom: 12,
+      color: colors.foreground,
+      fontSize: 18,
+      fontWeight: "800",
+      letterSpacing: 0.3,
+    },
+
+    /* Score */
+    scoreRow: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: colors.input,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.08,
-      shadowRadius: 6,
-      elevation: 3,
-      minHeight: 56,
+      justifyContent: "space-between",
+      gap: 12,
     },
+    pillBorderWrapWide: { position: "relative", borderRadius: 16, flex: 1 },
+    pillBorderWide: {
+      position: "absolute",
+      left: 0,
+      top: 0,
+      right: 0,
+      bottom: 0,
+      borderRadius: 16,
+    },
+    scorePill: {
+      position: "relative",
+      margin: 1.5,
+      borderRadius: 16,
+      borderWidth: 0,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      paddingHorizontal: 14,
+      minHeight: 56,
+      shadowColor: "#000",
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 2,
+      backgroundColor: colors.card,
+    },
+    scoreInput: {
+      minWidth: 56,
+      textAlign: "center",
+      fontSize: 24,
+      fontWeight: "900",
+      color: colors.foreground,
+      paddingVertical: 6,
+    },
+    scoreSuffix: {
+      fontSize: 16,
+      fontWeight: "800",
+      color: colors.mutedForeground,
+    },
+    hintText: { marginTop: 8, color: colors.mutedForeground, fontSize: 13 },
+    inputError: { borderColor: colors.destructive },
+    errorText: {
+      color: colors.destructive,
+      fontSize: 14,
+      marginTop: 8,
+      fontWeight: "700",
+      marginLeft: 4,
+      letterSpacing: 0.1,
+    },
+
+    /* Preset chips (viền gradient) */
+    chipsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    chipWrap: { position: "relative", borderRadius: 999 },
+    chipBorder: {
+      position: "absolute",
+      left: 0,
+      top: 0,
+      right: 0,
+      bottom: 0,
+      borderRadius: 999,
+    },
+    chipInner: {
+      position: "relative",
+      margin: 1.5,
+      borderRadius: 999,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: colors.card,
+    },
+    chipText: { fontSize: 13, color: colors.primary, fontWeight: "800" },
+
+    /* Textarea */
     textareaContainer: {
       borderWidth: 2,
       borderColor: colors.border,
       borderRadius: 16,
-      paddingHorizontal: 20,
-      paddingVertical: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
       flexDirection: "row",
       alignItems: "flex-start",
-      backgroundColor: colors.input,
       minHeight: 160,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.08,
-      shadowRadius: 6,
-      elevation: 3,
-    },
-    inputIcon: {
-      marginRight: 16,
-    },
-    input: {
-      flex: 1,
-      fontSize: 16,
-      fontWeight: "500",
-      color: colors.foreground,
-      letterSpacing: 0.2,
+      backgroundColor: colors.card,
     },
     textarea: {
       flex: 1,
       fontSize: 16,
       fontWeight: "500",
       minHeight: 140,
-      color: colors.foreground,
       textAlignVertical: "top",
       lineHeight: 24,
       letterSpacing: 0.2,
     },
-    inputError: {
-      borderColor: colors.destructive,
-      borderWidth: 2,
-      shadowColor: colors.destructive,
-      shadowOpacity: 0.15,
+
+    /* Confirm */
+    backdrop: { backgroundColor: "rgba(0,0,0,0.45)" },
+    miniSheet: {
+      position: "absolute",
+      left: 18,
+      right: 18,
+      bottom: 18,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 12,
+      backgroundColor: colors.card,
     },
-    errorText: {
-      color: colors.destructive,
-      fontSize: 14,
+    miniTitle: {
+      fontSize: 16,
+      fontWeight: "900",
+      color: colors.foreground,
+      marginBottom: 4,
+    },
+    miniBody: { fontSize: 13, color: colors.mutedForeground },
+    miniActions: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      gap: 8,
       marginTop: 10,
-      fontWeight: "500",
-      marginLeft: 8,
-      letterSpacing: 0.1,
     },
-    buttonContainer: {
-      alignItems: "center",
-      marginTop: 24,
-      marginBottom: 40,
+    miniGhost: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.input,
+    },
+    miniPrimary: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 10,
+      backgroundColor: colors.primary,
     },
   });
+
+const orb = StyleSheet.create({
+  orbTL: {
+    position: "absolute",
+    top: 0,
+    right: -60,
+    width: 280,
+    height: 280,
+    borderRadius: 160,
+    transform: [{ rotate: "25deg" }],
+    opacity: 0.9,
+  },
+  orbBR: {
+    position: "absolute",
+    bottom: -20,
+    left: -60,
+    width: 300,
+    height: 300,
+    borderRadius: 180,
+    transform: [{ rotate: "-15deg" }],
+    opacity: 0.7,
+  },
+});

@@ -40,7 +40,7 @@ export default function RootLayout() {
   };
 
   return (
-    <GestureHandlerRootView>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <View
           pointerEvents="none"
@@ -76,7 +76,7 @@ export default function RootLayout() {
                 options={{
                   title: "Setting",
                   headerShown: false,
-                  presentation: "formSheet",
+                  // presentation: "formSheet",
                 }}
               />
               <Stack.Screen

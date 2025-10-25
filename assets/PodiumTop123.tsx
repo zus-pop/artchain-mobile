@@ -193,33 +193,6 @@ function TopMedalBadge({
   return (
     <View style={{ alignItems: "center" }}>
       {/* đuôi ruy băng nhẹ */}
-      <View
-        style={{
-          position: "absolute",
-          top: d - 6,
-          width: d * 0.58,
-          height: d * 0.34,
-          backgroundColor: `${bg}CC`,
-          transform: [{ rotate: "-7deg" }],
-          borderBottomLeftRadius: 8,
-          borderBottomRightRadius: 8,
-          zIndex: 0,
-        }}
-      />
-      <View
-        style={{
-          position: "absolute",
-          top: d - 6,
-          right: -6,
-          width: d * 0.48,
-          height: d * 0.32,
-          backgroundColor: `${bg}A6`,
-          transform: [{ rotate: "9deg" }],
-          borderBottomLeftRadius: 8,
-          borderBottomRightRadius: 8,
-          zIndex: 0,
-        }}
-      />
 
       {/* mặt huy chương */}
       <View
