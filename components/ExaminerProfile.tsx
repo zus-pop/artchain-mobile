@@ -1,97 +1,112 @@
 import PillButton from "@/components/buttons/PillButton";
+
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
+import SegmentedTabsForExaminer, {
+  TabItem,
+} from "@/components/tabs/SegmentedTabsForExamine";
+
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Animated,
-  Easing,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-// ===== Types =====
+import { SafeAreaProvider } from "react-native-safe-area-context";
+
 import { useWhoAmI } from "@/apis/auth";
 import { useExaminerContest } from "@/apis/contest";
 import { useAuthStore } from "@/store/auth-store";
-import { Contest } from "@/types";
+import type { Contest } from "@/types";
 import type { ColorTokens, KPIProps } from "@/types/tabkey";
 import { formatDateDisplay } from "@/utils/date";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import ContestCardForTab from "./cards/ContestCardForTab";
+import ScheduleCard from "./cards/ScheduleCard";
+import EmptyTab from "./tabs/EmptyTab";
 
-export default function ExaminerProfileComponent() {
+/* -------------------- Color helpers -------------------- */
+const VIVID_POOLS: [string, string][] = [
+  ["#FF6B6B", "#FFD166"],
+  ["#06B6D4", "#3B82F6"],
+  ["#22C55E", "#A3E635"],
+  ["#F472B6", "#A78BFA"],
+  ["#F59E0B", "#F97316"],
+  ["#14B8A6", "#84CC16"],
+  ["#60A5FA", "#F472B6"],
+  ["#F43F5E", "#FB7185"],
+];
+const hashStr = (s: string) => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+};
+const pickGrad = (seed?: string): [string, string] => {
+  const i = hashStr(seed || Math.random().toString()) % VIVID_POOLS.length;
+  return VIVID_POOLS[i];
+};
+
+/* -------------------- Screen -------------------- */
+export default function ExaminerProfileScreen() {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
-  const accessToken = useAuthStore((state) => state.accessToken);
-  const { data: user, isLoading, refetch: reloadMe } = useWhoAmI();
   const C = Colors[scheme];
-  const s = styles(C);
+
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const { data: user, isLoading, refetch: reloadMe } = useWhoAmI();
+  const { data: ongoingContests } = useExaminerContest(user?.userId);
+
+  const [openDetails, setOpenDetails] = useState(false);
+  const [activeTab, setActiveTab] = useState<"contests" | "schedules">(
+    "contests"
+  );
 
   const scrollY = useRef(new Animated.Value(0)).current;
-
   const headerTranslateY = scrollY.interpolate({
     inputRange: [0, 100],
     outputRange: [0, -20],
     extrapolate: "clamp",
   });
 
-  const [openDetails, setOpenDetails] = useState(false);
-  const [activeTab, setActiveTab] = useState<"contests" | "schedules">(
-    "contests"
-  );
-  const { data: ongoingContests } = useExaminerContest(user?.userId);
-
-  const calendarRef = useRef<{ toggleCalendarPosition: () => boolean }>(null);
-  const rotation = useRef(new Animated.Value(0));
-
-  const toggleCalendarExpansion = useCallback(() => {
-    const isOpen = calendarRef.current?.toggleCalendarPosition();
-    Animated.timing(rotation.current, {
-      toValue: isOpen ? 1 : 0,
-      duration: 200,
-      useNativeDriver: true,
-      easing: Easing.out(Easing.ease),
-    }).start();
-  }, []);
-
-  const renderHeader = useCallback(
-    (date?: Date) => {
-      const rotationInDegrees = rotation.current.interpolate({
-        inputRange: [0, 1],
-        outputRange: ["0deg", "-180deg"],
-      });
-      return (
-        <TouchableOpacity onPress={toggleCalendarExpansion}>
-          <Text>{date?.toString()}</Text>
-        </TouchableOpacity>
-      );
-    },
-    [toggleCalendarExpansion]
+  useFocusEffect(
+    useCallback(() => {
+      reloadMe();
+    }, [])
   );
 
-  const onCalendarToggled = useCallback(
-    (isOpen: boolean) => {
-      rotation.current.setValue(isOpen ? 1 : 0);
-    },
-    [rotation]
-  );
-  // Calculate examiner stats
+  // KPIs
   const examinerStats = useMemo(() => {
-    if (!ongoingContests) {
-      return {
-        activeContests: 0,
-      };
-    }
-    const activeContests = ongoingContests.filter(
-      (c) => c.status === "ACTIVE"
-    ).length;
-
-    return {
-      activeContests,
-    };
+    const activeContests =
+      ongoingContests?.filter((c: Contest) => c.status === "ACTIVE").length ??
+      0;
+    return { activeContests };
   }, [ongoingContests]);
+
+  const kpis = useMemo(
+    () => [
+      {
+        icon: "trophy-outline" as const,
+        label: "Cuộc thi đang chấm",
+        value: String(examinerStats.activeContests),
+      },
+    ],
+    [examinerStats]
+  );
+
+  // Tabs
+  const tabs: TabItem[] = useMemo(
+    () => [
+      { key: "contests", label: "Cuộc thi", icon: "color-palette-outline" },
+      { key: "schedules", label: "Lịch trình", icon: "calendar-outline" },
+    ],
+    []
+  );
+
+  // Schedules demo
   const schedules = useMemo(
     () => [
       {
@@ -100,7 +115,7 @@ export default function ExaminerProfileComponent() {
         date: "2024-12-20",
         time: "09:00 - 12:00",
         location: "Trung tâm Văn hóa Quận 1",
-        status: "upcoming",
+        status: "upcoming" as const,
       },
       {
         id: "s2",
@@ -108,7 +123,7 @@ export default function ExaminerProfileComponent() {
         date: "2024-12-22",
         time: "14:00 - 17:00",
         location: "Công viên Tao Đàn",
-        status: "upcoming",
+        status: "upcoming" as const,
       },
       {
         id: "s3",
@@ -116,113 +131,131 @@ export default function ExaminerProfileComponent() {
         date: "2024-12-15",
         time: "10:00 - 11:00",
         location: "Online",
-        status: "completed",
+        status: "completed" as const,
       },
     ],
     []
   );
 
-  const ICONS: Record<
-    "brush" | "trophy" | "eye" | "heart",
-    { fg: string; bg: string }
-  > = {
-    brush: { fg: "#F59E0B", bg: "rgba(245,158,11,0.14)" },
-    trophy: { fg: "#EAB308", bg: "rgba(234,179,8,0.14)" },
-    eye: { fg: "#3B82F6", bg: "rgba(59,130,246,0.14)" },
-    heart: { fg: "#EF4444", bg: "rgba(239,68,68,0.14)" },
+  /* ---------- Inline components using user/C ---------- */
+
+  function TopBar({
+    C,
+    title,
+    withActions,
+  }: {
+    C: ColorTokens;
+    title: string;
+    withActions?: boolean;
+  }) {
+    const [g0, g1] = pickGrad(title);
+    return (
+      <LinearGradient
+        colors={[g0, g1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={[t.topbarGrad, { borderBottomColor: C.border }]}
+      >
+        <Text
+          style={[
+            t.headerTitle,
+            {
+              color: "#fff",
+              textShadowColor: "rgba(0,0,0,0.25)",
+              textShadowRadius: 4,
+            },
+          ]}
+        >
+          {title}
+        </Text>
+        {withActions && (
+          <View style={{ flexDirection: "row" }}>
+            <TouchableOpacity
+              onPress={() => router.push("/notifications")}
+              style={t.iconBtn}
+            >
+              <Ionicons name="notifications-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/setting")}
+              style={t.iconBtn}
+            >
+              <Ionicons name="settings-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        )}
+      </LinearGradient>
+    );
+  }
+
+  const Avatar = () => {
+    const seed = user?.email || user?.fullName || "user";
+    const [g0, g1] = pickGrad(seed);
+    return (
+      <View style={{ width: 64, height: 64 }}>
+        <LinearGradient
+          colors={[g0, g1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ position: "absolute", inset: 0, borderRadius: 999 }}
+        />
+        <View
+          style={{
+            position: "absolute",
+            inset: 2,
+            borderRadius: 999,
+            backgroundColor: C.card,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons name="person-outline" size={22} color={C.mutedForeground} />
+        </View>
+      </View>
+    );
   };
 
-  const kpiConfigs = [
-    {
-      key: "activeContests",
-      icon: "time-outline" as const,
-      label: "Cuộc thi đang chấm",
-      iconColor: "#8B5CF6",
-      iconBg: "rgba(139,92,246,0.14)",
-      format: (value: number) => String(value),
-    },
-  ];
+  function KPI({ icon, label, value, C }: KPIProps) {
+    const [g0, g1] = pickGrad(label + value);
+    return (
+      <View style={{ flex: 1, alignItems: "center" }}>
+        <LinearGradient
+          colors={[g0, g1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            alignItems: "center",
+            justifyContent: "center",
+            shadowColor: g1,
+            shadowOpacity: 0.25,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 4 },
+          }}
+        >
+          <Ionicons name={icon as any} size={18} color="#fff" />
+        </LinearGradient>
+        <Text style={{ fontWeight: "900", color: C.foreground, marginTop: 6 }}>
+          {value}
+        </Text>
+        <Text style={{ fontSize: 12, color: C.mutedForeground }}>{label}</Text>
+      </View>
+    );
+  }
 
-  // Examiner KPIs
-  const kpis = useMemo(
-    () =>
-      kpiConfigs.map((config) => ({
-        ...config,
-        value: config.format(
-          examinerStats[config.key as keyof typeof examinerStats] as number
-        ),
-      })),
-    [examinerStats]
-  );
-
-  // Examiner tabs
-  const tabs = useMemo(
-    () => [
-      { key: "contests", label: "Cuộc thi", icon: "time-outline" },
-      { key: "schedules", label: "Lịch trình", icon: "calendar-outline" },
-    ],
-    []
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      reloadMe();
-    }, [])
-  );
-
-  const Avatar = () => (
-    <View
-      style={[s.avatar, { alignItems: "center", justifyContent: "center" }]}
-    >
-      <Ionicons name="person-outline" size={22} color={C.mutedForeground} />
-    </View>
-  );
-  const getStatusInfo = (status: Contest["status"]) => {
-    switch (status) {
-      case "ACTIVE":
-        return { style: s.statusActive, text: "Đang diễn ra" };
-      case "COMPLETED":
-        return { style: s.statusCompleted, text: "Hoàn thành" };
-      default:
-        return { style: {}, text: status };
-    }
-  };
+  /* ---------- Loading / Auth states ---------- */
 
   if (isLoading) {
     return (
       <View style={s.container}>
-        <View style={s.topbar}>
-          <Text style={s.headerTitle}>Hồ sơ</Text>
-          <View style={{ flexDirection: "row" }}>
-            <TouchableOpacity style={s.iconBtn}>
-              <Ionicons
-                name="notifications-outline"
-                size={22}
-                color={C.foreground}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View
-          style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 32,
-          }}
-        >
-          <Ionicons name="person-circle-outline" size={80} color={C.muted} />
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "bold",
-              color: C.foreground,
-              marginTop: 16,
-            }}
-          >
-            Đang tải hồ sơ...
-          </Text>
-        </View>
+        <TopBar C={C} title="Hồ sơ" />
+        <CenteredState
+          C={C}
+          icon="person-circle-outline"
+          title="Đang tải hồ sơ..."
+        />
       </View>
     );
   }
@@ -230,93 +263,43 @@ export default function ExaminerProfileComponent() {
   if (!accessToken || !user) {
     return (
       <View style={s.container}>
-        <View style={s.topbar}>
-          <Text style={s.headerTitle}>Hồ sơ</Text>
-        </View>
-        <View
-          style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 32,
+        <TopBar C={C} title="Hồ sơ" />
+        <CenteredState
+          C={C}
+          icon="person-circle-outline"
+          title="Bạn chưa đăng nhập"
+          message="Đăng nhập để quản lý hồ sơ, theo dõi thành tích và tham gia các cuộc thi."
+          action={{
+            label: "Đăng nhập / Đăng ký",
+            onPress: () => router.push("/login"),
           }}
-        >
-          <Ionicons name="person-circle-outline" size={80} color={C.muted} />
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "bold",
-              color: C.foreground,
-              marginTop: 16,
-            }}
-          >
-            Bạn chưa đăng nhập
-          </Text>
-          <Text
-            style={{
-              fontSize: 15,
-              color: C.mutedForeground,
-              marginVertical: 12,
-              textAlign: "center",
-            }}
-          >
-            Đăng nhập để quản lý hồ sơ, theo dõi thành tích và tham gia các cuộc
-            thi nghệ thuật hấp dẫn trên ArtChain.
-          </Text>
-          <TouchableOpacity
-            onPress={() => router.push("/login")}
-            style={{
-              backgroundColor: C.primary,
-              borderRadius: 16,
-              paddingHorizontal: 32,
-              paddingVertical: 12,
-              marginTop: 8,
-            }}
-          >
-            <Text
-              style={{
-                color: C.primaryForeground,
-                fontWeight: "bold",
-                fontSize: 16,
-              }}
-            >
-              Đăng nhập / Đăng ký
-            </Text>
-          </TouchableOpacity>
-        </View>
+        />
       </View>
     );
   }
 
+  /* ---------- Main render ---------- */
+
   return (
     <SafeAreaProvider style={s.container}>
-      {/* Top bar */}
-      <View style={s.topbar}>
-        <Text style={s.headerTitle}>Hồ sơ giám khảo</Text>
-        <View style={{ flexDirection: "row" }}>
-          <TouchableOpacity
-            onPress={() => router.push("/notifications")}
-            style={s.iconBtn}
-          >
-            <Ionicons
-              name="notifications-outline"
-              size={25}
-              color={C.foreground}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push("/setting")}
-            style={s.iconBtn}
-          >
-            <Ionicons name="settings-outline" size={25} color={C.foreground} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <TopBar C={C} title="Hồ sơ giám khảo" withActions />
+
+      {/* Background blobs (mềm, đa sắc) */}
+      <LinearGradient
+        colors={["#a78bfa22", "#60a5fa16"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={bg.blobTL}
+      />
+      <LinearGradient
+        colors={["#fda4af1f", "#fde68a1f"]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={bg.blobBR}
+      />
 
       <Animated.ScrollView
-        contentContainerStyle={{
-          paddingBottom: 110,
-        }}
+        contentContainerStyle={{ paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -328,7 +311,11 @@ export default function ExaminerProfileComponent() {
         <Animated.View
           style={[
             s.headerWrap,
-            { transform: [{ translateY: headerTranslateY }] },
+            {
+              transform: [{ translateY: headerTranslateY }],
+              borderBottomWidth: StyleSheet.hairlineWidth,
+              borderBottomColor: C.border,
+            },
           ]}
         >
           <TouchableOpacity
@@ -337,11 +324,25 @@ export default function ExaminerProfileComponent() {
           >
             <View>
               <Avatar />
-              <View style={s.addBadge}>
-                <Ionicons name="brush" size={12} color={C.primaryForeground} />
+              {/* Badge cọ vẽ gradient */}
+              <View style={[s.addBadge, { borderColor: C.background }]}>
+                {(() => {
+                  const [b0, b1] = pickGrad("badge");
+                  return (
+                    <LinearGradient
+                      colors={[b0, b1]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{ padding: 4, borderRadius: 12 }}
+                    >
+                      <Ionicons name="brush" size={12} color="#fff" />
+                    </LinearGradient>
+                  );
+                })()}
               </View>
             </View>
           </TouchableOpacity>
+
           <View style={{ flex: 1 }}>
             <Text style={s.name}>{user.fullName}</Text>
             <Text style={s.handle}>{user.email}</Text>
@@ -356,171 +357,108 @@ export default function ExaminerProfileComponent() {
           />
         </Animated.View>
 
-        <View style={s.kpiCard}>
-          {kpis.map((kpi, index) => (
-            <React.Fragment key={kpi.label}>
-              <KPI
-                icon={kpi.icon}
-                label={kpi.label}
-                value={kpi.value}
-                C={C}
-                iconColor={kpi.iconColor}
-                iconBg={kpi.iconBg}
-              />
-              {index < kpis.length - 1 && <View style={s.kpiDivider} />}
+        {/* KPI row (tonal + viền mỏng) */}
+        <View
+          style={[
+            s.kpiCard,
+            {
+              backgroundColor: C.card,
+              shadowColor: "#000",
+              borderColor: C.border,
+              borderWidth: StyleSheet.hairlineWidth,
+            },
+          ]}
+        >
+          {kpis.map((k, i) => (
+            <React.Fragment key={k.label}>
+              <KPI icon={k.icon as any} label={k.label} value={k.value} C={C} />
+              {i < kpis.length - 1 && (
+                <View style={[s.kpiDivider, { backgroundColor: C.border }]} />
+              )}
             </React.Fragment>
           ))}
         </View>
 
-        {/* Tabs */}
-        <View style={s.tabsContainer}>
-          {tabs.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[s.tab, activeTab === tab.key && s.activeTab]}
-              onPress={() => setActiveTab(tab.key as any)}
-            >
-              <Ionicons
-                name={tab.icon as any}
-                size={18}
-                color={
-                  activeTab === tab.key
-                    ? C.primaryForeground
-                    : C.mutedForeground
-                }
+        {/* Tabs (Segemented) */}
+        <SegmentedTabsForExaminer
+          tabs={tabs}
+          activeKey={activeTab}
+          onChange={(k) => setActiveTab(k as any)}
+          C={C}
+          rounded={14}
+          height={52}
+          softBg
+        />
+
+        {/* Tab content */}
+        <View style={{ paddingHorizontal: 16 }}>
+          {activeTab === "contests" ? (
+            ongoingContests && ongoingContests.length > 0 ? (
+              <View style={{ gap: 12 }}>
+                {ongoingContests.map((contest: Contest) => (
+                  <ContestCardForTab
+                    key={contest.contestId}
+                    C={C}
+                    contest={contest as any}
+                    onEvaluate={(c) => {
+                      router.push({
+                        pathname: "/contest-paintings",
+                        params: {
+                          contestId: c.contestId,
+                          contestTitle: c.title,
+                        },
+                      });
+                    }}
+                  />
+                ))}
+              </View>
+            ) : (
+              <EmptyTab
+                C={C}
+                icon="time-outline"
+                text="Chưa có cuộc thi nào được giao"
               />
-              <Text
-                style={[s.tabText, activeTab === tab.key && s.activeTabText]}
-              >
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Tab Content */}
-        <View style={s.tabContent}>
-          {activeTab === "contests" && (
-            <View style={s.tabScrollContent}>
-              {ongoingContests && ongoingContests.length > 0 ? (
-                <View style={s.contestsList}>
-                  {ongoingContests.map((contest) => (
-                    <View key={contest.contestId} style={s.contestCard}>
-                      <View style={s.contestHeader}>
-                        <Text style={s.contestTitle}>{contest.title}</Text>
-                        <View
-                          style={[
-                            s.contestStatus,
-                            getStatusInfo(contest.status).style,
-                          ]}
-                        >
-                          <Text style={s.contestStatusText}>
-                            {getStatusInfo(contest.status).text}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={s.contestMeta}>
-                        <View style={s.metaChip}>
-                          <Ionicons
-                            name="calendar-outline"
-                            size={14}
-                            color={C.mutedForeground}
-                          />
-                          <Text style={s.metaTxt}>
-                            Bắt đầu: {formatDateDisplay(contest.startDate)}
-                          </Text>
-                        </View>
-                        <View style={s.metaChip}>
-                          <Ionicons
-                            name="calendar-outline"
-                            size={14}
-                            color={C.mutedForeground}
-                          />
-                          <Text style={s.metaTxt}>
-                            Kết thúc: {formatDateDisplay(contest.endDate)}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={s.contestActions}>
-                        <TouchableOpacity
-                          style={s.evaluateButton}
-                          onPress={() => {
-                            router.push({
-                              pathname: "/contest-paintings",
-                              params: {
-                                contestId: contest.contestId,
-                                contestTitle: contest.title,
-                              },
-                            });
-                          }}
-                        >
-                          <Ionicons
-                            name="star-outline"
-                            size={16}
-                            color={C.primaryForeground}
-                          />
-                          <Text style={s.evaluateButtonText}>
-                            Evaluate Paintings
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <View style={s.emptyTab}>
-                  <Ionicons name="time-outline" size={64} color={C.muted} />
-                  <Text style={s.emptyTabText}>
-                    Chưa có cuộc thi nào được giao
-                  </Text>
-                  <TouchableOpacity style={s.exploreButton}>
-                    <Text style={s.exploreButtonText}>Xem cuộc thi mới</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          )}
-
-          {activeTab === "schedules" && (
-            <View style={s.tabScrollContent}>
+            )
+          ) : (
+            <>
               {schedules.length > 0 ? (
-                <View>
-                  {/* Group schedules by date */}
-                  {Object.entries(
-                    schedules.reduce((groups, schedule) => {
-                      const date = schedule.date;
-                      if (!groups[date]) {
-                        groups[date] = [];
-                      }
-                      groups[date].push(schedule);
+                Object.entries(
+                  schedules.reduce(
+                    (groups: Record<string, typeof schedules>, sch) => {
+                      if (!groups[sch.date]) groups[sch.date] = [];
+                      groups[sch.date].push(sch);
                       return groups;
-                    }, {} as Record<string, typeof schedules>)
+                    },
+                    {}
                   )
-                    .sort(([a], [b]) => a.localeCompare(b))
-                    .map(([date, daySchedules]) => (
+                )
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([date, daySchedules]) => {
+                    const [g0, g1] = pickGrad(date);
+                    return (
                       <View key={date} style={{ marginBottom: 24 }}>
-                        {/* Date Header */}
                         <View
                           style={{
                             flexDirection: "row",
                             alignItems: "center",
                             marginBottom: 12,
-                            paddingHorizontal: 4,
                           }}
                         >
-                          <View
+                          <LinearGradient
+                            colors={[g0, g1]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
                             style={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: 4,
-                              backgroundColor: C.primary,
+                              width: 10,
+                              height: 10,
+                              borderRadius: 5,
                               marginRight: 8,
                             }}
                           />
                           <Text
                             style={{
                               fontSize: 16,
-                              fontWeight: "700",
+                              fontWeight: "800",
                               color: C.foreground,
                             }}
                           >
@@ -537,75 +475,24 @@ export default function ExaminerProfileComponent() {
                           </Text>
                         </View>
 
-                        {/* Schedule Cards */}
-                        <View style={s.schedulesList}>
+                        <View style={{ gap: 12 }}>
                           {daySchedules
                             .sort((a, b) => a.time.localeCompare(b.time))
-                            .map((schedule) => (
-                              <View key={schedule.id} style={s.scheduleCard}>
-                                <View style={s.scheduleHeader}>
-                                  <View style={s.scheduleTime}>
-                                    <Ionicons
-                                      name="time-outline"
-                                      size={16}
-                                      color={C.primary}
-                                    />
-                                    <Text style={s.scheduleTimeText}>
-                                      {schedule.time}
-                                    </Text>
-                                  </View>
-                                  <View
-                                    style={[
-                                      s.scheduleStatus,
-                                      schedule.status === "upcoming"
-                                        ? s.statusUpcoming
-                                        : schedule.status === "completed"
-                                        ? s.statusCompleted
-                                        : {},
-                                    ]}
-                                  >
-                                    <Text style={s.scheduleStatusText}>
-                                      {schedule.status === "upcoming"
-                                        ? "Sắp diễn ra"
-                                        : schedule.status === "completed"
-                                        ? "Hoàn thành"
-                                        : schedule.status}
-                                    </Text>
-                                  </View>
-                                </View>
-                                <View style={s.scheduleContent}>
-                                  <Text style={s.scheduleTitle}>
-                                    {schedule.title}
-                                  </Text>
-                                  <View style={s.scheduleMeta}>
-                                    <View style={s.metaChip}>
-                                      <Ionicons
-                                        name="location-outline"
-                                        size={14}
-                                        color={C.mutedForeground}
-                                      />
-                                      <Text style={s.metaTxt}>
-                                        {schedule.location}
-                                      </Text>
-                                    </View>
-                                  </View>
-                                </View>
-                              </View>
+                            .map((item) => (
+                              <ScheduleCard key={item.id} item={item} C={C} />
                             ))}
                         </View>
                       </View>
-                    ))}
-                </View>
+                    );
+                  })
               ) : (
-                <View style={s.emptyTab}>
-                  <Ionicons name="calendar-outline" size={64} color={C.muted} />
-                  <Text style={s.emptyTabText}>Chưa có lịch trình nào</Text>
-                  <TouchableOpacity style={s.exploreButton}>
-                    <Text style={s.exploreButtonText}>Xem lịch trình</Text>
-                  </TouchableOpacity>
-                </View>
+                <EmptyTab
+                  C={C}
+                  icon="calendar-outline"
+                  text="Chưa có lịch trình nào"
+                />
               )}
-            </View>
+            </>
           )}
         </View>
       </Animated.ScrollView>
@@ -627,321 +514,151 @@ export default function ExaminerProfileComponent() {
   );
 }
 
-function KPI({
-  icon,
-  label,
-  value,
+/* ---------- Shared sub-components ---------- */
+
+function CenteredState({
   C,
-  iconColor = C.foreground,
-  iconBg = C.muted,
-}: KPIProps) {
+  icon,
+  title,
+  message,
+  action,
+}: {
+  C: ColorTokens;
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  message?: string;
+  action?: { label: string; onPress: () => void };
+}) {
   return (
-    <View style={{ flex: 1, alignItems: "center" }}>
-      <View
+    <View
+      style={{
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 32,
+      }}
+    >
+      <Ionicons name={icon} size={80} color={C.muted} />
+      <Text
         style={{
-          width: 36,
-          height: 36,
-          borderRadius: 18,
-          backgroundColor: iconBg,
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: 6,
+          fontSize: 20,
+          fontWeight: "800",
+          color: C.foreground,
+          marginTop: 16,
         }}
       >
-        <Ionicons name={icon} size={18} color={iconColor} />
-      </View>
-      <Text style={{ fontWeight: "800", color: C.foreground }}>{value}</Text>
-      <Text style={{ fontSize: 12, color: C.mutedForeground }}>{label}</Text>
+        {title}
+      </Text>
+      {!!message && (
+        <Text
+          style={{
+            fontSize: 15,
+            color: C.mutedForeground,
+            marginVertical: 12,
+            textAlign: "center",
+          }}
+        >
+          {message}
+        </Text>
+      )}
+      {!!action && (
+        <TouchableOpacity
+          onPress={action.onPress}
+          style={{
+            backgroundColor: C.primary,
+            borderRadius: 16,
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            marginTop: 8,
+          }}
+        >
+          <Text
+            style={{
+              color: C.primaryForeground,
+              fontWeight: "700",
+              fontSize: 15,
+            }}
+          >
+            {action.label}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
-const styles = (C: ColorTokens) =>
-  StyleSheet.create({
-    container: { flex: 1, backgroundColor: C.background },
-    topbar: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingHorizontal: 16,
-      paddingVertical: 22,
-      backgroundColor: C.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: C.border,
-    },
-    headerTitle: { fontSize: 25, fontWeight: "bold", color: C.foreground },
-    iconBtn: { padding: 8, marginLeft: 4 },
+/* ---------- Styles ---------- */
 
-    headerWrap: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 16,
-      paddingTop: 14,
-      paddingBottom: 10,
-      gap: 10,
-    },
-    name: { fontSize: 15, fontWeight: "800", color: C.foreground },
-    handle: { color: C.mutedForeground, marginTop: 2 },
-    avatar: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      backgroundColor: C.muted,
-    },
-    addBadge: {
-      position: "absolute",
-      right: -2,
-      bottom: -2,
-      backgroundColor: C.primary,
-      borderRadius: 12,
-      padding: 4,
-      borderWidth: 2,
-      borderColor: C.background,
-    },
+const s = StyleSheet.create({
+  container: { flex: 1 },
+  headerWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 10,
+    gap: 10,
+    backgroundColor: "transparent",
+  },
+  name: { fontSize: 16, fontWeight: "900" },
+  handle: { marginTop: 2, opacity: 0.8 },
+  avatar: { width: 64, height: 64, borderRadius: 32 },
+  addBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    borderRadius: 12,
+    padding: 0, // bọc LinearGradient bên trong
+    borderWidth: 2,
+  },
 
-    // KPI card
-    kpiCard: {
-      flexDirection: "row",
-      alignItems: "stretch",
-      backgroundColor: C.card,
-      marginHorizontal: 12,
-      borderRadius: 14,
-      paddingVertical: 12,
-      paddingHorizontal: 8,
-      shadowColor: "#000",
-      shadowOpacity: 0.08,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: 2,
-    },
-    kpiDivider: {
-      width: StyleSheet.hairlineWidth,
-      backgroundColor: C.border,
-      marginVertical: 6,
-    },
+  kpiCard: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    marginHorizontal: 12,
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+    backgroundColor: "transparent",
+  },
+  kpiDivider: { width: StyleSheet.hairlineWidth, marginVertical: 6 },
+});
 
-    // Tab styles
-    tabsContainer: {
-      flexDirection: "row",
-      marginHorizontal: 16,
-      marginTop: 8,
-      marginBottom: 16,
-      backgroundColor: C.card,
-      borderRadius: 12,
-      padding: 4,
-      shadowColor: "#000",
-      shadowOpacity: 0.06,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 1,
-    },
-    tab: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: 12,
-      paddingHorizontal: 8,
-      borderRadius: 8,
-      gap: 6,
-    },
-    activeTab: {
-      backgroundColor: C.primary + "15",
-    },
-    tabText: {
-      fontSize: 14,
-      fontWeight: "500",
-      color: C.mutedForeground,
-    },
-    activeTabText: {
-      color: C.primaryForeground,
-      fontWeight: "600",
-    },
-    tabContent: {
-      flex: 1,
-      minHeight: 400,
-    },
-    tabScrollContent: {
-      paddingHorizontal: 16,
-      paddingBottom: 20,
-    },
-    emptyTab: {
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: 60,
-    },
-    emptyTabText: {
-      fontSize: 16,
-      color: C.mutedForeground,
-      marginTop: 16,
-      marginBottom: 24,
-      textAlign: "center",
-    },
-    exploreButton: {
-      backgroundColor: C.primary,
-      borderRadius: 20,
-      paddingHorizontal: 24,
-      paddingVertical: 12,
-    },
-    exploreButtonText: {
-      color: C.primaryForeground,
-      fontSize: 14,
-      fontWeight: "600",
-    },
+const t = StyleSheet.create({
+  topbarGrad: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "transparent",
+  },
+  headerTitle: { fontSize: 24, fontWeight: "900" },
+  iconBtn: { padding: 8, marginLeft: 4 },
+});
 
-    // Contest styles
-    contestsList: {
-      gap: 12,
-    },
-    contestCard: {
-      backgroundColor: C.card,
-      borderRadius: 12,
-      padding: 16,
-      shadowColor: "#000",
-      shadowOpacity: 0.06,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 1,
-    },
-    contestHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: 12,
-    },
-    contestTitle: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: C.foreground,
-      flex: 1,
-      marginRight: 12,
-    },
-    contestStatus: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 12,
-    },
-    statusActive: {
-      backgroundColor: "rgba(16,185,129,0.14)",
-    },
-    statusReviewing: {
-      backgroundColor: "rgba(245,158,11,0.14)",
-    },
-    statusCompleted: {
-      backgroundColor: "rgba(59,130,246,0.14)",
-    },
-    contestStatusText: {
-      fontSize: 12,
-      fontWeight: "500",
-      color: C.mutedForeground,
-    },
-    contestMeta: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginBottom: 12,
-    },
-    contestStats: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginBottom: 12,
-    },
-    statItem: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    statText: {
-      marginLeft: 6,
-      color: C.mutedForeground,
-      fontSize: 14,
-    },
-    contestCategory: {
-      alignSelf: "flex-start",
-      backgroundColor: C.muted + "40",
-      borderRadius: 12,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-    },
-    categoryText: {
-      fontSize: 12,
-      color: C.mutedForeground,
-      fontWeight: "500",
-    },
-    contestActions: {
-      marginTop: 12,
-      alignItems: "flex-start",
-    },
-    evaluateButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: C.primary,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      gap: 6,
-    },
-    evaluateButtonText: {
-      color: C.primaryForeground,
-      fontSize: 14,
-      fontWeight: "600",
-    },
-
-    // Schedule styles
-    schedulesList: {
-      gap: 12,
-    },
-    scheduleCard: {
-      backgroundColor: C.card,
-      borderRadius: 12,
-      padding: 16,
-      shadowColor: "#000",
-      shadowOpacity: 0.06,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 1,
-    },
-    scheduleHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 12,
-    },
-    scheduleTime: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    scheduleTimeText: {
-      marginLeft: 6,
-      color: C.primary,
-      fontSize: 14,
-      fontWeight: "600",
-    },
-    scheduleStatus: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 12,
-    },
-    statusUpcoming: {
-      backgroundColor: "rgba(245,158,11,0.14)",
-    },
-    scheduleStatusText: {
-      fontSize: 12,
-      fontWeight: "500",
-      color: C.mutedForeground,
-    },
-    scheduleContent: {
-      flex: 1,
-    },
-    scheduleTitle: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: C.foreground,
-      marginBottom: 8,
-    },
-    scheduleMeta: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-    },
-
-    metaChip: { flexDirection: "row", alignItems: "center", marginRight: 14 },
-    metaTxt: { marginLeft: 4, color: C.mutedForeground, fontSize: 12 },
-  });
+const bg = StyleSheet.create({
+  blobTL: {
+    position: "absolute",
+    top: 80,
+    right: -40,
+    width: 200,
+    height: 200,
+    borderRadius: 120,
+    transform: [{ rotate: "25deg" }],
+  },
+  blobBR: {
+    position: "absolute",
+    bottom: 60,
+    left: -50,
+    width: 240,
+    height: 240,
+    borderRadius: 140,
+    transform: [{ rotate: "-15deg" }],
+  },
+});

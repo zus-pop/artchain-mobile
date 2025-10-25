@@ -20,6 +20,25 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const MIN = 2;
 
+/* ---------- Color pools & helpers ---------- */
+const POOLS: [string, string][] = [
+  ["#FF6B6B", "#FFD166"],
+  ["#06B6D4", "#3B82F6"],
+  ["#22C55E", "#A3E635"],
+  ["#F472B6", "#A78BFA"],
+  ["#F59E0B", "#F97316"],
+  ["#14B8A6", "#84CC16"],
+  ["#60A5FA", "#F472B6"],
+  ["#F43F5E", "#FB7185"],
+];
+const hashStr = (s: string) => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+};
+const pickGrad = (seed = ""): [string, string] =>
+  POOLS[hashStr(seed) % POOLS.length];
+
 function normalizeVN(s = "") {
   return s
     .normalize("NFD")
@@ -45,7 +64,7 @@ export default function SearchSuggestionsScreen() {
 
   const canQuery = deb.length >= MIN;
 
-  // Gợi ý từ BE (nhẹ). Nếu BE không có 'suggest', đổi key phù hợp.
+  // BE suggestions (đổi key cho hợp API của bạn nếu khác)
   const { data, isLoading } = useContest({
     suggest: canQuery ? deb : undefined,
   } as any);
@@ -60,16 +79,16 @@ export default function SearchSuggestionsScreen() {
         title: x.title ?? x.name ?? "",
       }))
       .filter((x: any) => normalizeVN(x.title).includes(q))
-      .slice(0, 8);
+      .slice(0, 12);
   }, [source, deb, canQuery]);
 
-  // Backdrop pulsing (rực rỡ)
+  /* ---------- Animated pulsing backdrop ---------- */
   const pulse = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const loop = Animated.loop(
       Animated.timing(pulse, {
         toValue: 1,
-        duration: 5000,
+        duration: 6000,
         easing: Easing.linear,
         useNativeDriver: false,
       })
@@ -91,18 +110,56 @@ export default function SearchSuggestionsScreen() {
     ],
   });
 
+  /* ---------- Header glass content ---------- */
   const ListHeader = (
     <View style={{ marginBottom: 12 }}>
       <View style={s.glassHeader}>
+        <View style={s.dotsRow}>
+          {Array.from({ length: 5 }).map((_, i) => {
+            const [c0] = pickGrad("dot" + i);
+            return <View key={i} style={[s.dot, { backgroundColor: c0 }]} />;
+          })}
+        </View>
         <Text style={s.headerTitle}>Tìm kiếm cuộc thi</Text>
         <Text style={s.headerSub}>Nhập từ khóa để xem gợi ý nhanh</Text>
       </View>
     </View>
   );
 
+  /* ---------- Suggestion Item (gradient pill) ---------- */
+  const renderItem = ({ item }: { item: { id: string; title: string } }) => {
+    const [c0, c1] = pickGrad(item.title);
+    return (
+      <Pressable
+        onPress={() =>
+          router.push({ pathname: "/results", params: { q: item.title } })
+        }
+        style={({ pressed }) => [
+          s.pillWrap,
+          pressed && { transform: [{ scale: 0.98 }] },
+        ]}
+      >
+        <LinearGradient
+          colors={[c0, c1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.pillBorder}
+        />
+        <View style={[s.pillInner, { backgroundColor: C.card }]}>
+          <Text
+            numberOfLines={1}
+            style={[s.suggestText, { color: C.foreground }]}
+          >
+            {item.title}
+          </Text>
+        </View>
+      </Pressable>
+    );
+  };
+
   return (
     <View style={s.container}>
-      {/* Pulsing colorful backdrop */}
+      {/* Pulsing colorful backdrop + orbs */}
       <Animated.View style={s.backdrop}>
         <LinearGradient
           colors={["transparent", "transparent"]}
@@ -119,6 +176,19 @@ export default function SearchSuggestionsScreen() {
             StyleSheet.absoluteFill,
             { backgroundColor: g2 as any, opacity: 0.12 },
           ]}
+        />
+        {/* Orbs */}
+        <LinearGradient
+          colors={["#fda4af55", "#fde68a55"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.orbTL}
+        />
+        <LinearGradient
+          colors={["#93c5fd55", "#a78bfa55"]}
+          start={{ x: 1, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={s.orbBR}
         />
       </Animated.View>
 
@@ -155,6 +225,7 @@ export default function SearchSuggestionsScreen() {
             router.push({ pathname: "/results", params: { q: t } });
           }}
           storageKey="@search_history_contests"
+          onToggleFilters={() => {}}
         />
       </View>
 
@@ -173,21 +244,8 @@ export default function SearchSuggestionsScreen() {
             paddingBottom: 32,
             paddingHorizontal: 16,
           }}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() =>
-                router.push({ pathname: "/results", params: { q: item.title } })
-              }
-              style={({ pressed }) => [
-                s.suggestItem,
-                pressed && { opacity: 0.72 },
-              ]}
-            >
-              <Text numberOfLines={1} style={s.suggestText}>
-                {item.title}
-              </Text>
-            </Pressable>
-          )}
+          renderItem={renderItem}
+          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           ListEmptyComponent={
             !isLoading ? (
               <Text style={s.hint}>Không có gợi ý phù hợp.</Text>
@@ -205,6 +263,26 @@ const styles = (C: any, insets: any) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: C.background },
     backdrop: { ...StyleSheet.absoluteFillObject },
+    orbTL: {
+      position: "absolute",
+      top: 80,
+      right: -50,
+      width: 220,
+      height: 220,
+      borderRadius: 140,
+      transform: [{ rotate: "18deg" }],
+      opacity: 0.9,
+    },
+    orbBR: {
+      position: "absolute",
+      bottom: 40,
+      left: -60,
+      width: 260,
+      height: 260,
+      borderRadius: 160,
+      transform: [{ rotate: "-12deg" }],
+      opacity: 0.85,
+    },
 
     // Header
     header: {
@@ -235,24 +313,40 @@ const styles = (C: any, insets: any) =>
       justifyContent: "center",
       backgroundColor: "rgba(255,255,255,0.18)",
     },
-    headerCaption: { color: "#fff", fontWeight: "700", fontSize: 16 },
+    headerCaption: {
+      color: "#fff",
+      fontWeight: "800",
+      fontSize: 16,
+      letterSpacing: 0.3,
+    },
 
     // Glass block under header
     glassHeader: {
-      backgroundColor: "rgba(255,255,255,0.14)",
+      backgroundColor: C.card,
       borderRadius: 16,
-      padding: 12,
+      padding: 14,
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.22)",
+      borderColor: C.border,
       shadowColor: "#000",
       shadowOpacity: 0.12,
       shadowRadius: 10,
       shadowOffset: { width: 0, height: 6 },
     },
+    dotsRow: {
+      flexDirection: "row",
+      gap: 6,
+      marginBottom: 8,
+    },
+    dot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      opacity: 0.9,
+    },
     headerTitle: {
       color: C.foreground,
       fontSize: 18,
-      fontWeight: "700",
+      fontWeight: "800",
     },
     headerSub: {
       marginTop: 6,
@@ -260,12 +354,36 @@ const styles = (C: any, insets: any) =>
       fontSize: 13,
     },
 
-    // Suggestions
+    // Hint
     hint: { color: C.mutedForeground, fontSize: 14 },
-    suggestItem: {
-      paddingVertical: 12,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: C.border,
+
+    // Suggestion “bubbles”
+    pillWrap: {
+      position: "relative",
+      borderRadius: 999,
     },
-    suggestText: { color: C.foreground, fontSize: 16 },
+    pillBorder: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      borderRadius: 999,
+      opacity: 0.95,
+    },
+    pillInner: {
+      margin: 1.5,
+      borderRadius: 999,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      justifyContent: "center",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: C.border,
+      shadowColor: "#000",
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 2,
+    },
+    suggestText: { fontSize: 15, fontWeight: "800", letterSpacing: 0.2 },
   });
