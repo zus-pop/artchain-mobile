@@ -160,7 +160,7 @@ export default function ExaminerProfileScreen() {
           style={[
             t.headerTitle,
             {
-              color: "#fff",
+              color: C.primaryForeground,
               textShadowColor: "rgba(0,0,0,0.25)",
               textShadowRadius: 4,
             },
@@ -174,13 +174,21 @@ export default function ExaminerProfileScreen() {
               onPress={() => router.push("/notifications")}
               style={t.iconBtn}
             >
-              <Ionicons name="notifications-outline" size={24} color="#fff" />
+              <Ionicons
+                name="notifications-outline"
+                size={24}
+                color={C.primaryForeground}
+              />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push("/setting")}
               style={t.iconBtn}
             >
-              <Ionicons name="settings-outline" size={24} color="#fff" />
+              <Ionicons
+                name="settings-outline"
+                size={24}
+                color={C.primaryForeground}
+              />
             </TouchableOpacity>
           </View>
         )}
@@ -235,7 +243,7 @@ export default function ExaminerProfileScreen() {
             shadowOffset: { width: 0, height: 4 },
           }}
         >
-          <Ionicons name={icon as any} size={18} color="#fff" />
+          <Ionicons name={icon as any} size={18} color={C.primaryForeground} />
         </LinearGradient>
         <Text style={{ fontWeight: "900", color: C.foreground, marginTop: 6 }}>
           {value}
@@ -335,7 +343,11 @@ export default function ExaminerProfileScreen() {
                       end={{ x: 1, y: 1 }}
                       style={{ padding: 4, borderRadius: 12 }}
                     >
-                      <Ionicons name="brush" size={12} color="#fff" />
+                      <Ionicons
+                        name="brush"
+                        size={12}
+                        color={C.primaryForeground}
+                      />
                     </LinearGradient>
                   );
                 })()}
@@ -344,8 +356,12 @@ export default function ExaminerProfileScreen() {
           </TouchableOpacity>
 
           <View style={{ flex: 1 }}>
-            <Text style={s.name}>{user.fullName}</Text>
-            <Text style={s.handle}>{user.email}</Text>
+            <Text style={[s.name, { color: C.foreground }]}>
+              {user.fullName}
+            </Text>
+            <Text style={[s.handle, { color: C.mutedForeground }]}>
+              {user.email}
+            </Text>
           </View>
 
           <PillButton

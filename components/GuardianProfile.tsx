@@ -18,8 +18,30 @@ import { useWhoAmI } from "@/apis/auth";
 import { useAuthStore } from "@/store/auth-store";
 import type { ColorTokens, KPIProps } from "@/types/tabkey";
 import { formatDateDisplay } from "@/utils/date";
+import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useGuardianChildren } from "../apis/guardian";
+
+/* -------------------- Color helpers -------------------- */
+const VIVID_POOLS: [string, string][] = [
+  ["#FF6B6B", "#FFD166"],
+  ["#06B6D4", "#3B82F6"],
+  ["#22C55E", "#A3E635"],
+  ["#F472B6", "#A78BFA"],
+  ["#F59E0B", "#F97316"],
+  ["#14B8A6", "#84CC16"],
+  ["#60A5FA", "#F472B6"],
+  ["#F43F5E", "#FB7185"],
+];
+const hashStr = (s: string) => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+};
+const pickGrad = (seed?: string): [string, string] => {
+  const i = hashStr(seed || Math.random().toString()) % VIVID_POOLS.length;
+  return VIVID_POOLS[i];
+};
 
 export default function GuardianProfileComponent() {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
@@ -158,30 +180,54 @@ export default function GuardianProfileComponent() {
     }, [])
   );
 
-  const Avatar = () => (
-    <View
-      style={[s.avatar, { alignItems: "center", justifyContent: "center" }]}
-    >
-      <Ionicons name="person-outline" size={22} color={C.mutedForeground} />
-    </View>
-  );
+  const Avatar = () => {
+    const seed = user?.email || user?.fullName || "guardian";
+    const [g0, g1] = pickGrad(seed);
+    return (
+      <View style={{ width: 64, height: 64 }}>
+        <LinearGradient
+          colors={[g0, g1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ position: "absolute", inset: 0, borderRadius: 32 }}
+        />
+        <View
+          style={{
+            position: "absolute",
+            inset: 2,
+            borderRadius: 32,
+            backgroundColor: C.card,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons name="person-outline" size={22} color={C.mutedForeground} />
+        </View>
+      </View>
+    );
+  };
   const scrollY = useRef(new Animated.Value(0)).current;
 
   if (isLoading) {
     return (
       <View style={s.container}>
-        <View style={s.topbar}>
+        <LinearGradient
+          colors={pickGrad("guardian-loading")}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[s.topbarGrad, { borderBottomColor: C.border }]}
+        >
           <Text style={s.headerTitle}>Hồ sơ</Text>
           <View style={{ flexDirection: "row" }}>
             <TouchableOpacity style={s.iconBtn}>
               <Ionicons
                 name="notifications-outline"
                 size={22}
-                color={C.foreground}
+                color={C.primaryForeground}
               />
             </TouchableOpacity>
           </View>
-        </View>
+        </LinearGradient>
         <View
           style={{
             flex: 1,
@@ -209,9 +255,14 @@ export default function GuardianProfileComponent() {
   if (!accessToken || !user) {
     return (
       <View style={s.container}>
-        <View style={s.topbar}>
+        <LinearGradient
+          colors={pickGrad("guardian-auth")}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[s.topbarGrad, { borderBottomColor: C.border }]}
+        >
           <Text style={s.headerTitle}>Hồ sơ</Text>
-        </View>
+        </LinearGradient>
         <View
           style={{
             flex: 1,
@@ -269,8 +320,13 @@ export default function GuardianProfileComponent() {
 
   return (
     <SafeAreaProvider style={s.container}>
-      {/* Top bar */}
-      <View style={s.topbar}>
+      {/* Top bar with gradient */}
+      <LinearGradient
+        colors={pickGrad("guardian-topbar")}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={[s.topbarGrad, { borderBottomColor: C.border }]}
+      >
         <Text style={s.headerTitle}>Hồ sơ phụ huynh</Text>
         <View style={{ flexDirection: "row" }}>
           <TouchableOpacity
@@ -280,17 +336,35 @@ export default function GuardianProfileComponent() {
             <Ionicons
               name="notifications-outline"
               size={25}
-              color={C.foreground}
+              color={C.primaryForeground}
             />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push("/setting")}
             style={s.iconBtn}
           >
-            <Ionicons name="settings-outline" size={25} color={C.foreground} />
+            <Ionicons
+              name="settings-outline"
+              size={25}
+              color={C.primaryForeground}
+            />
           </TouchableOpacity>
         </View>
-      </View>
+      </LinearGradient>
+
+      {/* Background blobs (mềm, đa sắc) */}
+      <LinearGradient
+        colors={["#a78bfa22", "#60a5fa16"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={bg.blobTL}
+      />
+      <LinearGradient
+        colors={["#fda4af1f", "#fde68a1f"]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={bg.blobBR}
+      />
 
       <Animated.ScrollView
         contentContainerStyle={{
@@ -311,9 +385,15 @@ export default function GuardianProfileComponent() {
           >
             <View>
               <Avatar />
-              <View style={s.addBadge}>
+              {/* Badge cọ vẽ gradient */}
+              <LinearGradient
+                colors={pickGrad("brush")}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[s.addBadge, { borderColor: C.background }]}
+              >
                 <Ionicons name="brush" size={12} color={C.primaryForeground} />
-              </View>
+              </LinearGradient>
             </View>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -570,21 +650,24 @@ function KPI({
   iconColor = C.foreground,
   iconBg = C.muted,
 }: KPIProps) {
+  const [g0, g1] = pickGrad(label + value);
   return (
     <View style={{ flex: 1, alignItems: "center" }}>
-      <View
+      <LinearGradient
+        colors={[g0, g1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={{
           width: 36,
           height: 36,
           borderRadius: 18,
-          backgroundColor: iconBg,
           alignItems: "center",
           justifyContent: "center",
           marginBottom: 6,
         }}
       >
-        <Ionicons name={icon} size={18} color={iconColor} />
-      </View>
+        <Ionicons name={icon} size={18} color={C.primaryForeground} />
+      </LinearGradient>
       <Text style={{ fontWeight: "800", color: C.foreground }}>{value}</Text>
       <Text style={{ fontSize: 12, color: C.mutedForeground }}>{label}</Text>
     </View>
@@ -594,6 +677,15 @@ function KPI({
 const styles = (C: ColorTokens) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: C.background },
+    topbarGrad: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 22,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: "transparent",
+    },
     topbar: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -604,7 +696,11 @@ const styles = (C: ColorTokens) =>
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: C.border,
     },
-    headerTitle: { fontSize: 25, fontWeight: "bold", color: C.foreground },
+    headerTitle: {
+      fontSize: 25,
+      fontWeight: "bold",
+      color: C.primaryForeground,
+    },
     iconBtn: { padding: 8, marginLeft: 4 },
 
     headerWrap: {
@@ -884,3 +980,24 @@ const styles = (C: ColorTokens) =>
     metaChip: { flexDirection: "row", alignItems: "center", marginRight: 14 },
     metaTxt: { marginLeft: 4, color: C.mutedForeground, fontSize: 12 },
   });
+
+const bg = StyleSheet.create({
+  blobTL: {
+    position: "absolute",
+    top: 80,
+    right: -40,
+    width: 200,
+    height: 200,
+    borderRadius: 120,
+    transform: [{ rotate: "25deg" }],
+  },
+  blobBR: {
+    position: "absolute",
+    bottom: 60,
+    left: -50,
+    width: 240,
+    height: 240,
+    borderRadius: 140,
+    transform: [{ rotate: "-15deg" }],
+  },
+});

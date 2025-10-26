@@ -215,7 +215,7 @@ export default function AddChildScreen() {
                 textAlign: "center",
               }}
             >
-              Chưa có thông tin con em
+              Chưa thêm con em nào
             </Text>
             <Text
               style={{
@@ -225,7 +225,7 @@ export default function AddChildScreen() {
                 textAlign: "center",
               }}
             >
-              Thêm thông tin con em để đăng ký tham gia các cuộc thi nghệ thuật
+              Thêm thông tin con em vào danh sách để chuẩn bị tạo tài khoản
             </Text>
           </View>
         ) : (
