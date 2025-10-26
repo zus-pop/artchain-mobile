@@ -1,3 +1,4 @@
+// app/.../ContestPaintingsScreen.tsx — FULL DROP‑IN FILE (VIP Gradient Card)
 import { useGetPaintings } from "@/apis/painting";
 import { useUserById } from "@/apis/user";
 import SegmentedTabsScrollable, {
@@ -8,7 +9,9 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { Painting } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -63,6 +66,65 @@ const PressableScale: React.FC<
   );
 };
 
+/* ===== Accent → Gradient helper ===== */
+function gradientFromAccent(hex?: string): [string, string] {
+  const fallbacks: [string, string] = ["#7C3AED", "#06B6D4"]; // violet → cyan
+  if (!hex) return fallbacks;
+  try {
+    const h = hex.replace("#", "");
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    const lighten = (v: number, amt = 28) => Math.min(255, v + amt);
+    const darken = (v: number, amt = 24) => Math.max(0, v - amt);
+    const c1 = `rgb(${lighten(r)},${lighten(g)},${lighten(b)})`;
+    const c2 = `rgb(${darken(r)},${darken(g)},${darken(b)})`;
+    return [c1, c2];
+  } catch {
+    return fallbacks;
+  }
+}
+
+/* ===== Monogram avatar (fallback) ===== */
+function Monogram({
+  name,
+  size = 28,
+  bg = "#111827",
+  fg = "#fff",
+}: {
+  name?: string;
+  size?: number;
+  bg?: string;
+  fg?: string;
+}) {
+  const initials =
+    (name?.trim()?.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() ||
+    "A";
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: bg,
+      }}
+    >
+      <Text
+        style={{
+          color: fg,
+          fontWeight: "800",
+          fontSize: Math.max(12, size * 0.45),
+        }}
+      >
+        {initials}
+      </Text>
+    </View>
+  );
+}
+
+/* ===== Types ===== */
 type Round = {
   key: string;
   label: string;
@@ -101,10 +163,12 @@ export default function ContestPaintingsScreen() {
     }
   }, [rounds]);
 
+  /* Ưu tiên tab đầu tiên */
   const [activeRoundKey, setActiveRoundKey] = useState(
     parsedRounds[0]?.key ?? "prelim"
   );
 
+  /* API */
   const {
     data: paintings,
     isLoading,
@@ -113,14 +177,15 @@ export default function ContestPaintingsScreen() {
     contestId: String(contestId || ""),
   });
 
-  // Ưu tiên thuộc tính từ BE; fallback theo submissionDate ∈ [start, end]
+  /* Round resolver: ưu tiên từ BE; fallback theo submissionDate ∈ [start, end] */
   function resolveRoundKey(p: Painting): string | undefined {
     // @ts-ignore
-    if (p.roundKey) return p.roundKey;
+    if ((p as any).roundKey) return (p as any).roundKey;
     // @ts-ignore
-    if (p.roundName) {
+    if ((p as any).roundName) {
       const found = parsedRounds.find(
-        (r) => r.label.toLowerCase() === String(p.roundName).toLowerCase()
+        (r) =>
+          r.label.toLowerCase() === String((p as any).roundName).toLowerCase()
       );
       if (found) return found.key;
     }
@@ -148,18 +213,18 @@ export default function ContestPaintingsScreen() {
   );
 
   const filtered = useMemo(() => {
-    if (!paintings) return [];
+    if (!paintings) return [] as Painting[];
     return paintings.filter((p) => {
       const k = resolveRoundKey(p);
       if (k) return k === activeRoundKey;
-      return activeRoundKey === parsedRounds[0]?.key; // nếu không xác định được round -> cho vào sơ loại
+      return activeRoundKey === parsedRounds[0]?.key; // không xác định → cho vào sơ loại
     });
   }, [paintings, activeRoundKey, parsedRounds]);
 
   const TabsColor: TabsColorSet = {
     primary: C.primary,
     card: C.card,
-    muted: C.border, // base alpha cho nền tabs
+    muted: C.border,
     mutedForeground: C.mutedForeground,
   };
 
@@ -186,78 +251,116 @@ export default function ContestPaintingsScreen() {
     [contestTitle]
   );
 
-  /* ============================ Item Card ============================ */
+  /* ============================ VIP CARD ============================ */
   const PaintingItem = ({ painting }: { painting: Painting }) => {
     const { data: user } = useUserById(painting.competitorId);
+    const rKey = resolveRoundKey(painting);
+    const rMeta = parsedRounds.find((r) => r.key === rKey);
+    const [g0, g1] = gradientFromAccent(rMeta?.accentColor);
 
     return (
-      // Card KHÔNG điều hướng — chỉ CTA bên dưới mới điều hướng
-      <View style={s.card}>
-        {/* Ảnh 4:3 – viền bo, bóng nhẹ */}
-        <View style={s.imageWrap}>
-          <Image
-            source={{ uri: painting.imageUrl }}
-            style={s.image}
-            placeholder={require("@/assets/images/partial-react-logo.png")}
-            contentFit="cover"
-            transition={200}
-          />
-          {/* Badge ngày góc phải */}
-          <View style={s.dateBadge}>
-            <Ionicons name="calendar-outline" size={12} color={C.primary} />
-            <Text style={s.dateBadgeText}>
-              {new Date(painting.submissionDate).toLocaleDateString()}
-            </Text>
-          </View>
-        </View>
-
-        {/* Nội dung trắng rõ chữ */}
-        <View style={s.content}>
-          {/* Tiêu đề */
-          /* đậm, chữ gọn, không quá 2 dòng */}
-          <Text style={s.title} numberOfLines={2}>
-            {painting.title}
-          </Text>
-
-          {/* Hàng meta: Nghệ sĩ + Vòng */}
-          <View style={s.metaRow}>
-            <Text style={s.artistText} numberOfLines={1}>
-              <Text style={s.metaLabel}>Nghệ sĩ: </Text>
-              {user?.fullName || `Artist ${painting.competitorId}`}
-            </Text>
-
-            <View style={s.roundChip}>
-              <Ionicons name="trophy-outline" size={12} color={C.primary} />
-              <Text style={s.roundChipText}>
-                {parsedRounds.find((r) => r.key === resolveRoundKey(painting))
-                  ?.label ?? "Tự do"}
-              </Text>
-            </View>
-          </View>
-
-          <View style={s.divider} />
-
-          {/* CTA: chỉ nút này mới điều hướng */}
-          <PressableScale
-            onPress={() => openWithLock(painting, user?.fullName)}
-            style={s.cta}
+      <LinearGradient
+        colors={[g0, g1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={s.vipWrap}
+      >
+        <View style={s.vipBorder}>
+          <BlurView
+            intensity={28}
+            tint={scheme === "dark" ? "dark" : "light"}
+            style={s.vipCard}
           >
-            <View style={{display: "flex", flexDirection: "row", alignItems: "center", gap: 8}}>
-              <Ionicons
-                name="create-outline"
-                size={16}
-                color={C.primaryForeground}
+            {/* MEDIA */}
+            <View style={s.vipMedia}>
+              <Image
+                source={{ uri: painting.imageUrl }}
+                style={s.vipImage}
+                placeholder={require("@/assets/images/partial-react-logo.png")}
+                contentFit="cover"
+                transition={200}
               />
-              <Text style={s.ctaText}>Chấm bài</Text>
+              <LinearGradient
+                colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.55)"]}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={s.vipShade}
+              />
+
+              {/* Top-left round chip */}
+              <LinearGradient
+                colors={[g0, g1]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.roundBadge}
+              >
+                <Ionicons name="trophy-outline" size={12} color="#fff" />
+                <Text style={s.roundBadgeText}>{rMeta?.label ?? "Tự do"}</Text>
+              </LinearGradient>
+
+              {/* Top-right date chip */}
+              <View style={s.dateBadgeVip}>
+                <Ionicons name="calendar-outline" size={12} color="#111827" />
+                <Text style={s.dateBadgeVipText}>
+                  {new Date(painting.submissionDate).toLocaleDateString()}
+                </Text>
+              </View>
+
+              {/* Title on media */}
+              <View style={s.titleOnMedia}>
+                <Text numberOfLines={2} style={s.vipTitle}>
+                  {painting.title}
+                </Text>
+              </View>
             </View>
-          </PressableScale>
+
+            {/* META + CTA */}
+            <View style={s.vipContent}>
+              <View style={s.vipMetaRow}>
+                <Monogram name={user?.fullName} size={28} bg={g1} />
+                <View style={{ flex: 1 }}>
+                  <Text numberOfLines={1} style={s.vipArtistName}>
+                    {user?.fullName || `Artist ${painting.competitorId}`}
+                  </Text>
+                  <Text numberOfLines={1} style={s.vipSubtle}>
+                    #{painting.paintingId}
+                  </Text>
+                </View>
+                <View style={s.microBadge}>
+                  <Ionicons
+                    name="color-palette-outline"
+                    size={12}
+                    color="#fff"
+                  />
+                  <Text style={s.microBadgeText}>Art</Text>
+                </View>
+              </View>
+
+              <View style={s.vipDivider} />
+
+              <PressableScale
+                onPress={() => openWithLock(painting, user?.fullName)}
+                style={s.vipCTA}
+              >
+                <LinearGradient
+                  colors={[g0, g1]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={s.vipCTAInner}
+                >
+                  <Ionicons name="create-outline" size={16} color="#ffffff" />
+                  <Text style={s.vipCTAText}>Chấm bài</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#ffffff" />
+                </LinearGradient>
+              </PressableScale>
+            </View>
+          </BlurView>
         </View>
-      </View>
+      </LinearGradient>
     );
   };
 
   /* ============================ Render ============================ */
-
   if (isLoading) {
     return (
       <ImageBackground
@@ -322,7 +425,6 @@ export default function ContestPaintingsScreen() {
       style={s.bg}
       imageStyle={s.bgImage}
     >
-      {/* Lớp overlay làm dịu nền để nội dung nổi bật */}
       <View style={s.bgOverlay} />
 
       <View style={s.containerTransparent}>
@@ -336,23 +438,18 @@ export default function ContestPaintingsScreen() {
           </Text>
         </View>
 
-        {/* Tabs rời, scroll ngang */}
+        {/* Tabs */}
         <SegmentedTabsScrollable
           tabs={roundTabs}
           activeKey={activeRoundKey}
           onChange={setActiveRoundKey}
-          C={{
-            primary: C.primary,
-            card: C.card,
-            muted: C.border,
-            mutedForeground: C.mutedForeground,
-          }}
-          height={46}
-          gap={14}
+          C={TabsColor}
+          height={30}
+          gap={10}
           underlineHeight={3}
           softBg
           autoScrollToActive
-          scrollPaddingHorizontal={16}
+          scrollPaddingHorizontal={5}
         />
 
         {/* List */}
@@ -390,13 +487,13 @@ const styles = (C: typeof Colors.light) =>
       backgroundColor: toAlpha(C.background, 0.35),
     },
 
-    /* Container trong suốt để lộ nền */
+    /* Container in front of bg */
     containerTransparent: {
       flex: 1,
       backgroundColor: "transparent",
     },
 
-    /* Header & trạng thái */
+    /* Header */
     header: {
       flexDirection: "row",
       alignItems: "center",
@@ -414,6 +511,7 @@ const styles = (C: typeof Colors.light) =>
       flex: 1,
     },
 
+    /* Loading / Error */
     loading: { flex: 1, alignItems: "center", justifyContent: "center" },
     loadingText: { marginTop: 12, fontSize: 15, color: C.mutedForeground },
 
@@ -438,33 +536,52 @@ const styles = (C: typeof Colors.light) =>
     },
     retryText: { color: C.primaryForeground, fontWeight: "800" },
 
-    /* List padding để card tách nền đẹp */
+    /* List padding */
     list: { padding: 16 },
 
-    /* Card promax */
-    card: {
-      borderRadius: 18,
-      backgroundColor: "#fff",
+    /* ========== VIP Gradient Card styles ========== */
+    vipWrap: {
+      borderRadius: 22,
+      padding: 2,
       marginBottom: 16,
       shadowColor: "#000",
-      shadowOpacity: 0.08,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 2,
-      overflow: "hidden",
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: toAlpha(C.border, 0.5),
+      shadowOpacity: 0.16,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 5,
     },
-
-    imageWrap: {
+    vipBorder: {
+      borderRadius: 20,
+      overflow: "hidden",
+      backgroundColor: toAlpha(C.card, 0.6),
+    },
+    vipCard: {
+      overflow: "hidden",
+      borderRadius: 20,
+    },
+    vipMedia: {
       position: "relative",
       width: "100%",
       aspectRatio: 4 / 3,
       backgroundColor: C.muted,
     },
-    image: { width: "100%", height: "100%" },
+    vipImage: { width: "100%", height: "100%" },
+    vipShade: { ...StyleSheet.absoluteFillObject },
 
-    dateBadge: {
+    roundBadge: {
+      position: "absolute",
+      top: 10,
+      left: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    roundBadgeText: { color: "#fff", fontSize: 12, fontWeight: "800" },
+
+    dateBadgeVip: {
       position: "absolute",
       top: 10,
       right: 10,
@@ -474,65 +591,66 @@ const styles = (C: typeof Colors.light) =>
       paddingHorizontal: 10,
       paddingVertical: 6,
       borderRadius: 999,
-      backgroundColor: toAlpha("#ffffff", 0.94),
+      backgroundColor: "#fff",
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: toAlpha(C.border, 0.6),
     },
-    dateBadgeText: { fontSize: 12, fontWeight: "700", color: C.foreground },
+    dateBadgeVipText: { fontSize: 12, fontWeight: "800", color: "#111827" },
 
-    content: {
-      backgroundColor: "#ffffff",
+    titleOnMedia: {
+      position: "absolute",
+      left: 12,
+      right: 12,
+      bottom: 10,
+    },
+    vipTitle: {
+      color: "#fff",
+      fontSize: 18,
+      fontWeight: "900",
+      letterSpacing: 0.2,
+      textShadowColor: "rgba(0,0,0,0.35)",
+      textShadowRadius: 6,
+      textShadowOffset: { width: 0, height: 2 },
+    },
+
+    vipContent: {
+      backgroundColor: toAlpha("#ffffff", 0.82),
       paddingHorizontal: 14,
       paddingTop: 12,
       paddingBottom: 14,
     },
-    title: {
-      fontSize: 16,
-      fontWeight: "900",
-      color: C.foreground,
-      marginBottom: 8,
-      letterSpacing: 0.2,
-    },
+    vipMetaRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+    vipArtistName: { fontSize: 14, fontWeight: "800", color: C.foreground },
+    vipSubtle: { fontSize: 12, color: C.mutedForeground },
 
-    metaRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-      marginBottom: 10,
-    },
-    metaLabel: { fontWeight: "800", color: C.foreground },
-    artistText: { flex: 1, fontSize: 14, color: C.mutedForeground },
-
-    roundChip: {
+    microBadge: {
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
       paddingHorizontal: 10,
       paddingVertical: 6,
       borderRadius: 999,
-      backgroundColor: toAlpha(C.primary, 0.08),
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: toAlpha(C.primary, 0.3),
+      backgroundColor: toAlpha(C.foreground, 0.18),
     },
-    roundChipText: { fontSize: 12, fontWeight: "800", color: C.primary },
+    microBadgeText: { fontSize: 12, fontWeight: "800", color: "#fff" },
 
-    divider: {
+    vipDivider: {
       height: StyleSheet.hairlineWidth,
       backgroundColor: toAlpha(C.border, 0.9),
+      marginTop: 10,
       marginBottom: 12,
     },
 
-    cta: {
-      backgroundColor: C.primary,
-      borderRadius: 12,
-      paddingVertical: 12,
-      alignItems: "center",
+    vipCTA: { borderRadius: 12, overflow: "hidden" },
+    vipCTAInner: {
       flexDirection: "row",
+      alignItems: "center",
       justifyContent: "center",
       gap: 8,
+      paddingVertical: 12,
     },
-    ctaText: {
-      color: C.primaryForeground,
+    vipCTAText: {
+      color: "#fff",
       fontSize: 14,
       fontWeight: "900",
       letterSpacing: 0.3,
