@@ -123,6 +123,11 @@ export default function RootLayout() {
                 name="contest-paintings"
                 options={{ headerShown: false }}
               />
+              <Stack.Screen name="add-child" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="children-participate"
+                options={{ headerShown: false }}
+              />
             </Stack>
             <Toaster richColors />
           </ThemeProvider>

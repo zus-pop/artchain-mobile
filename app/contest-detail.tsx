@@ -20,7 +20,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { toast } from "sonner-native";
 
 /** --------- SPACING ---------- */
 const SPACE = {
@@ -479,7 +478,13 @@ export default function ContestDetail() {
                   }
 
                   if (me.role === "GUARDIAN") {
-                    toast.info("TODO: Not implemented yet!");
+                    router.push({
+                      pathname: "/children-participate",
+                      params: {
+                        contestId: contest.contestId,
+                        roundId: contest.roundId,
+                      },
+                    });
                   }
                 }}
                 activeOpacity={0.9}

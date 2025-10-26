@@ -43,6 +43,7 @@ export interface PaintingEvaluation {
   id: string;
   paintingId: string;
   examinerId: string;
+  examinerName: string;
   score: number;
   feedback: string;
   evaluationDate: Date;

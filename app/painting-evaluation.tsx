@@ -119,7 +119,7 @@ const AnimatedModal = (props: any) =>
 /* ---------- Helpers ---------- */
 const clamp = (v: number, min: number, max: number) =>
   Math.min(Math.max(v, min), max);
-const STEP = 0.5;
+const STEP = 1;
 const roundToStep = (n: number, step = STEP) => Math.round(n / step) * step;
 
 const FEEDBACK_PRESETS = [
@@ -220,7 +220,7 @@ export default function PaintingEvaluationScreen() {
     setValue,
     watch,
     getValues,
-    formState: { errors, isValid },
+    formState: { errors, isValid, isDirty },
   } = useForm<EvaluationFormData>({
     resolver: zodResolver(evaluationSchema),
     defaultValues: { score: 5, feedback: "" },
@@ -243,7 +243,6 @@ export default function PaintingEvaluationScreen() {
     () => `draft_evaluation_${paintingId}`,
     [paintingId]
   );
-  const isDirtyRef = useRef(false);
 
   // Flags
   const FLAG_REASONS = [
@@ -272,7 +271,7 @@ export default function PaintingEvaluationScreen() {
           if (typeof parsed.feedback === "string") {
             setValue("feedback", parsed.feedback, { shouldValidate: true });
           }
-          toast.message("Đã khôi phục bản nháp");
+          toast.info("Đã khôi phục bản nháp");
         }
       } catch {}
     })();
@@ -282,7 +281,7 @@ export default function PaintingEvaluationScreen() {
   /* ---------- Autosave ---------- */
   useEffect(() => {
     const id = setInterval(async () => {
-      if (!isDirtyRef.current) return;
+      if (!isDirty) return;
       try {
         await AsyncStorage.setItem(
           draftKey,
@@ -299,11 +298,11 @@ export default function PaintingEvaluationScreen() {
 
   const clearDraft = async () => {
     await AsyncStorage.removeItem(draftKey);
-    toast.message("Đã xoá bản nháp cục bộ");
+    toast.info("Đã xoá bản nháp cục bộ");
   };
 
   const handleBack = () => {
-    if (isDirtyRef.current) {
+    if (isDirty) {
       Alert.alert(
         "Bạn có muốn thoát?",
         "Bản nháp đã được lưu tự động, nhưng các thay đổi chưa gửi. Tiếp tục quay lại?",
@@ -334,25 +333,14 @@ export default function PaintingEvaluationScreen() {
     mutate(
       {
         examinerId: examiner.userId,
-        paintingId: String(paintingId),
+        paintingId: paintingId,
         score: data.score,
         feedback: data.feedback?.trim(),
       },
       {
         onSuccess: async () => {
-          try {
-            isDirtyRef.current = false;
-            await AsyncStorage.removeItem(draftKey);
-          } finally {
-            setConfirmOpen(false);
-            setSuccessOpen(true); // mở modal thành công đẹp
-          }
-        },
-        onError: (err: any) => {
+          await AsyncStorage.removeItem(draftKey);
           setConfirmOpen(false);
-          toast.error(
-            err?.message || "Không thể gửi đánh giá. Vui lòng thử lại."
-          );
         },
       }
     );
@@ -364,8 +352,7 @@ export default function PaintingEvaluationScreen() {
   const bumpScore = (delta: number) => {
     const cur = Number(getValues("score") ?? 0);
     const next = clamp(roundToStep(cur + delta), 1, 10);
-    setValue("score", next, { shouldValidate: true });
-    isDirtyRef.current = true;
+    setValue("score", next, { shouldValidate: true, shouldDirty: true });
   };
 
   /* ---------- Preset & Quick feedback ---------- */
@@ -374,8 +361,8 @@ export default function PaintingEvaluationScreen() {
     const joiner = cur.trim().length ? "; " : "";
     setValue("feedback", `${cur.trim()}${joiner}${txt}`.trim(), {
       shouldValidate: true,
+      shouldDirty: true,
     });
-    isDirtyRef.current = true;
   };
 
   /* ---------- BG gradient ---------- */
@@ -522,17 +509,17 @@ export default function PaintingEvaluationScreen() {
                     <View style={styles(colors).detailItem}>
                       <View style={styles(colors).detailIconCircle}>
                         <Ionicons
-                          name="pricetag-outline"
+                          name="color-palette-outline"
                           size={16}
                           color="#fff"
                         />
                       </View>
                       <View style={{ flex: 1 }}>
                         <ThemedText style={styles(colors).detailLabel}>
-                          Mã tác phẩm
+                          Tên tác phẩm
                         </ThemedText>
                         <ThemedText style={styles(colors).detailValue}>
-                          {paintingId}
+                          {paintingTitle}
                         </ThemedText>
                       </View>
                     </View>
@@ -653,7 +640,6 @@ export default function PaintingEvaluationScreen() {
                             const t = text.replace(",", ".").trim();
                             if (t === "") {
                               onChange(undefined as any);
-                              isDirtyRef.current = true;
                               return;
                             }
                             const n = Number(t);
@@ -661,7 +647,6 @@ export default function PaintingEvaluationScreen() {
                               ? clamp(roundToStep(n), 1, 10)
                               : 1;
                             onChange(safe);
-                            isDirtyRef.current = true;
                           }}
                           keyboardType="numeric"
                           style={styles(colors).scoreInput}
@@ -869,7 +854,6 @@ export default function PaintingEvaluationScreen() {
                       value={value}
                       onChangeText={(t) => {
                         onChange(t);
-                        isDirtyRef.current = true;
                       }}
                       multiline
                       numberOfLines={6}
@@ -936,7 +920,7 @@ export default function PaintingEvaluationScreen() {
               return;
             }
             setFlagOpen(false);
-            toast.message("Đã ghi nhận gắn cờ (UI).");
+            toast.info("Đã ghi nhận gắn cờ (UI).");
           }}
         />
 

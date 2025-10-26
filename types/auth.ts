@@ -16,14 +16,13 @@ export interface RegisterRequest {
   email: string;
   fullName: string;
   role: UserRole;
+  phone?: string;
   // Competitor specific fields
   schoolName?: string;
   grade?: string;
   ward?: string;
   birthday?: string;
   // Guard specific fields
-  phone?: string;
-  employeeId?: string;
 }
 
 export interface AuthResponse {

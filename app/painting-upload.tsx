@@ -478,7 +478,7 @@ export default function PaintingUpload() {
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.85,
+        quality: 1,
       });
       if (!result.canceled) {
         const file = result.assets[0];

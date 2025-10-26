@@ -1,251 +1,186 @@
-// components/cards/PostCard.tsx
-import { Ionicons } from "@expo/vector-icons";
-import React from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-
-export type Submission = {
-  id: string;
-  title: string;
-  contest: string;
-  submissionDate: string;
-  status: "winner" | "accepted" | "pending" | "rejected" | string;
-  image: string;
-  views: number;
-  likes: number;
-};
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Post } from "@/types/post";
+import * as React from "react";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 type Props = {
-  item: Submission;
-  C: any; // Colors[scheme]
-  onPress?: () => void;
-  getStatusColor: (status: string) => string;
-  getStatusText: (status: string) => string;
-};
-
-const ICON_COLORS = {
-  views: "#3B82F6", // blue-500
-  likes: "#EF4444", // red-500
+  item: Post;
+  onPress?: (item: Post) => void;
+  showDivider?: boolean;
+  thumbSize?: number; // <-- new
+  radius?: number; // <-- new
 };
 
 export default function PostCard({
   item,
-  C,
   onPress,
-  getStatusColor,
-  getStatusText,
+  showDivider = true,
+  thumbSize = 84, // mặc định lớn hơn 64
+  radius = 12,
 }: Props) {
-  const statusColor = getStatusColor(item.status);
-  const statusText = getStatusText(item.status);
+  const scheme = useColorScheme() ?? "light";
+  const s = React.useMemo(
+    () => styles(scheme, thumbSize, radius),
+    [scheme, thumbSize, radius]
+  );
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={onPress}
-      style={[
-        styles.card,
-        {
-          backgroundColor: C.card,
-          // Shadow mềm (iOS) + elevation nhẹ (Android)
-          shadowColor: C.shadow ?? "#000",
-        },
-      ]}
-    >
-      {/* Halo mờ quanh card (thay cho border) */}
-      <View
-        pointerEvents="none"
-        style={[
-          styles.halo,
-          {
-            // dùng màu nền/viền pha mờ để tạo “viền ảo”
-            backgroundColor: (C.border ?? "#000") + "0D", // ~opacity 0.05
-          },
-        ]}
-      />
-
-      {/* Thumbnail + status */}
-      <View style={[styles.thumbWrap, { backgroundColor: C.muted }]}>
-        <Image source={{ uri: item.image }} style={styles.thumb} />
-        <View
-          style={[
-            styles.statusPill,
-            { backgroundColor: statusColor + "E6" /* đậm hơn một chút */ },
-          ]}
-        >
-          <Text style={styles.statusTxt} numberOfLines={1}>
-            {statusText}
-          </Text>
-        </View>
-      </View>
-
-      {/* Content */}
-      <View style={{ flex: 1 }}>
-        {/* Title row */}
-        <View style={styles.titleRow}>
-          <Text
-            style={[styles.title, { color: C.foreground }]}
-            numberOfLines={1}
-          >
-            {item.title}
-          </Text>
-          <Ionicons
-            name="chevron-forward"
-            size={18}
-            color={C.mutedForeground}
+    <View style={s.wrap}>
+      <Pressable
+        onPress={() => onPress?.(item)}
+        android_ripple={{ color: Colors[scheme].muted }}
+        style={s.row}
+      >
+        <View style={s.thumbWrap}>
+          <Image
+            source={{ uri: item.image_url }}
+            style={s.thumb}
+            resizeMode="cover"
           />
         </View>
 
-        {/* Contest + date */}
-        <Text style={[styles.contest, { color: C.primary }]} numberOfLines={1}>
-          {item.contest}
-        </Text>
-        <Text style={[styles.meta, { color: C.mutedForeground }]}>
-          Gửi ngày: {new Date(item.submissionDate).toLocaleDateString("vi-VN")}
-        </Text>
-
-        {/* Divider hairline (bên trong, không phải border card) */}
-        <View style={[styles.divider, { backgroundColor: C.border }]} />
-
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          <View style={styles.statChip}>
+        <View style={s.content}>
+          <Text numberOfLines={1} style={s.title}>
+            {item.title}
+          </Text>
+          <Text numberOfLines={2} style={s.summary}>
+            {item.content}
+          </Text>
+          {/* Tags */}
+          {item.postTags && item.postTags.length > 0 && (
             <View
-              style={[
-                styles.iconBadge,
-                { backgroundColor: "rgba(59,130,246,0.12)" },
-              ]}
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 6,
+                marginTop: 6,
+                marginBottom: 6,
+              }}
             >
-              <Ionicons
-                name="eye-outline"
-                size={14}
-                color={ICON_COLORS.views}
-              />
+              {item.postTags.slice(0, 3).map((postTag, tagIndex) => (
+                <View
+                  key={tagIndex}
+                  style={{
+                    backgroundColor:
+                      scheme === "dark"
+                        ? "rgba(59, 130, 246, 0.15)"
+                        : "rgba(59, 130, 246, 0.1)",
+                    borderWidth: 1,
+                    borderColor:
+                      scheme === "dark"
+                        ? "rgba(59, 130, 246, 0.3)"
+                        : "rgba(59, 130, 246, 0.2)",
+                    borderRadius: 12,
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: scheme === "dark" ? "#60A5FA" : "#2563EB",
+                      fontSize: 11,
+                      fontWeight: "600",
+                    }}
+                  >
+                    {postTag.tag.tag_name}
+                  </Text>
+                </View>
+              ))}
+              {item.postTags.length > 3 && (
+                <View
+                  style={{
+                    backgroundColor:
+                      scheme === "dark"
+                        ? "rgba(59, 130, 246, 0.15)"
+                        : "rgba(59, 130, 246, 0.1)",
+                    borderWidth: 1,
+                    borderColor:
+                      scheme === "dark"
+                        ? "rgba(59, 130, 246, 0.3)"
+                        : "rgba(59, 130, 246, 0.2)",
+                    borderRadius: 12,
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: scheme === "dark" ? "#60A5FA" : "#2563EB",
+                      fontSize: 11,
+                      fontWeight: "600",
+                    }}
+                  >
+                    +{item.postTags.length - 3}
+                  </Text>
+                </View>
+              )}
             </View>
-            <Text style={[styles.statTxt, { color: C.mutedForeground }]}>
-              {item.views}
-            </Text>
-          </View>
-
-          <View style={styles.statChip}>
-            <View
-              style={[
-                styles.iconBadge,
-                { backgroundColor: "rgba(239,68,68,0.12)" },
-              ]}
-            >
-              <Ionicons
-                name="heart-outline"
-                size={14}
-                color={ICON_COLORS.likes}
-              />
-            </View>
-            <Text style={[styles.statTxt, { color: C.mutedForeground }]}>
-              {item.likes}
+          )}
+          <View style={s.meta}>
+            <Text style={s.date}>
+              {new Date(item.published_at).toLocaleDateString("vi-VN")}
             </Text>
           </View>
         </View>
-      </View>
-    </TouchableOpacity>
+      </Pressable>
+
+      <View style={s.divider} />
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    position: "relative",
-    flexDirection: "row",
-    gap: 12,
-    borderRadius: 16,
-    marginBottom: 14,
-    padding: 12,
-
-    // Shadow iOS
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    // Android
-    elevation: 2,
-  },
-
-  // “Halo” mờ tạo cảm giác viền nhưng không dùng border
-  halo: {
-    position: "absolute",
-    inset: -1, // phủ sát mép ngoài
-    borderRadius: 18,
-  },
-
-  // Thumbnail
-  thumbWrap: {
-    width: 100,
-    height: 120,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  thumb: {
-    width: "100%",
-    height: "100%",
-  },
-  statusPill: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  statusTxt: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "700",
-  },
-
-  // Content
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 2,
-    marginBottom: 4,
-  },
-  title: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "800",
-    marginRight: 8,
-  },
-  contest: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  meta: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    marginVertical: 8,
-    borderRadius: 1,
-    opacity: 0.8,
-  },
-
-  // Stats
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-  },
-  statChip: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  iconBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 6,
-  },
-  statTxt: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-});
+// styles: dùng thumbSize & radius
+const styles = (scheme: "light" | "dark", THUMB = 64, R = 10) =>
+  StyleSheet.create({
+    wrap: { backgroundColor: Colors[scheme].card },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 14,
+      paddingVertical: 15,
+    },
+    thumbWrap: {
+      width: THUMB,
+      height: THUMB + 20,
+      overflow: "hidden",
+      marginRight: 12,
+      borderRadius: R,
+      backgroundColor: Colors[scheme].muted,
+    },
+    thumb: { width: "100%", height: "100%" }, // KHÔNG cần 120%
+    content: { flex: 1 },
+    title: {
+      fontSize: 16,
+      fontWeight: "800",
+      color: Colors[scheme].foreground,
+      marginBottom: 4,
+    },
+    summary: {
+      fontSize: 13,
+      color: Colors[scheme].mutedForeground,
+      marginBottom: 6,
+    },
+    meta: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    date: {
+      fontSize: 12,
+      color: Colors[scheme].mutedForeground,
+      fontStyle: "italic",
+    },
+    badge: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: Colors[scheme].accentForeground,
+    },
+    divider: {
+      height: 1,
+      width: "100%",
+      backgroundColor: Colors[scheme].muted, // dùng màu nhạt từ theme
+      //   marginLeft: 14 + THUMB + 12,
+      marginHorizontal: 20,
+    },
+  });

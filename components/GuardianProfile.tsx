@@ -18,7 +18,30 @@ import { useWhoAmI } from "@/apis/auth";
 import { useAuthStore } from "@/store/auth-store";
 import type { ColorTokens, KPIProps } from "@/types/tabkey";
 import { formatDateDisplay } from "@/utils/date";
+import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useGuardianChildren } from "../apis/guardian";
+
+/* -------------------- Color helpers -------------------- */
+const VIVID_POOLS: [string, string][] = [
+  ["#FF6B6B", "#FFD166"],
+  ["#06B6D4", "#3B82F6"],
+  ["#22C55E", "#A3E635"],
+  ["#F472B6", "#A78BFA"],
+  ["#F59E0B", "#F97316"],
+  ["#14B8A6", "#84CC16"],
+  ["#60A5FA", "#F472B6"],
+  ["#F43F5E", "#FB7185"],
+];
+const hashStr = (s: string) => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+};
+const pickGrad = (seed?: string): [string, string] => {
+  const i = hashStr(seed || Math.random().toString()) % VIVID_POOLS.length;
+  return VIVID_POOLS[i];
+};
 
 export default function GuardianProfileComponent() {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
@@ -27,6 +50,7 @@ export default function GuardianProfileComponent() {
   const C = Colors[scheme];
   const s = styles(C);
 
+  const { data: children } = useGuardianChildren(user?.userId);
   const [openDetails, setOpenDetails] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "children" | "contests" | "achievements"
@@ -105,32 +129,39 @@ export default function GuardianProfileComponent() {
     heart: { fg: "#EF4444", bg: "rgba(239,68,68,0.14)" },
   };
 
+  // Avatar icons and colors for children
+  const childAvatars = useMemo(
+    () => [
+      { icon: "person-outline" as const, bg: "#FF6B6B" },
+      { icon: "person-outline" as const, bg: "#4ECDC4" },
+      { icon: "person-outline" as const, bg: "#45B7D1" },
+      { icon: "person-outline" as const, bg: "#96CEB4" },
+      { icon: "person-outline" as const, bg: "#FFEAA7" },
+      { icon: "person-outline" as const, bg: "#DDA0DD" },
+      { icon: "person-outline" as const, bg: "#98D8C8" },
+      { icon: "person-outline" as const, bg: "#F7DC6F" },
+      { icon: "person-outline" as const, bg: "#BB8FCE" },
+      { icon: "person-outline" as const, bg: "#85C1E9" },
+    ],
+    []
+  );
+
+  const getChildAvatar = (index: number) => {
+    return childAvatars[index % childAvatars.length];
+  };
+
   // Guardian KPIs
   const kpis = useMemo(
     () => [
       {
         icon: "people-outline" as const,
         label: "Con tham gia",
-        value: "2",
+        value: String(children?.length || 0),
         iconColor: "#3B82F6",
         iconBg: "rgba(59,130,246,0.14)",
       },
-      {
-        icon: "trophy-outline" as const,
-        label: "Giải thưởng",
-        value: "5",
-        iconColor: ICONS.trophy.fg,
-        iconBg: ICONS.trophy.bg,
-      },
-      {
-        icon: "time-outline" as const,
-        label: "Cuộc thi active",
-        value: String(contestStats.activeContests),
-        iconColor: "#8B5CF6",
-        iconBg: "rgba(139,92,246,0.14)",
-      },
     ],
-    [contestStats, ICONS]
+    [children?.length]
   );
 
   // Guardian tabs
@@ -149,30 +180,54 @@ export default function GuardianProfileComponent() {
     }, [])
   );
 
-  const Avatar = () => (
-    <View
-      style={[s.avatar, { alignItems: "center", justifyContent: "center" }]}
-    >
-      <Ionicons name="person-outline" size={22} color={C.mutedForeground} />
-    </View>
-  );
+  const Avatar = () => {
+    const seed = user?.email || user?.fullName || "guardian";
+    const [g0, g1] = pickGrad(seed);
+    return (
+      <View style={{ width: 64, height: 64 }}>
+        <LinearGradient
+          colors={[g0, g1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ position: "absolute", inset: 0, borderRadius: 32 }}
+        />
+        <View
+          style={{
+            position: "absolute",
+            inset: 2,
+            borderRadius: 32,
+            backgroundColor: C.card,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons name="person-outline" size={22} color={C.mutedForeground} />
+        </View>
+      </View>
+    );
+  };
   const scrollY = useRef(new Animated.Value(0)).current;
 
   if (isLoading) {
     return (
       <View style={s.container}>
-        <View style={s.topbar}>
+        <LinearGradient
+          colors={pickGrad("guardian-loading")}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[s.topbarGrad, { borderBottomColor: C.border }]}
+        >
           <Text style={s.headerTitle}>Hồ sơ</Text>
           <View style={{ flexDirection: "row" }}>
             <TouchableOpacity style={s.iconBtn}>
               <Ionicons
                 name="notifications-outline"
                 size={22}
-                color={C.foreground}
+                color={C.primaryForeground}
               />
             </TouchableOpacity>
           </View>
-        </View>
+        </LinearGradient>
         <View
           style={{
             flex: 1,
@@ -200,9 +255,14 @@ export default function GuardianProfileComponent() {
   if (!accessToken || !user) {
     return (
       <View style={s.container}>
-        <View style={s.topbar}>
+        <LinearGradient
+          colors={pickGrad("guardian-auth")}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[s.topbarGrad, { borderBottomColor: C.border }]}
+        >
           <Text style={s.headerTitle}>Hồ sơ</Text>
-        </View>
+        </LinearGradient>
         <View
           style={{
             flex: 1,
@@ -260,8 +320,13 @@ export default function GuardianProfileComponent() {
 
   return (
     <SafeAreaProvider style={s.container}>
-      {/* Top bar */}
-      <View style={s.topbar}>
+      {/* Top bar with gradient */}
+      <LinearGradient
+        colors={pickGrad("guardian-topbar")}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={[s.topbarGrad, { borderBottomColor: C.border }]}
+      >
         <Text style={s.headerTitle}>Hồ sơ phụ huynh</Text>
         <View style={{ flexDirection: "row" }}>
           <TouchableOpacity
@@ -271,17 +336,35 @@ export default function GuardianProfileComponent() {
             <Ionicons
               name="notifications-outline"
               size={25}
-              color={C.foreground}
+              color={C.primaryForeground}
             />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push("/setting")}
             style={s.iconBtn}
           >
-            <Ionicons name="settings-outline" size={25} color={C.foreground} />
+            <Ionicons
+              name="settings-outline"
+              size={25}
+              color={C.primaryForeground}
+            />
           </TouchableOpacity>
         </View>
-      </View>
+      </LinearGradient>
+
+      {/* Background blobs (mềm, đa sắc) */}
+      <LinearGradient
+        colors={["#a78bfa22", "#60a5fa16"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={bg.blobTL}
+      />
+      <LinearGradient
+        colors={["#fda4af1f", "#fde68a1f"]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={bg.blobBR}
+      />
 
       <Animated.ScrollView
         contentContainerStyle={{
@@ -302,9 +385,15 @@ export default function GuardianProfileComponent() {
           >
             <View>
               <Avatar />
-              <View style={s.addBadge}>
+              {/* Badge cọ vẽ gradient */}
+              <LinearGradient
+                colors={pickGrad("brush")}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[s.addBadge, { borderColor: C.background }]}
+              >
                 <Ionicons name="brush" size={12} color={C.primaryForeground} />
-              </View>
+              </LinearGradient>
             </View>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -322,8 +411,8 @@ export default function GuardianProfileComponent() {
         </View>
 
         <View style={s.kpiCard}>
-          {kpis.map((kpi, index) => (
-            <React.Fragment key={kpi.label}>
+          {kpis.map((kpi) => (
+            <View key={kpi.label} style={{ flex: 1 }}>
               <KPI
                 icon={kpi.icon}
                 label={kpi.label}
@@ -332,8 +421,7 @@ export default function GuardianProfileComponent() {
                 iconColor={kpi.iconColor}
                 iconBg={kpi.iconBg}
               />
-              {index < kpis.length - 1 && <View style={s.kpiDivider} />}
-            </React.Fragment>
+            </View>
           ))}
         </View>
 
@@ -367,64 +455,77 @@ export default function GuardianProfileComponent() {
         <View style={s.tabContent}>
           {activeTab === "children" && (
             <View style={s.tabScrollContent}>
-              {[
-                {
-                  id: "1",
-                  name: "Nguyễn Văn A",
-                  grade: "Lớp 10",
-                  school: "THPT ABC",
-                  contests: 3,
-                  achievements: 2,
-                },
-                {
-                  id: "2",
-                  name: "Nguyễn Thị B",
-                  grade: "Lớp 8",
-                  school: "THCS XYZ",
-                  contests: 2,
-                  achievements: 1,
-                },
-              ].map((child) => (
-                <View key={child.id} style={s.childCard}>
-                  <View style={s.childHeader}>
-                    <View style={s.childAvatar}>
-                      <Ionicons
-                        name="person-outline"
-                        size={24}
-                        color={C.primary}
-                      />
+              {children && children.length > 0 ? (
+                children.map((child, index) => {
+                  const avatar = getChildAvatar(index);
+                  return (
+                    <View
+                      key={child.userId || child.username || `child-${index}`}
+                      style={s.childCard}
+                    >
+                      <View style={s.childHeader}>
+                        <View
+                          style={[
+                            s.childAvatar,
+                            { backgroundColor: avatar.bg },
+                          ]}
+                        >
+                          <Ionicons
+                            name={avatar.icon}
+                            size={24}
+                            color="white"
+                          />
+                        </View>
+                        <View style={s.childInfo}>
+                          <Text style={s.childName}>
+                            {child.fullName || "Tên chưa cập nhật"}
+                          </Text>
+                          <Text style={s.childDetails}>
+                            {child.grade || "Chưa cập nhật"} -{" "}
+                            {child.schoolName || "Chưa cập nhật"}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={s.childStats}>
+                        <View style={s.childStat}>
+                          <Ionicons
+                            name="time-outline"
+                            size={16}
+                            color={C.mutedForeground}
+                          />
+                          <Text style={s.childStatText}>0 cuộc thi</Text>
+                        </View>
+                        <View style={s.childStat}>
+                          <Ionicons
+                            name="trophy-outline"
+                            size={16}
+                            color={C.mutedForeground}
+                          />
+                          <Text style={s.childStatText}>0 thành tích</Text>
+                        </View>
+                      </View>
                     </View>
-                    <View style={s.childInfo}>
-                      <Text style={s.childName}>{child.name}</Text>
-                      <Text style={s.childDetails}>
-                        {child.grade} - {child.school}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={s.childStats}>
-                    <View style={s.childStat}>
-                      <Ionicons
-                        name="time-outline"
-                        size={16}
-                        color={C.mutedForeground}
-                      />
-                      <Text style={s.childStatText}>
-                        {child.contests} cuộc thi
-                      </Text>
-                    </View>
-                    <View style={s.childStat}>
-                      <Ionicons
-                        name="trophy-outline"
-                        size={16}
-                        color={C.mutedForeground}
-                      />
-                      <Text style={s.childStatText}>
-                        {child.achievements} thành tích
-                      </Text>
-                    </View>
-                  </View>
+                  );
+                })
+              ) : (
+                <View style={s.emptyTab}>
+                  <Ionicons name="people-outline" size={64} color={C.muted} />
+                  <Text style={s.emptyTabText}>Chưa có thông tin con em</Text>
+                  <Text style={s.emptyTabSubtext}>
+                    Thêm thông tin con em để theo dõi thành tích và tham gia
+                    cuộc thi
+                  </Text>
                 </View>
-              ))}
+              )}
+
+              {/* Add child button - always visible */}
+              <TouchableOpacity
+                style={s.addChildButton}
+                onPress={() => router.push("/add-child")}
+              >
+                <Ionicons name="add" size={20} color={C.primaryForeground} />
+                <Text style={s.addChildButtonText}>Thêm con em</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -535,7 +636,6 @@ export default function GuardianProfileComponent() {
           email: user.email,
           phone: user.phone || "",
         }}
-        achievements={achievements}
       />
     </SafeAreaProvider>
   );
@@ -549,21 +649,24 @@ function KPI({
   iconColor = C.foreground,
   iconBg = C.muted,
 }: KPIProps) {
+  const [g0, g1] = pickGrad(label + value);
   return (
     <View style={{ flex: 1, alignItems: "center" }}>
-      <View
+      <LinearGradient
+        colors={[g0, g1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={{
           width: 36,
           height: 36,
           borderRadius: 18,
-          backgroundColor: iconBg,
           alignItems: "center",
           justifyContent: "center",
           marginBottom: 6,
         }}
       >
-        <Ionicons name={icon} size={18} color={iconColor} />
-      </View>
+        <Ionicons name={icon} size={18} color={C.primaryForeground} />
+      </LinearGradient>
       <Text style={{ fontWeight: "800", color: C.foreground }}>{value}</Text>
       <Text style={{ fontSize: 12, color: C.mutedForeground }}>{label}</Text>
     </View>
@@ -573,6 +676,15 @@ function KPI({
 const styles = (C: ColorTokens) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: C.background },
+    topbarGrad: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 22,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: "transparent",
+    },
     topbar: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -583,7 +695,11 @@ const styles = (C: ColorTokens) =>
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: C.border,
     },
-    headerTitle: { fontSize: 25, fontWeight: "bold", color: C.foreground },
+    headerTitle: {
+      fontSize: 25,
+      fontWeight: "bold",
+      color: C.primaryForeground,
+    },
     iconBtn: { padding: 8, marginLeft: 4 },
 
     headerWrap: {
@@ -688,8 +804,28 @@ const styles = (C: ColorTokens) =>
       fontSize: 16,
       color: C.mutedForeground,
       marginTop: 16,
+      marginBottom: 8,
+      textAlign: "center",
+    },
+    emptyTabSubtext: {
+      fontSize: 14,
+      color: C.muted,
       marginBottom: 24,
       textAlign: "center",
+    },
+    addChildButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: C.primary,
+      borderRadius: 20,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      gap: 8,
+    },
+    addChildButtonText: {
+      color: C.primaryForeground,
+      fontSize: 14,
+      fontWeight: "600",
     },
     exploreButton: {
       backgroundColor: C.primary,
@@ -724,7 +860,6 @@ const styles = (C: ColorTokens) =>
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: C.primary + "15",
       alignItems: "center",
       justifyContent: "center",
       marginRight: 12,
@@ -844,3 +979,24 @@ const styles = (C: ColorTokens) =>
     metaChip: { flexDirection: "row", alignItems: "center", marginRight: 14 },
     metaTxt: { marginLeft: 4, color: C.mutedForeground, fontSize: 12 },
   });
+
+const bg = StyleSheet.create({
+  blobTL: {
+    position: "absolute",
+    top: 80,
+    right: -40,
+    width: 200,
+    height: 200,
+    borderRadius: 120,
+    transform: [{ rotate: "25deg" }],
+  },
+  blobBR: {
+    position: "absolute",
+    bottom: 60,
+    left: -50,
+    width: 240,
+    height: 240,
+    borderRadius: 140,
+    transform: [{ rotate: "-15deg" }],
+  },
+});
