@@ -1,9 +1,13 @@
+import { useWhoAmI } from "@/apis/auth";
+import { usePosts } from "@/apis/post";
 import PodiumTop123, { Winner } from "@/assets/PodiumTop123";
-import AnnouncementCard from "@/components/cards/AnnouncementCard";
+import PostCard from "@/components/cards/PostCard";
 import CollapsibleHeader, {
   HEADER_COLLAPSED,
   HEADER_EXPANDED,
 } from "@/components/header/CollapsibleHeader";
+import PostCarousel from "@/components/PostCarousel";
+import themedStyles from "@/components/styleSheet/themeSheet";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,7 +18,6 @@ import {
   Animated,
   Dimensions,
   Easing,
-  ImageBackground,
   RefreshControl,
   StyleSheet,
   Text,
@@ -23,8 +26,6 @@ import {
 } from "react-native";
 import { usePagerView } from "react-native-pager-view";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useWhoAmI } from "../../apis/auth";
-import themedStyles from "../../components/styleSheet/themeSheet";
 
 /* =================== Balloons + Gradient Background =================== */
 const { width: W, height: H } = Dimensions.get("window");
@@ -92,7 +93,7 @@ const SoftMultiGradient: React.FC<{ scheme: "light" | "dark" }> = ({
       : ["#FEE2E2", "#E0E7FF", "#D1FAE5"];
   return (
     <LinearGradient
-      colors={g}
+      colors={g as any}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={StyleSheet.absoluteFillObject}
@@ -280,14 +281,6 @@ const Balloon: React.FC<{
 /* =================== End Background =================== */
 
 /* =================== Data =================== */
-interface Announcement {
-  id: string;
-  title: string;
-  summary: string;
-  image: string;
-  date: string;
-  type: "contest" | "result";
-}
 type UtilityItem = {
   id: string;
   icon: any;
@@ -297,349 +290,13 @@ type UtilityItem = {
   onPress?: () => void;
 };
 
-const announcements: Announcement[] = [
-  {
-    id: "a1",
-    title: "Khai mạc cuộc thi Vẽ Sài Gòn Xanh",
-    summary:
-      "Cuộc thi vẽ về một thành phố xanh, bền vững và thân thiện với môi trường đã chính thức bắt đầu!",
-    image: "https://images.pexels.com/photos/1061588/pexels-photo-1061588.jpeg",
-    date: "2025-01-01",
-    type: "contest",
-  },
-  {
-    id: "a2",
-    title: "Kết quả cuộc thi Nghệ Thuật Đường Phố",
-    summary:
-      "Xin chúc mừng các nghệ sĩ đã đạt giải trong cuộc thi Nghệ Thuật Đường Phố! Xem danh sách người thắng cuộc và tác phẩm nổi bật.",
-    image: "https://images.pexels.com/photos/1690351/pexels-photo-1690351.jpeg",
-    date: "2025-02-01",
-    type: "result",
-  },
-  {
-    id: "a3",
-    title: "Thông báo cuộc thi Di Sản Văn Hóa",
-    summary:
-      "Cuộc thi Di Sản Văn Hóa sẽ diễn ra vào tháng 3. Đăng ký tham gia ngay để nhận giải thưởng hấp dẫn!",
-    image: "https://images.pexels.com/photos/1193743/pexels-photo-1193743.jpeg",
-    date: "2025-02-15",
-    type: "contest",
-  },
-  {
-    id: "a4",
-    title: "Kết quả cuộc thi Vẽ Thiên Nhiên Việt Nam",
-    summary:
-      "Cuộc thi Vẽ Thiên Nhiên Việt Nam đã kết thúc. Xem các tác phẩm đoạt giải và cảm nhận vẻ đẹp quê hương qua tranh vẽ.",
-    image: "https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg",
-    date: "2025-03-10",
-    type: "result",
-  },
-  {
-    id: "a5",
-    title: "Cuộc thi Nghệ Thuật Trẻ",
-    summary:
-      "Dành cho các nghệ sĩ trẻ tuổi dưới 18. Tham gia để thể hiện tài năng của bạn!",
-    image: "https://images.pexels.com/photos/1450354/pexels-photo-1450354.jpeg",
-    date: "2025-04-01",
-    type: "contest",
-  },
-  {
-    id: "a6",
-    title: "Kết quả cuộc thi Mỹ Thuật Hiện Đại",
-    summary:
-      "Các tác phẩm đoạt giải đã được công bố. Khám phá nghệ thuật hiện đại qua các bức tranh ấn tượng.",
-    image: "https://images.pexels.com/photos/1450355/pexels-photo-1450355.jpeg",
-    date: "2025-05-01",
-    type: "result",
-  },
-];
-
-/* =================== Announcement Carousel (đẹp & mượt) =================== */
-const CARD_W = W * 0.78;
-const SPACING = 14;
-const SNAP_W = CARD_W + SPACING;
-
-function AnnouncementCarousel({
-  data,
-  onPressItem,
-  scheme,
-}: {
-  data: Announcement[];
-  onPressItem?: (a: Announcement) => void;
-  scheme: "light" | "dark";
-}) {
-  const scrollX = useRef(new Animated.Value(0)).current;
-
-  const renderItem = ({
-    item,
-    index,
-  }: {
-    item: Announcement;
-    index: number;
-  }) => {
-    const inputRange = [
-      (index - 1) * SNAP_W,
-      index * SNAP_W,
-      (index + 1) * SNAP_W,
-    ];
-    const scale = scrollX.interpolate({
-      inputRange,
-      outputRange: [0.9, 1, 0.9],
-      extrapolate: "clamp",
-    });
-    const translateY = scrollX.interpolate({
-      inputRange,
-      outputRange: [8, 0, 8],
-      extrapolate: "clamp",
-    });
-    const rotate = scrollX.interpolate({
-      inputRange,
-      outputRange: ["-4deg", "0deg", "4deg"],
-      extrapolate: "clamp",
-    });
-
-    const typeChip =
-      item.type === "contest"
-        ? { label: "Cuộc thi", color: "#22C55E" }
-        : { label: "Kết quả", color: "#F59E0B" };
-
-    return (
-      <Animated.View
-        style={{
-          width: CARD_W,
-          marginRight: SPACING,
-          transform: [{ scale }, { translateY }, { rotate }],
-        }}
-      >
-        {/* viền gradient mờ */}
-        <LinearGradient
-          colors={["#ffffff55", "#ffffff10"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            position: "absolute",
-            inset: 0 as any,
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.25)",
-          }}
-        />
-
-        <TouchableOpacity
-          activeOpacity={0.95}
-          onPress={() => onPressItem?.(item)}
-          style={{ borderRadius: 20, overflow: "hidden" }}
-        >
-          <ImageBackground
-            source={{ uri: item.image }}
-            style={{ height: 210 }}
-            imageStyle={{ borderRadius: 20 }}
-          >
-            {/* glass overlay */}
-            <LinearGradient
-              colors={
-                scheme === "dark"
-                  ? ["rgba(0,0,0,0.15)", "rgba(0,0,0,0.65)"]
-                  : ["rgba(255,255,255,0.1)", "rgba(0,0,0,0.55)"]
-              }
-              start={{ x: 0, y: 0.2 }}
-              end={{ x: 0, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-            {/* chips */}
-            <View
-              style={{
-                position: "absolute",
-                top: 10,
-                left: 10,
-                right: 10,
-                flexDirection: "row",
-                justifyContent: "space-between",
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                  backgroundColor: `${typeChip.color}E6`,
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 999,
-                }}
-              >
-                <Ionicons
-                  name={item.type === "contest" ? "trophy" : "checkmark-done"}
-                  size={12}
-                  color="#fff"
-                />
-                <Text
-                  style={{ color: "#fff", fontWeight: "800", fontSize: 12 }}
-                >
-                  {typeChip.label}
-                </Text>
-              </View>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 999,
-                  backgroundColor: "rgba(0,0,0,0.35)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.28)",
-                }}
-              >
-                <Ionicons name="calendar-outline" size={12} color="#fff" />
-                <Text
-                  style={{ color: "#fff", fontWeight: "800", fontSize: 12 }}
-                >
-                  {new Date(item.date).toLocaleDateString()}
-                </Text>
-              </View>
-            </View>
-            {/* nội dung */}
-            <View
-              style={{ position: "absolute", left: 12, right: 12, bottom: 12 }}
-            >
-              <Text
-                numberOfLines={2}
-                style={{
-                  color: "#fff",
-                  fontSize: 17,
-                  fontWeight: "900",
-                  marginBottom: 6,
-                  letterSpacing: 0.2,
-                  textShadowColor: "rgba(0,0,0,0.35)",
-                  textShadowOffset: { width: 0, height: 1 },
-                  textShadowRadius: 2,
-                }}
-              >
-                {item.title}
-              </Text>
-              <Text
-                numberOfLines={2}
-                style={{
-                  color: "rgba(255,255,255,0.92)",
-                  fontSize: 13,
-                  marginBottom: 12,
-                }}
-              >
-                {item.summary}
-              </Text>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-              >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 6,
-                    borderRadius: 999,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    backgroundColor: "rgba(255,255,255,0.18)",
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.35)",
-                  }}
-                >
-                  <Ionicons name="eye-outline" size={14} color="#fff" />
-                  <Text
-                    style={{ color: "#fff", fontWeight: "800", fontSize: 12 }}
-                  >
-                    Chi tiết
-                  </Text>
-                </View>
-                <LinearGradient
-                  colors={["#FDE68A", "#F59E0B"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 999,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    shadowColor: "#FDE68A",
-                    shadowOpacity: 0.5,
-                    shadowRadius: 6,
-                    shadowOffset: { width: 0, height: 3 },
-                  }}
-                >
-                  <Ionicons name="chevron-forward" size={16} color="#111827" />
-                </LinearGradient>
-              </View>
-            </View>
-          </ImageBackground>
-        </TouchableOpacity>
-      </Animated.View>
-    );
-  };
-
-  return (
-    <View>
-      <Animated.FlatList
-        data={data}
-        keyExtractor={(it) => it.id}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingLeft: 4, paddingRight: 12 }}
-        snapToInterval={SNAP_W}
-        decelerationRate="fast"
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
-        renderItem={renderItem}
-      />
-      {/* dots */}
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "center",
-          gap: 6,
-          marginTop: 8,
-        }}
-      >
-        {data.map((_, i) => {
-          const inputRange = [(i - 1) * SNAP_W, i * SNAP_W, (i + 1) * SNAP_W];
-          const dotScale = scrollX.interpolate({
-            inputRange,
-            outputRange: [0.6, 1.1, 0.6],
-            extrapolate: "clamp",
-          });
-          const dotOpacity = scrollX.interpolate({
-            inputRange,
-            outputRange: [0.4, 1, 0.4],
-            extrapolate: "clamp",
-          });
-          return (
-            <Animated.View
-              key={`dot_${i}`}
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 999,
-                backgroundColor: scheme === "dark" ? "#ffffff" : "#111827",
-                opacity: dotOpacity,
-                transform: [{ scale: dotScale }],
-              }}
-            />
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
 /* =================== Screen =================== */
 export default function Home() {
   const { data } = useWhoAmI();
+  const { data: postsData } = usePosts();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
+  const posts = postsData?.data || [];
   const UTIL_COLS = 3;
   const GRID_GAP = 22;
   const GRID_PAD_H = 20;
@@ -903,7 +560,7 @@ export default function Home() {
               style={themedStyles.seeAllBtn}
               activeOpacity={0.8}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              onPress={() => router.push("/contests")}
+              onPress={() => router.push("/posts")}
             >
               <Text style={[themedStyles.seeAllText, { fontWeight: "800" }]}>
                 Xem tất cả
@@ -916,23 +573,67 @@ export default function Home() {
             </TouchableOpacity>
           </View>
 
-          <AnnouncementCarousel
-            data={announcements}
-            scheme={colorScheme}
-            onPressItem={() => router.push("/contests")}
-          />
-
-          <View style={{ marginTop: 8 }}>
-            {announcements.slice(0, 4).map((item) => (
-              <AnnouncementCard
-                key={item.id}
-                item={item}
-                thumbSize={88}
-                radius={3}
-                showDivider
+          {posts.length > 0 ? (
+            <>
+              <PostCarousel
+                data={posts}
+                scheme={colorScheme}
+                onPressItem={(post) =>
+                  router.push({
+                    pathname: "/post-detail",
+                    params: { post: JSON.stringify(post) },
+                  })
+                }
               />
-            ))}
-          </View>
+
+              <View style={{ marginTop: 8 }}>
+                {posts.slice(0, 4).map((item) => (
+                  <PostCard
+                    key={item.post_id}
+                    item={item}
+                    thumbSize={88}
+                    radius={3}
+                    showDivider
+                    onPress={(post) =>
+                      router.push({
+                        pathname: "/post-detail",
+                        params: { post: JSON.stringify(post) },
+                      })
+                    }
+                  />
+                ))}
+              </View>
+            </>
+          ) : (
+            <View style={{ padding: 40, alignItems: "center" }}>
+              <Ionicons
+                name="document-text-outline"
+                size={48}
+                color={Colors[colorScheme].mutedForeground}
+                style={{ marginBottom: 16 }}
+              />
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: Colors[colorScheme].mutedForeground,
+                  textAlign: "center",
+                  marginBottom: 8,
+                }}
+              >
+                Chưa có thông báo nào
+              </Text>
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: Colors[colorScheme].mutedForeground,
+                  textAlign: "center",
+                  opacity: 0.7,
+                }}
+              >
+                Thông báo mới sẽ xuất hiện ở đây
+              </Text>
+            </View>
+          )}
         </View>
       </Animated.ScrollView>
     </View>

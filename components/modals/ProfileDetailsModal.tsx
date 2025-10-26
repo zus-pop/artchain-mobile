@@ -3,19 +3,15 @@ import { useUpdateUserById } from "@/apis/user";
 import { Colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   Animated,
   Dimensions,
-  Image,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
   PanResponder,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -89,14 +85,14 @@ const userSchema = z.object({
       (val) => !val || val === "" || phoneRegex.test(val),
       "Số điện thoại không hợp lệ (VD: 0987654321 hoặc +84987654321)"
     ),
-  avatar: z.string().optional(),
-  birthday: z
-    .string()
-    .optional()
-    .refine((v) => !v || displayDateRegex.test(v), "Ngày sinh dạng DD/MM/YYYY"),
-  schoolName: z.string().optional(),
-  ward: z.string().optional(),
-  grade: z.string().optional(),
+  //   avatar: z.string().optional(),
+  //   birthday: z
+  //     .string()
+  //     .optional()
+  //     .refine((v) => !v || displayDateRegex.test(v), "Ngày sinh dạng DD/MM/YYYY"),
+  //   schoolName: z.string().optional(),
+  //   ward: z.string().optional(),
+  //   grade: z.string().optional(),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -112,7 +108,7 @@ const { height: SCREEN_H } = Dimensions.get("window");
 const SNAP = { OPEN: 0, DISMISS: SCREEN_H };
 const DRAG_CLOSE_THRESHOLD = 120;
 const VELOCITY_CLOSE_THRESHOLD = 1.0;
-const FOOTER_H = 64;
+const FOOTER_H = 360;
 
 const COLORFUL = {
   blue: { bg: "rgba(37, 99, 235, 0.12)", fg: "#2563EB" },
@@ -152,11 +148,11 @@ const ProfileDetailsModal: React.FC<Props> = ({
       fullname: user.fullname,
       email: user.email,
       phone: user.phone ?? "",
-      avatar: user.avatar,
-      birthday: toDisplayDate(user.birthday),
-      schoolName: user.schoolName ?? "",
-      ward: user.ward ?? "",
-      grade: user.grade ?? "",
+      //   avatar: user.avatar,
+      //   birthday: toDisplayDate(user.birthday),
+      //   schoolName: user.schoolName ?? "",
+      //   ward: user.ward ?? "",
+      //   grade: user.grade ?? "",
     },
     mode: "all",
   });
@@ -169,11 +165,11 @@ const ProfileDetailsModal: React.FC<Props> = ({
         fullname: user.fullname,
         email: user.email,
         phone: user.phone ?? "",
-        avatar: user.avatar,
-        birthday: toDisplayDate(user.birthday),
-        schoolName: user.schoolName ?? "",
-        ward: user.ward ?? "",
-        grade: user.grade ?? "",
+        // avatar: user.avatar,
+        // birthday: toDisplayDate(user.birthday),
+        // schoolName: user.schoolName ?? "",
+        // ward: user.ward ?? "",
+        // grade: user.grade ?? "",
       });
     }
   }, [visible, user, reset]);
@@ -184,10 +180,10 @@ const ProfileDetailsModal: React.FC<Props> = ({
 
   // DatePicker state
   const [showDP, setShowDP] = useState(false);
-  const currentBirthdayDate = useMemo(
-    () => toDateFromDisplay(formValues.birthday) ?? new Date(2008, 0, 1), // mặc định 01/01/2008
-    [formValues.birthday]
-  );
+  //   const currentBirthdayDate = useMemo(
+  //     () => toDateFromDisplay(formValues.birthday) ?? new Date(2008, 0, 1), // mặc định 01/01/2008
+  //     [formValues.birthday]
+  //   );
   const minDate = new Date(1950, 0, 1);
   const maxDate = new Date(); // không cho chọn quá hiện tại
 
@@ -281,34 +277,30 @@ const ProfileDetailsModal: React.FC<Props> = ({
   };
 
   // ---------- IMAGE PICKER ----------
-  const pickAvatar = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-      selectionLimit: 1,
-    });
-    if (!result.canceled && result.assets?.[0]?.uri) {
-      setField("avatar", result.assets[0].uri);
-    }
-  };
+  //   const pickAvatar = async () => {
+  //     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  //     if (!perm.granted) return;
+  //     const result = await ImagePicker.launchImageLibraryAsync({
+  //       mediaTypes: ["images"],
+  //       allowsEditing: true,
+  //       aspect: [1, 1],
+  //       quality: 0.8,
+  //       selectionLimit: 1,
+  //     });
+  //     if (!result.canceled && result.assets?.[0]?.uri) {
+  //       setField("avatar", result.assets[0].uri);
+  //     }
+  //   };
 
   if (!visible) return null;
 
   const handleSave = handleSubmit((data: UserFormData) => {
-    const iso = toISOFromDisplay(data.birthday);
+    // const iso = toISOFromDisplay(data.birthday);
     mutate({
       userId: user.userId,
       email: data.email,
       fullName: data.fullname,
       phone: data.phone,
-      birthday: iso || undefined,
-      schoolName: data.schoolName,
-      ward: data.ward,
-      grade: data.grade,
     });
   });
 
@@ -363,25 +355,19 @@ const ProfileDetailsModal: React.FC<Props> = ({
             {/* INFO / AVATAR */}
             <View style={s.infoRow}>
               <View style={[s.avatarRing, { shadowColor: COLORFUL.sky.fg }]}>
-                {formValues.avatar ? (
-                  <Image source={{ uri: formValues.avatar }} style={s.avatar} />
-                ) : (
-                  <View
-                    style={[
-                      s.avatar,
-                      { alignItems: "center", justifyContent: "center" },
-                    ]}
-                  >
-                    <Ionicons
-                      name="person-outline"
-                      size={28}
-                      color={COLORFUL.sky.fg}
-                    />
-                  </View>
-                )}
-                {/* Camera overlay */}
+                <View
+                  style={[
+                    s.avatar,
+                    { alignItems: "center", justifyContent: "center" },
+                  ]}
+                >
+                  <Ionicons
+                    name="person-outline"
+                    size={28}
+                    color={COLORFUL.sky.fg}
+                  />
+                </View>
                 <TouchableOpacity
-                  onPress={pickAvatar}
                   activeOpacity={0.9}
                   style={[
                     local.camBtn,
@@ -446,7 +432,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
               />
 
               {/* Ngày sinh thân thiện */}
-              <BirthdayField
+              {/* <BirthdayField
                 value={formValues.birthday}
                 onOpen={() => setShowDP(true)}
                 error={errors.birthday?.message}
@@ -488,7 +474,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
                 keyboardType="default"
                 error={errors.grade?.message}
                 last
-              />
+              /> */}
             </View>
           </ScrollView>
 
@@ -532,7 +518,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
         </Animated.View>
 
         {/* DateTimePicker (Android: hiển thị pop-up; iOS: inline modal của hệ thống) */}
-        {showDP && (
+        {/* {showDP && (
           <DateTimePicker
             mode="date"
             value={currentBirthdayDate}
@@ -555,7 +541,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
             }}
             onTouchCancel={() => setShowDP(false)}
           />
-        )}
+        )} */}
       </View>
     </Modal>
   );

@@ -524,7 +524,6 @@ export default function ExaminerProfileScreen() {
           email: user.email,
           phone: user.phone || "",
         }}
-        achievements={[]}
       />
     </SafeAreaProvider>
   );

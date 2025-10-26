@@ -636,7 +636,6 @@ export default function GuardianProfileComponent() {
           email: user.email,
           phone: user.phone || "",
         }}
-        achievements={achievements}
       />
     </SafeAreaProvider>
   );
