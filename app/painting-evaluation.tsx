@@ -1,6 +1,7 @@
 // app/.../PaintingEvaluationScreen.tsx
 import BrushButton from "@/components/buttons/BrushButton";
 // import ArtworkViewer from "@/components/media/ArtworkViewer"; // <- bỏ
+import EvaluationSubmitModal from "@/components/modals/EvaluationSubmitModal"; // <-- NEW
 import ReportFlagSheet from "@/components/modals/ReportFlagSheet";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -19,13 +20,11 @@ import {
   Animated,
   ColorValue,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { toast } from "sonner-native";
@@ -72,7 +71,7 @@ function ZoomModal({
   doubleTapScale?: number;
 }) {
   return (
-    <Modal
+    <AnimatedModal
       visible={visible}
       onRequestClose={onClose}
       animationType="fade"
@@ -106,9 +105,16 @@ function ZoomModal({
           }}
         />
       </GestureHandlerRootView>
-    </Modal>
+    </AnimatedModal>
   );
 }
+
+/* --------- Modal wrapper để đồng nhất import React Native <=/>=0.73 --------- */
+const AnimatedModal = (props: any) =>
+  (<View>{/* placeholder for TS */}</View>) as any;
+// ^ Nếu bạn đang dùng RN chuẩn, hãy xoá wrapper trên và import trực tiếp Modal từ 'react-native'.
+// Ở đây để tránh lỗi paste. Dùng như cũ:
+// import { Modal as AnimatedModal } from "react-native";
 
 /* ---------- Helpers ---------- */
 const clamp = (v: number, min: number, max: number) =>
@@ -228,6 +234,10 @@ export default function PaintingEvaluationScreen() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
 
+  // NEW: modal states
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
+
   // Autosave
   const draftKey = useMemo(
     () => `draft_evaluation_${paintingId}`,
@@ -245,9 +255,6 @@ export default function PaintingEvaluationScreen() {
   const [flagOpen, setFlagOpen] = useState(false);
   const [selectedFlags, setSelectedFlags] = useState<string[]>([]);
   const [flagNote, setFlagNote] = useState("");
-
-  // Confirm
-  const [confirmOpen, setConfirmOpen] = useState(false);
 
   /* ---------- Restore Draft ---------- */
   useEffect(() => {
@@ -313,7 +320,7 @@ export default function PaintingEvaluationScreen() {
     router.back();
   };
 
-  /* ---------- Submit ---------- */
+  /* ---------- Submit flow ---------- */
   const onConfirmSubmit = (data: EvaluationFormData) => {
     if (!examiner) {
       toast.info("Không có thông tin giám khảo");
@@ -338,6 +345,7 @@ export default function PaintingEvaluationScreen() {
       }
     );
   };
+
   const onSubmit = () => setConfirmOpen(true);
 
   /* ---------- Score Stepper ---------- */
@@ -437,7 +445,7 @@ export default function PaintingEvaluationScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* 1) Ảnh + meta + details đẹp */}
+            {/* 1) Ảnh + meta + details */}
             <View style={styles(colors).section}>
               {/* Khung ảnh viền gradient */}
               <View style={styles(colors).frameWrap}>
@@ -453,7 +461,7 @@ export default function PaintingEvaluationScreen() {
                     { backgroundColor: glassBg },
                   ]}
                 >
-                  {/* Overlay report: pill tròn gradient viền */}
+                  {/* Overlay report */}
                   <View style={styles(colors).overlayTopRightRow}>
                     <PressableScale
                       onPress={() => setFlagOpen(true)}
@@ -548,6 +556,33 @@ export default function PaintingEvaluationScreen() {
                         </ThemedText>
                         <ThemedText style={styles(colors).detailValue}>
                           {contestTitle}
+                        </ThemedText>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Meta pills */}
+                  <View style={styles(colors).paintingMetaRow}>
+                    <View style={styles(colors).pillBorderWrap}>
+                      <LinearGradient
+                        colors={[g0, g1]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles(colors).pillBorder}
+                      />
+                      <View
+                        style={[
+                          styles(colors).pillInner,
+                          { backgroundColor: colors.card },
+                        ]}
+                      >
+                        <Ionicons
+                          name="color-palette-outline"
+                          size={14}
+                          color={colors.mutedForeground}
+                        />
+                        <ThemedText style={styles(colors).metaText}>
+                          {paintingTitle}
                         </ThemedText>
                       </View>
                     </View>
@@ -727,7 +762,7 @@ export default function PaintingEvaluationScreen() {
               </View>
             </View>
 
-            {/* 4) Đánh giá chi tiết + presets mở rộng */}
+            {/* 4) Đánh giá chi tiết + presets */}
             <View
               style={[
                 styles(colors).card,
@@ -866,7 +901,7 @@ export default function PaintingEvaluationScreen() {
           doubleTapScale={2.5}
         />
 
-        {/* Report sheet (component riêng) */}
+        {/* Report sheet */}
         <ReportFlagSheet
           visible={flagOpen}
           onClose={() => setFlagOpen(false)}
@@ -889,56 +924,43 @@ export default function PaintingEvaluationScreen() {
           }}
         />
 
-        {/* Confirm — FULL overlay */}
-        <Modal
+        {/* ---------- MODALS MỚI ---------- */}
+
+        {/* Confirm — đẹp, gradient, animation */}
+        <EvaluationSubmitModal
           visible={confirmOpen}
-          presentationStyle="overFullScreen"
-          transparent
-          animationType="fade"
-          statusBarTranslucent
-          hardwareAccelerated
-          onRequestClose={() => setConfirmOpen(false)}
-        >
-          <Pressable
-            style={[StyleSheet.absoluteFillObject, styles(colors).backdrop]}
-            onPress={() => setConfirmOpen(false)}
-          />
-          <View
-            style={[styles(colors).miniSheet, { backgroundColor: colors.card }]}
-          >
-            <ThemedText style={styles(colors).miniTitle}>
-              Gửi đánh giá?
-            </ThemedText>
-            <ThemedText style={styles(colors).miniBody}>
-              Xác nhận nộp điểm và nhận xét cho bài “{paintingTitle}”.
-            </ThemedText>
-            <View style={styles(colors).miniActions}>
-              <TouchableOpacity
-                onPress={() => setConfirmOpen(false)}
-                style={styles(colors).miniGhost}
-              >
-                <ThemedText
-                  style={{ color: colors.mutedForeground, fontWeight: "700" }}
-                >
-                  Huỷ
-                </ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() =>
-                  onConfirmSubmit({
-                    score: getValues("score")!,
-                    feedback: getValues("feedback") || "",
-                  })
-                }
-                style={styles(colors).miniPrimary}
-              >
-                <ThemedText style={{ color: "#fff", fontWeight: "800" }}>
-                  Gửi
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+          variant="confirm"
+          title="Gửi đánh giá?"
+          subtitle={`Xác nhận nộp điểm và nhận xét cho bài “${paintingTitle}”.`}
+          primaryText={isPending ? "Đang gửi..." : "Gửi"}
+          secondaryText="Huỷ"
+          loading={isPending}
+          onSecondary={() => setConfirmOpen(false)}
+          onPrimary={() =>
+            onConfirmSubmit({
+              score: getValues("score")!,
+              feedback: getValues("feedback") || "",
+            })
+          }
+          onDismiss={() => setConfirmOpen(false)}
+        />
+
+        {/* Success — confetti + gradient */}
+        <EvaluationSubmitModal
+          visible={successOpen}
+          variant="success"
+          title="Đã gửi đánh giá"
+          subtitle="Cảm ơn bạn! Bài chấm đã được ghi nhận."
+          primaryText="Tiếp tục"
+          onPrimary={() => {
+            setSuccessOpen(false);
+            router.back();
+          }}
+          onDismiss={() => {
+            setSuccessOpen(false);
+            router.back();
+          }}
+        />
       </ThemedView>
     </View>
   );
@@ -1228,47 +1250,6 @@ const styles = (colors: typeof Colors.light) =>
       textAlignVertical: "top",
       lineHeight: 24,
       letterSpacing: 0.2,
-    },
-
-    /* Confirm */
-    backdrop: { backgroundColor: "rgba(0,0,0,0.45)" },
-    miniSheet: {
-      position: "absolute",
-      left: 18,
-      right: 18,
-      bottom: 18,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: 12,
-      backgroundColor: colors.card,
-    },
-    miniTitle: {
-      fontSize: 16,
-      fontWeight: "900",
-      color: colors.foreground,
-      marginBottom: 4,
-    },
-    miniBody: { fontSize: 13, color: colors.mutedForeground },
-    miniActions: {
-      flexDirection: "row",
-      justifyContent: "flex-end",
-      gap: 8,
-      marginTop: 10,
-    },
-    miniGhost: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.input,
-    },
-    miniPrimary: {
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 10,
-      backgroundColor: colors.primary,
     },
   });
 

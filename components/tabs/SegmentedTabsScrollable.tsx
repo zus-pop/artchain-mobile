@@ -281,7 +281,7 @@ export default function SegmentedTabsScrollable({
                 {t.badge !== undefined && (
                   <View
                     style={{
-                      marginLeft: 8,
+                      marginLeft: 5,
                       paddingHorizontal: 6,
                       paddingVertical: Platform.select({ ios: 2, android: 1 }),
                       borderRadius: 999,
@@ -317,9 +317,9 @@ export default function SegmentedTabsScrollable({
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginHorizontal: 16,
+    marginHorizontal: 10,
     marginTop: 8,
-    marginBottom: 16,
+    marginBottom: 10,
     position: "relative",
     overflow: "hidden",
   },

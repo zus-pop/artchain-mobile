@@ -1,9 +1,11 @@
+// components/modals/ProfileDetailsModal/index.tsx
 import { useUpdateUserById } from "@/apis/user";
 import { Colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   Animated,
@@ -13,6 +15,8 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   PanResponder,
+  Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,13 +30,54 @@ import styles from "./style";
 
 type Scheme = "light" | "dark";
 
+/* ===== Helpers convert date ===== */
+const toDisplayDate = (iso?: string) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const dd = `${d.getDate()}`.padStart(2, "0");
+  const mm = `${d.getMonth() + 1}`.padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+};
+const toISOFromDisplay = (v?: string) => {
+  if (!v) return "";
+  const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return "";
+  const dd = Number(m[1]);
+  const mm = Number(m[2]);
+  const yyyy = Number(m[3]);
+  const d = new Date(yyyy, mm - 1, dd);
+  if (
+    isNaN(d.getTime()) ||
+    d.getFullYear() !== yyyy ||
+    d.getMonth() !== mm - 1 ||
+    d.getDate() !== dd
+  )
+    return "";
+  return d.toISOString();
+};
+const toDateFromDisplay = (v?: string): Date | undefined => {
+  const iso = toISOFromDisplay(v);
+  if (!iso) return undefined;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? undefined : d;
+};
+
 type UserShape = {
   userId: string;
   fullname: string;
   email: string;
   phone: string;
   avatar?: string;
+  birthday?: string; // ISO từ BE
+  schoolName?: string;
+  ward?: string;
+  grade?: string;
 };
+
+const phoneRegex = /^(?:$|(0|\+84)[3-9]\d{8})$/;
+const displayDateRegex = /^(?:$|\d{2}\/\d{2}\/\d{4})$/;
 
 const userSchema = z.object({
   fullname: z.string().min(1, "Vui lòng nhập họ tên"),
@@ -41,10 +86,17 @@ const userSchema = z.object({
     .string()
     .optional()
     .refine(
-      (val) => !val || val === "" || /^(0|\+84)[3-9]\d{8}$/.test(val),
+      (val) => !val || val === "" || phoneRegex.test(val),
       "Số điện thoại không hợp lệ (VD: 0987654321 hoặc +84987654321)"
     ),
   avatar: z.string().optional(),
+  birthday: z
+    .string()
+    .optional()
+    .refine((v) => !v || displayDateRegex.test(v), "Ngày sinh dạng DD/MM/YYYY"),
+  schoolName: z.string().optional(),
+  ward: z.string().optional(),
+  grade: z.string().optional(),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -54,8 +106,6 @@ type Props = {
   onClose: () => void;
   scheme: Scheme;
   user: UserShape;
-  achievements?: { id: string; title: string; place: string }[];
-  onSave?: (updated: UserShape) => void;
 };
 
 const { height: SCREEN_H } = Dimensions.get("window");
@@ -65,12 +115,12 @@ const VELOCITY_CLOSE_THRESHOLD = 1.0;
 const FOOTER_H = 64;
 
 const COLORFUL = {
-  blue: { bg: "rgba(37, 99, 235, 0.12)", fg: "#2563EB" }, // indigo-600
-  green: { bg: "rgba(5, 150, 105, 0.12)", fg: "#059669" }, // emerald-600
-  purple: { bg: "rgba(147, 51, 234, 0.12)", fg: "#9333EA" }, // purple-600
-  amber: { bg: "rgba(245, 158, 11, 0.12)", fg: "#F59E0B" }, // amber-500
-  pink: { bg: "rgba(219, 39, 119, 0.12)", fg: "#DB2777" }, // pink-600
-  sky: { bg: "rgba(2, 132, 199, 0.12)", fg: "#0284C7" }, // sky-600
+  blue: { bg: "rgba(37, 99, 235, 0.12)", fg: "#2563EB" },
+  green: { bg: "rgba(5, 150, 105, 0.12)", fg: "#059669" },
+  purple: { bg: "rgba(147, 51, 234, 0.12)", fg: "#9333EA" },
+  amber: { bg: "rgba(245, 158, 11, 0.12)", fg: "#F59E0B" },
+  pink: { bg: "rgba(219, 39, 119, 0.12)", fg: "#DB2777" },
+  sky: { bg: "rgba(2, 132, 199, 0.12)", fg: "#0284C7" },
 };
 
 const ProfileDetailsModal: React.FC<Props> = ({
@@ -78,8 +128,6 @@ const ProfileDetailsModal: React.FC<Props> = ({
   onClose,
   scheme,
   user,
-  achievements = [],
-  onSave,
 }) => {
   const C = Colors[scheme];
   const s = styles(C);
@@ -90,7 +138,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
   const dragOffset = useRef(0);
   const scrollYRef = useRef(0);
 
-  // ---------- FORM STATE ----------
+  // ---------- FORM ----------
   const {
     control,
     handleSubmit,
@@ -100,21 +148,48 @@ const ProfileDetailsModal: React.FC<Props> = ({
     watch,
   } = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
-    defaultValues: user,
+    defaultValues: {
+      fullname: user.fullname,
+      email: user.email,
+      phone: user.phone ?? "",
+      avatar: user.avatar,
+      birthday: toDisplayDate(user.birthday),
+      schoolName: user.schoolName ?? "",
+      ward: user.ward ?? "",
+      grade: user.grade ?? "",
+    },
     mode: "all",
   });
 
   const formValues = watch();
-  // reset form khi mở modal với user mới
+
   useEffect(() => {
     if (visible) {
-      reset(user);
+      reset({
+        fullname: user.fullname,
+        email: user.email,
+        phone: user.phone ?? "",
+        avatar: user.avatar,
+        birthday: toDisplayDate(user.birthday),
+        schoolName: user.schoolName ?? "",
+        ward: user.ward ?? "",
+        grade: user.grade ?? "",
+      });
     }
   }, [visible, user, reset]);
 
   const setField = (key: keyof UserFormData, val: any) => {
-    setValue(key, val);
+    setValue(key, val, { shouldDirty: true, shouldValidate: true });
   };
+
+  // DatePicker state
+  const [showDP, setShowDP] = useState(false);
+  const currentBirthdayDate = useMemo(
+    () => toDateFromDisplay(formValues.birthday) ?? new Date(2008, 0, 1), // mặc định 01/01/2008
+    [formValues.birthday]
+  );
+  const minDate = new Date(1950, 0, 1);
+  const maxDate = new Date(); // không cho chọn quá hiện tại
 
   const canSave = isValid && Object.keys(errors).length === 0;
 
@@ -207,10 +282,8 @@ const ProfileDetailsModal: React.FC<Props> = ({
 
   // ---------- IMAGE PICKER ----------
   const pickAvatar = async () => {
-    // xin quyền
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return;
-    // mở thư viện
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -226,11 +299,16 @@ const ProfileDetailsModal: React.FC<Props> = ({
   if (!visible) return null;
 
   const handleSave = handleSubmit((data: UserFormData) => {
+    const iso = toISOFromDisplay(data.birthday);
     mutate({
       userId: user.userId,
       email: data.email,
       fullName: data.fullname,
       phone: data.phone,
+      birthday: iso || undefined,
+      schoolName: data.schoolName,
+      ward: data.ward,
+      grade: data.grade,
     });
   });
 
@@ -301,8 +379,8 @@ const ProfileDetailsModal: React.FC<Props> = ({
                     />
                   </View>
                 )}
-                {/* Nút máy ảnh overlay — bấm để chọn ảnh trong máy */}
-                {/* <TouchableOpacity
+                {/* Camera overlay */}
+                <TouchableOpacity
                   onPress={pickAvatar}
                   activeOpacity={0.9}
                   style={[
@@ -314,7 +392,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
                   ]}
                 >
                   <Ionicons name="camera" size={14} color={"#fff"} />
-                </TouchableOpacity> */}
+                </TouchableOpacity>
               </View>
 
               <View style={{ flex: 1, marginLeft: 12 }}>
@@ -341,7 +419,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
 
             <View style={[s.divider, { marginTop: 2 }]} />
 
-            {/* FORM FIELDS — icon nhiều màu */}
+            {/* FORM FIELDS */}
             <View style={s.sectionTight}>
               <Field
                 icon="mail-outline"
@@ -366,6 +444,51 @@ const ProfileDetailsModal: React.FC<Props> = ({
                 keyboardType="phone-pad"
                 error={errors.phone?.message}
               />
+
+              {/* Ngày sinh thân thiện */}
+              <BirthdayField
+                value={formValues.birthday}
+                onOpen={() => setShowDP(true)}
+                error={errors.birthday?.message}
+                C={C}
+              />
+
+              <Field
+                icon="school-outline"
+                iconColor={COLORFUL.sky.fg}
+                chipColor={COLORFUL.sky}
+                label="Trường"
+                name="schoolName"
+                control={control}
+                C={C}
+                keyboardType="default"
+                error={errors.schoolName?.message}
+              />
+
+              <Field
+                icon="location-outline"
+                iconColor={COLORFUL.amber.fg}
+                chipColor={COLORFUL.amber}
+                label="Phường / Xã"
+                name="ward"
+                control={control}
+                C={C}
+                keyboardType="default"
+                error={errors.ward?.message}
+              />
+
+              <Field
+                icon="ribbon-outline"
+                iconColor={COLORFUL.pink.fg}
+                chipColor={COLORFUL.pink}
+                label="Khối / Lớp"
+                name="grade"
+                control={control}
+                C={C}
+                keyboardType="default"
+                error={errors.grade?.message}
+                last
+              />
             </View>
           </ScrollView>
 
@@ -373,10 +496,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
           <View
             style={[
               s.footer,
-              {
-                backgroundColor: C.card,
-                borderTopColor: C.border,
-              },
+              { backgroundColor: C.card, borderTopColor: C.border },
             ]}
           >
             <TouchableOpacity
@@ -410,12 +530,37 @@ const ProfileDetailsModal: React.FC<Props> = ({
             </TouchableOpacity>
           </View>
         </Animated.View>
+
+        {/* DateTimePicker (Android: hiển thị pop-up; iOS: inline modal của hệ thống) */}
+        {showDP && (
+          <DateTimePicker
+            mode="date"
+            value={currentBirthdayDate}
+            maximumDate={maxDate}
+            minimumDate={minDate}
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={(_, date) => {
+              // Android: khi người dùng bấm Cancel, date sẽ undefined => chỉ đóng
+              if (!date) {
+                setShowDP(false);
+                return;
+              }
+              const dd = `${date.getDate()}`.padStart(2, "0");
+              const mm = `${date.getMonth() + 1}`.padStart(2, "0");
+              const yyyy = date.getFullYear();
+              setField("birthday", `${dd}/${mm}/${yyyy}`);
+
+              // Android sẽ tự đóng, iOS cần tự đóng (tùy UX, ở đây cũng đóng)
+              if (Platform.OS === "android") setShowDP(false);
+            }}
+            onTouchCancel={() => setShowDP(false)}
+          />
+        )}
       </View>
     </Modal>
   );
 };
 
-/** Ô nhập có label + icon trái, icon nhiều màu */
 function Field({
   icon,
   label,
@@ -491,68 +636,53 @@ function Field({
   );
 }
 
-/** Dòng read-only cho thành tích, icon nhiều màu rực hơn */
-function DetailRow({
-  icon,
-  label,
-  last,
+/** Trường ngày sinh thân thiện: bấm để mở DatePicker, không bật bàn phím */
+function BirthdayField({
+  value,
+  onOpen,
+  error,
   C,
-  tone = "blue",
 }: {
-  icon: any;
-  label: string;
-  last?: boolean;
+  value?: string;
+  onOpen: () => void;
+  error?: string;
   C: any;
-  tone?: "blue" | "green" | "purple" | "amber";
 }) {
-  const palette =
-    tone === "green"
-      ? COLORFUL.green
-      : tone === "purple"
-      ? COLORFUL.purple
-      : tone === "amber"
-      ? COLORFUL.amber
-      : COLORFUL.blue;
-
   return (
     <View style={{ paddingVertical: 8 }}>
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <View
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 16,
-            backgroundColor: palette.bg,
-            alignItems: "center",
-            justifyContent: "center",
-            shadowColor: palette.fg,
-            shadowOpacity: 0.16,
-            shadowRadius: 5,
-            shadowOffset: { width: 0, height: 2 },
-            elevation: 2,
-          }}
-        >
-          <Ionicons name={icon} size={16} color={palette.fg} />
-        </View>
-        <Text
-          style={{ marginLeft: 10, color: C.foreground, flex: 1 }}
-          numberOfLines={2}
-        >
-          {label}
-        </Text>
-      </View>
-
-      <View
-        style={[
+      <Text style={[local.label, { color: C.mutedForeground }]}>Ngày sinh</Text>
+      <Pressable
+        onPress={onOpen}
+        style={({ pressed }) => [
+          local.row,
           {
-            height: StyleSheet.hairlineWidth,
-            backgroundColor: C.border,
-            opacity: 0.9,
-            marginTop: 10,
-            marginHorizontal: -14,
+            borderColor: C.border,
+            backgroundColor: "rgba(147, 51, 234, 0.12)", // tím nhẹ
+            opacity: pressed ? 0.95 : 1,
           },
-          last ? { height: 0 } : null,
         ]}
+      >
+        <Ionicons name="calendar-outline" size={16} color={"#9333EA"} />
+        <Text
+          style={[local.input, { color: C.foreground, paddingVertical: 0 }]}
+        >
+          {value || "Chọn ngày…"}
+        </Text>
+        <Ionicons name="chevron-down" size={16} color={C.mutedForeground} />
+      </Pressable>
+      {!!error && (
+        <Text style={[local.err, { color: C.destructive ?? "#EF4444" }]}>
+          {error}
+        </Text>
+      )}
+      <View
+        style={{
+          height: StyleSheet.hairlineWidth,
+          backgroundColor: C.border,
+          opacity: 0.9,
+          marginTop: 10,
+          marginHorizontal: -14,
+        }}
       />
     </View>
   );
@@ -605,12 +735,5 @@ const local = StyleSheet.create({
     fontSize: 12,
     marginTop: 6,
     fontWeight: "600",
-  },
-  handleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-
-    marginTop: 4,
-    justifyContent: "flex-start",
   },
 });
