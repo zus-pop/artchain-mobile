@@ -417,13 +417,26 @@ export default function ExaminerProfileScreen() {
                     C={C}
                     contest={contest as any}
                     onEvaluate={(c) => {
-                      router.push({
-                        pathname: "/contest-paintings",
-                        params: {
-                          contestId: c.contestId,
-                          contestTitle: c.title,
-                        },
-                      });
+                      if (c.examinerRole === "REVIEW_ROUND_1") {
+                        // REVIEW_ROUND_1 examiners go directly to review screen
+                        router.push({
+                          pathname: "/painting-review-round1",
+                          params: {
+                            contestId: c.contestId,
+                            contestTitle: c.title,
+                          },
+                        });
+                      } else {
+                        // Other roles go to paintings list
+                        router.push({
+                          pathname: "/contest-paintings",
+                          params: {
+                            contestId: c.contestId,
+                            contestTitle: c.title,
+                            examinerRole: c.examinerRole,
+                          },
+                        });
+                      }
                     }}
                   />
                 ))}

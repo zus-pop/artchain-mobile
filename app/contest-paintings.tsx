@@ -1,19 +1,15 @@
 // app/.../ContestPaintingsScreen.tsx — FULL DROP‑IN FILE (VIP Gradient Card)
 import { useGetPaintings } from "@/apis/painting";
 import { useUserById } from "@/apis/user";
-import SegmentedTabsScrollable, {
-  TabItem,
-  ColorSet as TabsColorSet,
-} from "@/components/tabs/SegmentedTabsScrollable";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import type { Painting } from "@/types";
+import type { ExaminerRole, Painting } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useRef } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -124,49 +120,16 @@ function Monogram({
   );
 }
 
-/* ===== Types ===== */
-type Round = {
-  key: string;
-  label: string;
-  accentColor?: string;
-  start?: string; // ISO
-  end?: string; // ISO
-};
-
 export default function ContestPaintingsScreen() {
-  const { contestId, contestTitle, rounds } = useLocalSearchParams<{
+  const { contestId, contestTitle, examinerRole } = useLocalSearchParams<{
     contestId: string;
     contestTitle: string;
-    rounds?: string; // JSON optional
+    examinerRole: ExaminerRole;
   }>();
 
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const C = Colors[scheme];
   const s = styles(Colors[scheme]);
-
-  const defaultRounds: Round[] = [
-    { key: "prelim", label: "Sơ loại", accentColor: "#7C3AED" },
-    { key: "quarter", label: "Tứ kết", accentColor: "#0EA5E9" },
-    { key: "semi", label: "Bán kết", accentColor: "#10B981" },
-    { key: "final", label: "Chung kết", accentColor: "#EF4444" },
-  ];
-
-  const parsedRounds = useMemo<Round[]>(() => {
-    if (!rounds) return defaultRounds;
-    try {
-      const arr = JSON.parse(rounds as string);
-      if (Array.isArray(arr) && arr.every((x) => x?.key && x?.label))
-        return arr as Round[];
-      return defaultRounds;
-    } catch {
-      return defaultRounds;
-    }
-  }, [rounds]);
-
-  /* Ưu tiên tab đầu tiên */
-  const [activeRoundKey, setActiveRoundKey] = useState(
-    parsedRounds[0]?.key ?? "prelim"
-  );
 
   /* API */
   const {
@@ -174,59 +137,24 @@ export default function ContestPaintingsScreen() {
     isLoading,
     error,
   } = useGetPaintings({
-    contestId: String(contestId || ""),
+    contestId: contestId,
+    roundName:
+      examinerRole === "ROUND_1"
+        ? "ROUND_1"
+        : examinerRole === "REVIEW_ROUND_1"
+        ? undefined // REVIEW_ROUND_1 doesn't view paintings here
+        : examinerRole === "ROUND_2"
+        ? "ROUND_2"
+        : undefined,
+    is_passed:
+      examinerRole === "ROUND_1"
+        ? null
+        : examinerRole === "REVIEW_ROUND_1"
+        ? undefined // REVIEW_ROUND_1 doesn't view paintings here
+        : examinerRole === "ROUND_2"
+        ? null
+        : null,
   });
-
-  /* Round resolver: ưu tiên từ BE; fallback theo submissionDate ∈ [start, end] */
-  function resolveRoundKey(p: Painting): string | undefined {
-    // @ts-ignore
-    if ((p as any).roundKey) return (p as any).roundKey;
-    // @ts-ignore
-    if ((p as any).roundName) {
-      const found = parsedRounds.find(
-        (r) =>
-          r.label.toLowerCase() === String((p as any).roundName).toLowerCase()
-      );
-      if (found) return found.key;
-    }
-    if (p.submissionDate) {
-      const ts = new Date(p.submissionDate).getTime();
-      for (const r of parsedRounds) {
-        if (r.start && r.end) {
-          const a = new Date(r.start).getTime();
-          const b = new Date(r.end).getTime();
-          if (!isNaN(a) && !isNaN(b) && ts >= a && ts <= b) return r.key;
-        }
-      }
-    }
-    return undefined;
-  }
-
-  const roundTabs: TabItem[] = useMemo(
-    () =>
-      parsedRounds.map((r) => ({
-        key: r.key,
-        label: r.label,
-        accentColor: r.accentColor,
-      })),
-    [parsedRounds]
-  );
-
-  const filtered = useMemo(() => {
-    if (!paintings) return [] as Painting[];
-    return paintings.filter((p) => {
-      const k = resolveRoundKey(p);
-      if (k) return k === activeRoundKey;
-      return activeRoundKey === parsedRounds[0]?.key; // không xác định → cho vào sơ loại
-    });
-  }, [paintings, activeRoundKey, parsedRounds]);
-
-  const TabsColor: TabsColorSet = {
-    primary: C.primary,
-    card: C.card,
-    muted: C.border,
-    mutedForeground: C.mutedForeground,
-  };
 
   /* =============== NAV-LOCK chống double push =============== */
   const navLockRef = useRef(false);
@@ -234,8 +162,20 @@ export default function ContestPaintingsScreen() {
     (painting: Painting, artist?: string) => {
       if (navLockRef.current) return;
       navLockRef.current = true;
+
+      let pathname: any = "/painting-evaluation-round2"; // default
+
+      switch (examinerRole) {
+        case "ROUND_1":
+          pathname = "/painting-evaluation-round1";
+          break;
+        case "ROUND_2":
+          pathname = "/painting-evaluation-round2";
+          break;
+      }
+
       router.push({
-        pathname: "/painting-evaluation",
+        pathname,
         params: {
           paintingId: painting.paintingId,
           contestTitle,
@@ -248,15 +188,13 @@ export default function ContestPaintingsScreen() {
         navLockRef.current = false;
       }, 800);
     },
-    [contestTitle]
+    [contestTitle, examinerRole]
   );
 
   /* ============================ VIP CARD ============================ */
   const PaintingItem = ({ painting }: { painting: Painting }) => {
     const { data: user } = useUserById(painting.competitorId);
-    const rKey = resolveRoundKey(painting);
-    const rMeta = parsedRounds.find((r) => r.key === rKey);
-    const [g0, g1] = gradientFromAccent(rMeta?.accentColor);
+    const [g0, g1] = gradientFromAccent("#7C3AED"); // Default gradient
 
     return (
       <LinearGradient
@@ -286,17 +224,6 @@ export default function ContestPaintingsScreen() {
                 end={{ x: 0.5, y: 1 }}
                 style={s.vipShade}
               />
-
-              {/* Top-left round chip */}
-              <LinearGradient
-                colors={[g0, g1]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={s.roundBadge}
-              >
-                <Ionicons name="trophy-outline" size={12} color="#fff" />
-                <Text style={s.roundBadgeText}>{rMeta?.label ?? "Tự do"}</Text>
-              </LinearGradient>
 
               {/* Top-right date chip */}
               <View style={s.dateBadgeVip}>
@@ -438,24 +365,23 @@ export default function ContestPaintingsScreen() {
           </Text>
         </View>
 
-        {/* Tabs */}
-        <SegmentedTabsScrollable
-          tabs={roundTabs}
-          activeKey={activeRoundKey}
-          onChange={setActiveRoundKey}
-          C={TabsColor}
-          height={30}
-          gap={10}
-          underlineHeight={3}
-          softBg
-          autoScrollToActive
-          scrollPaddingHorizontal={5}
-        />
-
-        {/* List */}
-        {filtered && filtered.length > 0 ? (
+        {/* Content based on role */}
+        {examinerRole === "REVIEW_ROUND_1" ? (
+          <View style={s.center}>
+            <Ionicons
+              name="person-circle-outline"
+              size={64}
+              color={C.primary}
+            />
+            <Text style={s.reviewRound1Title}>Xem xét vòng 1</Text>
+            <Text style={s.reviewRound1Text}>
+              Vui lòng truy cập hồ sơ của bạn để xem xét các bài thi đã qua vòng
+              1
+            </Text>
+          </View>
+        ) : paintings && paintings.length > 0 ? (
           <FlatList
-            data={filtered}
+            data={paintings}
             keyExtractor={(item) => item.paintingId}
             renderItem={({ item }) => <PaintingItem painting={item} />}
             contentContainerStyle={s.list}
@@ -499,7 +425,7 @@ const styles = (C: typeof Colors.light) =>
       alignItems: "center",
       paddingHorizontal: 14,
       paddingVertical: 14,
-      backgroundColor: toAlpha("#ffffff", 0.78),
+      backgroundColor: C.background,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: toAlpha(C.border, 0.7),
     },
@@ -567,19 +493,6 @@ const styles = (C: typeof Colors.light) =>
     },
     vipImage: { width: "100%", height: "100%" },
     vipShade: { ...StyleSheet.absoluteFillObject },
-
-    roundBadge: {
-      position: "absolute",
-      top: 10,
-      left: 10,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 999,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-    },
-    roundBadgeText: { color: "#fff", fontSize: 12, fontWeight: "800" },
 
     dateBadgeVip: {
       position: "absolute",
@@ -661,5 +574,21 @@ const styles = (C: typeof Colors.light) =>
       color: C.mutedForeground,
       marginTop: 12,
       textAlign: "center",
+    },
+
+    reviewRound1Title: {
+      fontSize: 20,
+      fontWeight: "800",
+      color: C.foreground,
+      marginTop: 16,
+      marginBottom: 8,
+      textAlign: "center",
+    },
+    reviewRound1Text: {
+      fontSize: 15,
+      color: C.mutedForeground,
+      textAlign: "center",
+      lineHeight: 22,
+      maxWidth: 280,
     },
   });
