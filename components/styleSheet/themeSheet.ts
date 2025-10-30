@@ -3,7 +3,7 @@ import { Appearance, Dimensions, StyleSheet } from "react-native";
 
 const colorScheme: keyof typeof Colors = Appearance.getColorScheme() ?? "light";
 const headerHeight = 60;
- const GRID_PAD_H = 20;
+const GRID_PAD_H = 20;
 const themedStyles = StyleSheet.create({
   container: {
     flex: 1,
@@ -14,7 +14,7 @@ const themedStyles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingBottom: 8,
+    paddingBottom: 2,
     backgroundColor: Colors[colorScheme].background,
     marginTop: 12,
   },

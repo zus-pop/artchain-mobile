@@ -1,5 +1,13 @@
+// screens/GuardianProfileComponent.tsx
 import PillButton from "@/components/buttons/PillButton";
+import AchievementCard from "@/components/cards/guardian/AchievementCard";
+import ChildCard from "@/components/cards/guardian/ChildrentCard";
+import ContestCard from "@/components/cards/guardian/ContestCard";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
+
+// ⚡ dùng GuardianTabs phiên bản mới (slider dưới, không bọc nền)
+import GuardianTabs, { GuardianTabKey } from "@/components/tabs/GuardianTabs";
+
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,14 +21,14 @@ import {
   View,
 } from "react-native";
 
-// ===== Types =====
+// ===== Types / APIs =====
 import { useWhoAmI } from "@/apis/auth";
+import { useGuardianChildren } from "@/apis/guardian";
 import { useAuthStore } from "@/store/auth-store";
 import type { ColorTokens, KPIProps } from "@/types/tabkey";
 import { formatDateDisplay } from "@/utils/date";
 import { LinearGradient } from "expo-linear-gradient";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { useGuardianChildren } from "../apis/guardian";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 /* -------------------- Color helpers -------------------- */
 const VIVID_POOLS: [string, string][] = [
@@ -52,9 +60,7 @@ export default function GuardianProfileComponent() {
 
   const { data: children } = useGuardianChildren(user?.userId);
   const [openDetails, setOpenDetails] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    "children" | "contests" | "achievements"
-  >("children");
+  const [activeTab, setActiveTab] = useState<GuardianTabKey>("children");
 
   const ongoingContests = useMemo(
     () => [
@@ -84,25 +90,6 @@ export default function GuardianProfileComponent() {
     []
   );
 
-  // Calculate contest participation stats
-  const contestStats = useMemo(() => {
-    const activeContests = ongoingContests.length;
-    const submittedContests = ongoingContests.filter((c) => c.submitted).length;
-    const avgProgress =
-      ongoingContests.length > 0
-        ? Math.round(
-            ongoingContests.reduce((sum, c) => sum + c.progress, 0) /
-              ongoingContests.length
-          )
-        : 0;
-
-    return {
-      activeContests,
-      submittedContests,
-      avgProgress,
-    };
-  }, [ongoingContests]);
-
   const achievements = useMemo(
     () => [
       {
@@ -119,17 +106,6 @@ export default function GuardianProfileComponent() {
     []
   );
 
-  const ICONS: Record<
-    "brush" | "trophy" | "eye" | "heart",
-    { fg: string; bg: string }
-  > = {
-    brush: { fg: "#F59E0B", bg: "rgba(245,158,11,0.14)" },
-    trophy: { fg: "#EAB308", bg: "rgba(234,179,8,0.14)" },
-    eye: { fg: "#3B82F6", bg: "rgba(59,130,246,0.14)" },
-    heart: { fg: "#EF4444", bg: "rgba(239,68,68,0.14)" },
-  };
-
-  // Avatar icons and colors for children
   const childAvatars = useMemo(
     () => [
       { icon: "person-outline" as const, bg: "#FF6B6B" },
@@ -145,39 +121,13 @@ export default function GuardianProfileComponent() {
     ],
     []
   );
-
-  const getChildAvatar = (index: number) => {
-    return childAvatars[index % childAvatars.length];
-  };
-
-  // Guardian KPIs
-  const kpis = useMemo(
-    () => [
-      {
-        icon: "people-outline" as const,
-        label: "Con tham gia",
-        value: String(children?.length || 0),
-        iconColor: "#3B82F6",
-        iconBg: "rgba(59,130,246,0.14)",
-      },
-    ],
-    [children?.length]
-  );
-
-  // Guardian tabs
-  const tabs = useMemo(
-    () => [
-      { key: "children", label: "Con em", icon: "people-outline" },
-      { key: "contests", label: "Cuộc thi", icon: "time-outline" },
-      { key: "achievements", label: "Thành tích", icon: "trophy-outline" },
-    ],
-    []
-  );
+  const getChildAvatar = (index: number) =>
+    childAvatars[index % childAvatars.length];
 
   useFocusEffect(
     useCallback(() => {
       reloadMe();
-    }, [])
+    }, [reloadMe])
   );
 
   const Avatar = () => {
@@ -206,11 +156,12 @@ export default function GuardianProfileComponent() {
       </View>
     );
   };
+
   const scrollY = useRef(new Animated.Value(0)).current;
 
   if (isLoading) {
     return (
-      <View style={s.container}>
+      <SafeAreaView style={s.container}>
         <LinearGradient
           colors={pickGrad("guardian-loading")}
           start={{ x: 0, y: 0 }}
@@ -228,33 +179,17 @@ export default function GuardianProfileComponent() {
             </TouchableOpacity>
           </View>
         </LinearGradient>
-        <View
-          style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 32,
-          }}
-        >
+        <View style={s.loaderWrap}>
           <Ionicons name="person-circle-outline" size={80} color={C.muted} />
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "bold",
-              color: C.foreground,
-              marginTop: 16,
-            }}
-          >
-            Đang tải hồ sơ...
-          </Text>
+          <Text style={s.loaderText}>Đang tải hồ sơ...</Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!accessToken || !user) {
     return (
-      <View style={s.container}>
+      <SafeAreaView style={s.container}>
         <LinearGradient
           colors={pickGrad("guardian-auth")}
           start={{ x: 0, y: 0 }}
@@ -263,63 +198,26 @@ export default function GuardianProfileComponent() {
         >
           <Text style={s.headerTitle}>Hồ sơ</Text>
         </LinearGradient>
-        <View
-          style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 32,
-          }}
-        >
+        <View style={s.authWrap}>
           <Ionicons name="person-circle-outline" size={80} color={C.muted} />
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "bold",
-              color: C.foreground,
-              marginTop: 16,
-            }}
-          >
-            Bạn chưa đăng nhập
-          </Text>
-          <Text
-            style={{
-              fontSize: 15,
-              color: C.mutedForeground,
-              marginVertical: 12,
-              textAlign: "center",
-            }}
-          >
+          <Text style={s.authTitle}>Bạn chưa đăng nhập</Text>
+          <Text style={s.authDesc}>
             Đăng nhập để quản lý hồ sơ, theo dõi thành tích và tham gia các cuộc
             thi nghệ thuật hấp dẫn trên ArtChain.
           </Text>
           <TouchableOpacity
             onPress={() => router.push("/login")}
-            style={{
-              backgroundColor: C.primary,
-              borderRadius: 16,
-              paddingHorizontal: 32,
-              paddingVertical: 12,
-              marginTop: 8,
-            }}
+            style={s.authBtn}
           >
-            <Text
-              style={{
-                color: C.primaryForeground,
-                fontWeight: "bold",
-                fontSize: 16,
-              }}
-            >
-              Đăng nhập / Đăng ký
-            </Text>
+            <Text style={s.authBtnText}>Đăng nhập / Đăng ký</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaProvider style={s.container}>
+    <SafeAreaView style={s.container}>
       {/* Top bar with gradient */}
       <LinearGradient
         colors={pickGrad("guardian-topbar")}
@@ -352,7 +250,7 @@ export default function GuardianProfileComponent() {
         </View>
       </LinearGradient>
 
-      {/* Background blobs (mềm, đa sắc) */}
+      {/* Background blobs */}
       <LinearGradient
         colors={["#a78bfa22", "#60a5fa16"]}
         start={{ x: 0, y: 0 }}
@@ -367,9 +265,7 @@ export default function GuardianProfileComponent() {
       />
 
       <Animated.ScrollView
-        contentContainerStyle={{
-          paddingBottom: 110,
-        }}
+        contentContainerStyle={{ paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -410,103 +306,46 @@ export default function GuardianProfileComponent() {
           />
         </View>
 
+        {/* KPI */}
         <View style={s.kpiCard}>
-          {kpis.map((kpi) => (
-            <View key={kpi.label} style={{ flex: 1 }}>
-              <KPI
-                icon={kpi.icon}
-                label={kpi.label}
-                value={kpi.value}
-                C={C}
-                iconColor={kpi.iconColor}
-                iconBg={kpi.iconBg}
-              />
-            </View>
-          ))}
+          <View style={{ flex: 1 }}>
+            <KPI
+              icon="people-outline"
+              label="Con tham gia"
+              value={String(children?.length || 0)}
+              C={C}
+            />
+          </View>
         </View>
 
-        {/* Tabs */}
-        <View style={s.tabsContainer}>
-          {tabs.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[s.tab, activeTab === tab.key && s.activeTab]}
-              onPress={() => setActiveTab(tab.key as any)}
-            >
-              <Ionicons
-                name={tab.icon as any}
-                size={18}
-                color={
-                  activeTab === tab.key
-                    ? C.primaryForeground
-                    : C.mutedForeground
-                }
-              />
-              <Text
-                style={[s.tabText, activeTab === tab.key && s.activeTabText]}
-              >
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* ✅ GuardianTabs mới: slider dưới, không nền bọc */}
+        <GuardianTabs
+          C={C}
+          activeTab={activeTab}
+          onChange={setActiveTab}
+          style={{ marginHorizontal: 12, marginTop: 8, marginBottom: 8 }}
+        />
 
         {/* Tab Content */}
         <View style={s.tabContent}>
           {activeTab === "children" && (
             <View style={s.tabScrollContent}>
               {children && children.length > 0 ? (
-                children.map((child, index) => {
-                  const avatar = getChildAvatar(index);
-                  return (
-                    <View
-                      key={child.userId || child.username || `child-${index}`}
-                      style={s.childCard}
-                    >
-                      <View style={s.childHeader}>
-                        <View
-                          style={[
-                            s.childAvatar,
-                            { backgroundColor: avatar.bg },
-                          ]}
-                        >
-                          <Ionicons
-                            name={avatar.icon}
-                            size={24}
-                            color="white"
-                          />
-                        </View>
-                        <View style={s.childInfo}>
-                          <Text style={s.childName}>
-                            {child.fullName || "Tên chưa cập nhật"}
-                          </Text>
-                          <Text style={s.childDetails}>
-                            {child.grade || "Chưa cập nhật"} -{" "}
-                            {child.schoolName || "Chưa cập nhật"}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={s.childStats}>
-                        <View style={s.childStat}>
-                          <Ionicons
-                            name="time-outline"
-                            size={16}
-                            color={C.mutedForeground}
-                          />
-                          <Text style={s.childStatText}>0 cuộc thi</Text>
-                        </View>
-                        <View style={s.childStat}>
-                          <Ionicons
-                            name="trophy-outline"
-                            size={16}
-                            color={C.mutedForeground}
-                          />
-                          <Text style={s.childStatText}>0 thành tích</Text>
-                        </View>
-                      </View>
-                    </View>
-                  );
-                })
+                <View style={{ gap: 12 }}>
+                  {children.map((child, index) => {
+                    const avatar = getChildAvatar(index);
+                    return (
+                      <ChildCard
+                        key={child.userId || child.username || `child-${index}`}
+                        C={C}
+                        avatarBg={avatar.bg}
+                        name={child.fullName}
+                        grade={child.grade ?? undefined}
+                        schoolName={child.schoolName ?? undefined}
+                      />
+                    );
+                  })}
+                </View>
               ) : (
                 <View style={s.emptyTab}>
                   <Ionicons name="people-outline" size={64} color={C.muted} />
@@ -518,7 +357,7 @@ export default function GuardianProfileComponent() {
                 </View>
               )}
 
-              {/* Add child button - always visible */}
+              {/* Add child button */}
               <TouchableOpacity
                 style={s.addChildButton}
                 onPress={() => router.push("/add-child")}
@@ -532,50 +371,20 @@ export default function GuardianProfileComponent() {
           {activeTab === "contests" && (
             <View style={s.tabScrollContent}>
               {ongoingContests.length > 0 ? (
-                <View style={s.contestsList}>
+                <View style={{ gap: 12 }}>
                   {ongoingContests.map((contest) => (
-                    <View key={contest.id} style={s.contestCard}>
-                      <View style={s.contestHeader}>
-                        <Text style={s.contestTitle}>{contest.title}</Text>
-                        <View style={s.contestParticipants}>
-                          <Ionicons
-                            name="people-outline"
-                            size={14}
-                            color={C.mutedForeground}
-                          />
-                          <Text style={s.contestParticipantsText}>
-                            2 con tham gia
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={s.contestMeta}>
-                        <View style={s.metaChip}>
-                          <Ionicons
-                            name="calendar-outline"
-                            size={14}
-                            color={C.mutedForeground}
-                          />
-                          <Text style={s.metaTxt}>
-                            Hạn: {formatDateDisplay(contest.deadline)}
-                          </Text>
-                        </View>
-                        <View style={s.metaChip}>
-                          <Ionicons
-                            name="trophy-outline"
-                            size={14}
-                            color={C.mutedForeground}
-                          />
-                          <Text style={s.metaTxt}>
-                            Vòng {contest.currentRound}/{contest.totalRounds}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
+                    <ContestCard
+                      key={contest.id}
+                      C={C}
+                      title={contest.title}
+                      deadlineText={formatDateDisplay(contest.deadline)}
+                      roundText={`Vòng ${contest.currentRound}/${contest.totalRounds}`}
+                    />
                   ))}
                 </View>
               ) : (
                 <View style={s.emptyTab}>
-                  <Ionicons name="people-outline" size={64} color={C.muted} />
+                  <Ionicons name="time-outline" size={64} color={C.muted} />
                   <Text style={s.emptyTabText}>
                     Con em chưa tham gia cuộc thi nào
                   </Text>
@@ -590,21 +399,14 @@ export default function GuardianProfileComponent() {
           {activeTab === "achievements" && (
             <View style={s.tabScrollContent}>
               {achievements.length > 0 ? (
-                <View style={s.achievementsList}>
-                  {achievements.map((achievement) => (
-                    <View key={achievement.id} style={s.achievementCard}>
-                      <View style={s.achievementIcon}>
-                        <Ionicons name="trophy" size={24} color={C.primary} />
-                      </View>
-                      <View style={s.achievementContent}>
-                        <Text style={s.achievementTitle}>
-                          {achievement.title}
-                        </Text>
-                        <Text style={s.achievementPlace}>
-                          {achievement.place}
-                        </Text>
-                      </View>
-                    </View>
+                <View style={{ gap: 12 }}>
+                  {achievements.map((a) => (
+                    <AchievementCard
+                      key={a.id}
+                      C={C}
+                      title={a.title}
+                      place={a.place}
+                    />
                   ))}
                 </View>
               ) : (
@@ -637,18 +439,11 @@ export default function GuardianProfileComponent() {
           phone: user.phone || "",
         }}
       />
-    </SafeAreaProvider>
+    </SafeAreaView>
   );
 }
 
-function KPI({
-  icon,
-  label,
-  value,
-  C,
-  iconColor = C.foreground,
-  iconBg = C.muted,
-}: KPIProps) {
+function KPI({ icon, label, value, C }: KPIProps) {
   const [g0, g1] = pickGrad(label + value);
   return (
     <View style={{ flex: 1, alignItems: "center" }}>
@@ -656,14 +451,7 @@ function KPI({
         colors={[g0, g1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 18,
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: 6,
-        }}
+        style={sKpi.iconGrad}
       >
         <Ionicons name={icon} size={18} color={C.primaryForeground} />
       </LinearGradient>
@@ -673,9 +461,21 @@ function KPI({
   );
 }
 
+const sKpi = StyleSheet.create({
+  iconGrad: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+});
+
 const styles = (C: ColorTokens) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: C.background },
+
     topbarGrad: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -684,16 +484,6 @@ const styles = (C: ColorTokens) =>
       paddingVertical: 22,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: "transparent",
-    },
-    topbar: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingHorizontal: 16,
-      paddingVertical: 22,
-      backgroundColor: C.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: C.border,
     },
     headerTitle: {
       fontSize: 25,
@@ -712,12 +502,6 @@ const styles = (C: ColorTokens) =>
     },
     name: { fontSize: 15, fontWeight: "800", color: C.foreground },
     handle: { color: C.mutedForeground, marginTop: 2 },
-    avatar: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      backgroundColor: C.muted,
-    },
     addBadge: {
       position: "absolute",
       right: -2,
@@ -744,57 +528,11 @@ const styles = (C: ColorTokens) =>
       shadowOffset: { width: 0, height: 3 },
       elevation: 2,
     },
-    kpiDivider: {
-      width: StyleSheet.hairlineWidth,
-      backgroundColor: C.border,
-      marginVertical: 6,
-    },
 
-    // Tab styles
-    tabsContainer: {
-      flexDirection: "row",
-      marginHorizontal: 16,
-      marginTop: 8,
-      marginBottom: 16,
-      backgroundColor: C.card,
-      borderRadius: 12,
-      padding: 4,
-      shadowColor: "#000",
-      shadowOpacity: 0.06,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 1,
-    },
-    tab: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: 12,
-      paddingHorizontal: 8,
-      borderRadius: 8,
-      gap: 6,
-    },
-    activeTab: {
-      backgroundColor: C.primary + "15",
-    },
-    tabText: {
-      fontSize: 14,
-      fontWeight: "500",
-      color: C.mutedForeground,
-    },
-    activeTabText: {
-      color: C.primaryForeground,
-      fontWeight: "600",
-    },
-    tabContent: {
-      flex: 1,
-      minHeight: 400,
-    },
-    tabScrollContent: {
-      paddingHorizontal: 16,
-      paddingBottom: 20,
-    },
+    // Tabs container spacing
+    tabContent: { flex: 1, minHeight: 400 },
+    tabScrollContent: { paddingHorizontal: 16, paddingBottom: 20 },
+
     emptyTab: {
       alignItems: "center",
       justifyContent: "center",
@@ -813,6 +551,7 @@ const styles = (C: ColorTokens) =>
       marginBottom: 24,
       textAlign: "center",
     },
+
     addChildButton: {
       flexDirection: "row",
       alignItems: "center",
@@ -821,12 +560,14 @@ const styles = (C: ColorTokens) =>
       paddingHorizontal: 24,
       paddingVertical: 12,
       gap: 8,
+      marginTop: 10,
     },
     addChildButtonText: {
       color: C.primaryForeground,
       fontSize: 14,
       fontWeight: "600",
     },
+
     exploreButton: {
       backgroundColor: C.primary,
       borderRadius: 20,
@@ -839,145 +580,49 @@ const styles = (C: ColorTokens) =>
       fontWeight: "600",
     },
 
-    // Guardian styles
-    childCard: {
-      backgroundColor: C.card,
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 12,
-      shadowColor: "#000",
-      shadowOpacity: 0.06,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 1,
-    },
-    childHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 12,
-    },
-    childAvatar: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
+    loaderWrap: {
+      flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      marginRight: 12,
+      padding: 32,
     },
-    childInfo: {
-      flex: 1,
-    },
-    childName: {
-      fontSize: 16,
-      fontWeight: "600",
+    loaderText: {
+      fontSize: 20,
+      fontWeight: "bold",
       color: C.foreground,
-      marginBottom: 4,
-    },
-    childDetails: {
-      fontSize: 14,
-      color: C.mutedForeground,
-    },
-    childStats: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-    },
-    childStat: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    childStatText: {
-      marginLeft: 6,
-      color: C.mutedForeground,
-      fontSize: 14,
+      marginTop: 16,
     },
 
-    // Contest participation styles
-    contestsList: {
-      gap: 12,
-    },
-    contestCard: {
-      backgroundColor: C.card,
-      borderRadius: 12,
-      padding: 16,
-      shadowColor: "#000",
-      shadowOpacity: 0.06,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 1,
-    },
-    contestHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: 12,
-    },
-    contestTitle: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: C.foreground,
+    authWrap: {
       flex: 1,
-      marginRight: 12,
-    },
-    contestParticipants: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 12,
-      backgroundColor: C.muted + "40",
-    },
-    contestParticipantsText: {
-      marginLeft: 4,
-      color: C.mutedForeground,
-      fontSize: 12,
-      fontWeight: "500",
-    },
-    contestMeta: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-    },
-
-    // Achievement styles
-    achievementsList: {
-      gap: 12,
-    },
-    achievementCard: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: C.card,
-      borderRadius: 12,
-      padding: 16,
-      shadowColor: "#000",
-      shadowOpacity: 0.06,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 1,
-    },
-    achievementIcon: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: C.primary + "15",
       alignItems: "center",
       justifyContent: "center",
-      marginRight: 12,
+      padding: 32,
     },
-    achievementContent: {
-      flex: 1,
-    },
-    achievementTitle: {
-      fontSize: 16,
-      fontWeight: "600",
+    authTitle: {
+      fontSize: 20,
+      fontWeight: "bold",
       color: C.foreground,
-      marginBottom: 4,
+      marginTop: 16,
     },
-    achievementPlace: {
-      fontSize: 14,
+    authDesc: {
+      fontSize: 15,
       color: C.mutedForeground,
+      marginVertical: 12,
+      textAlign: "center",
     },
-
-    metaChip: { flexDirection: "row", alignItems: "center", marginRight: 14 },
-    metaTxt: { marginLeft: 4, color: C.mutedForeground, fontSize: 12 },
+    authBtn: {
+      backgroundColor: C.primary,
+      borderRadius: 16,
+      paddingHorizontal: 32,
+      paddingVertical: 12,
+      marginTop: 8,
+    },
+    authBtnText: {
+      color: C.primaryForeground,
+      fontWeight: "bold",
+      fontSize: 16,
+    },
   });
 
 const bg = StyleSheet.create({
