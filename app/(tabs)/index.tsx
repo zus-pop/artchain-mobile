@@ -292,8 +292,8 @@ type UtilityItem = {
 
 /* =================== Screen =================== */
 export default function Home() {
-  const { data } = useWhoAmI();
-  const { data: postsData } = usePosts();
+  const { data, refetch: refetchMe } = useWhoAmI();
+  const { data: postsData, refetch: refetchPosts } = usePosts();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
   const posts = postsData?.data || [];
@@ -383,7 +383,9 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
+    refetchMe();
+    refetchPosts();
+    setRefreshing(false);
   }, []);
 
   // hero/pager auto (nếu dùng)

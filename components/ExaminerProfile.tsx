@@ -171,7 +171,7 @@ export default function ExaminerProfileScreen() {
         {withActions && (
           <View style={{ flexDirection: "row" }}>
             <TouchableOpacity
-              onPress={() => router.push("/notifications")}
+              onPress={() => router.push("/painting-evaluationR2")}
               style={t.iconBtn}
             >
               <Ionicons
@@ -378,6 +378,7 @@ export default function ExaminerProfileScreen() {
           style={[
             s.kpiCard,
             {
+              
               backgroundColor: C.card,
               shadowColor: "#000",
               borderColor: C.border,
