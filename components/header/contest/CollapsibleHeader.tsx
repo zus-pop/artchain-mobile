@@ -27,11 +27,10 @@ export type FilterOption =
 type Props = {
   scheme: "light" | "dark";
   translateY: Animated.AnimatedInterpolation<number> | Animated.Value;
-  /** Tồn tại để tương thích API cũ; không dùng ở đây */
+  /** giữ để tương thích API cũ */
   progress: Animated.AnimatedInterpolation<number>;
   headerOnLayout: (e: LayoutChangeEvent) => void;
 
-  /** Giữ prop để tương thích nơi gọi, dù header không nhập text trực tiếp */
   searchQuery: string;
   onChangeSearch: (txt: string) => void; // not used
   onSubmitSearch?: () => void; // not used
@@ -43,9 +42,8 @@ type Props = {
   onSelectFilter: (opt: FilterOption) => void;
   filterOptions: FilterOption[];
 
-  /** Ảnh nền */
-  bgImage?: ImageSourcePropType; // require('...') hoặc { uri }
-  /** Safe-area top, dùng để tạo khoảng trắng riêng (không đẩy UI xuống) */
+  bgImage?: ImageSourcePropType;
+  /** Safe-area top (from useSafeAreaInsets) */
   topInset?: number;
 };
 
@@ -104,19 +102,13 @@ export default function CollapsibleHeader({
         },
       ]}
     >
-      {/* Spacer trắng cho safe-area: KHÔNG đẩy nội dung tìm kiếm xuống */}
-      {/* {topInset > 0 && (
-        <View
-          style={{ paddingTop: topInset, backgroundColor: "#fff", width: "100%" }}
-        />
-      )} */}
-
-      {/* Ảnh nền + overlay đảm bảo tương phản chữ */}
+      {/* Ảnh nền + overlay */}
       <ImageBackground
         source={bgImage}
         defaultSource={Platform.OS === "ios" ? (bgImage as any) : undefined}
         resizeMode="cover"
-        style={s.imageBg} // KHÔNG cộng topInset ở đây
+        // FIX iPhone notch: cộng paddingTop theo topInset ngay tại đây
+        style={[s.imageBg, { paddingTop: 14 + topInset }]}
         imageStyle={s.imageBgImage}
       >
         <LinearGradient
@@ -127,7 +119,7 @@ export default function CollapsibleHeader({
           style={s.overlay}
         />
 
-        {/* Tiêu đề */}
+        {/* Title */}
         <View style={s.titleWrap} accessible accessibilityRole="header">
           <Text style={s.title} numberOfLines={1}>
             Khám phá cuộc thi
@@ -183,7 +175,7 @@ export default function CollapsibleHeader({
         )}
       </ImageBackground>
 
-      {/* Hairline dưới cùng */}
+      {/* Hairline */}
       <View style={s.hairline} />
     </Animated.View>
   );
@@ -196,7 +188,7 @@ const styles = (C: any) =>
       top: 0,
       left: 0,
       right: 0,
-      zIndex: 10,
+      zIndex: 30, // nâng cao hơn để chắn nội dung dưới
       borderBottomLeftRadius: 16,
       borderBottomRightRadius: 16,
       overflow: "hidden",
@@ -207,16 +199,14 @@ const styles = (C: any) =>
 
     imageBg: {
       paddingHorizontal: 16,
-      paddingTop: 14,
+      // paddingTop được cộng động theo topInset ở trên
       paddingBottom: 14,
     },
     imageBgImage: {
       borderBottomLeftRadius: 16,
       borderBottomRightRadius: 16,
     },
-    overlay: {
-      ...StyleSheet.absoluteFillObject,
-    },
+    overlay: { ...StyleSheet.absoluteFillObject },
 
     titleWrap: { marginBottom: 10 },
     title: {
@@ -229,11 +219,7 @@ const styles = (C: any) =>
       textShadowRadius: 2,
     },
 
-    searchRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-    },
+    searchRow: { flexDirection: "row", alignItems: "center", gap: 10 },
     searchContainer: {
       flex: 1,
       flexDirection: "row",
@@ -246,12 +232,7 @@ const styles = (C: any) =>
       borderColor: "rgba(255,255,255,0.28)",
     },
     searchIcon: { marginRight: 8, opacity: 0.95 },
-    searchInput: {
-      flex: 1,
-      paddingVertical: 4,
-      fontSize: 15,
-      color: "#fff",
-    },
+    searchInput: { flex: 1, paddingVertical: 4, fontSize: 15, color: "#fff" },
 
     filterBtn: {
       width: 44,
@@ -283,10 +264,7 @@ const styles = (C: any) =>
       fontWeight: "800",
       letterSpacing: 0.3,
     },
-    filterOptionActive: {
-      backgroundColor: "#fff",
-      borderColor: "transparent",
-    },
+    filterOptionActive: { backgroundColor: "#fff", borderColor: "transparent" },
     filterOptionTextActive: { color: "#111" },
 
     hairline: {

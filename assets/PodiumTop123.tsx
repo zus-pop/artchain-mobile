@@ -177,7 +177,7 @@ function TopMedalBadge({
           style={{
             marginTop: -2,
             fontSize: Math.max(10, size * 0.48),
-            fontWeight: "900",
+            fontWeight: "500",
             color: theme.medalText || "#111",
             letterSpacing: 0.6,
           }}
@@ -239,7 +239,7 @@ function TopMedalBadge({
         <Text
           style={{
             color: theme.medalText,
-            fontWeight: "900",
+            fontWeight: "500",
             letterSpacing: 0.8,
             fontSize: Math.max(10, d * 0.2),
             marginBottom: -2,
@@ -251,7 +251,7 @@ function TopMedalBadge({
         <Text
           style={{
             color: theme.medalText,
-            fontWeight: "900",
+            fontWeight: "600",
             fontSize: d * 0.46,
             lineHeight: d * 0.5,
           }}
@@ -321,7 +321,7 @@ function FramedDetails({
         numberOfLines={1}
         style={{
           fontSize: emphasize ? 16 : 15,
-          fontWeight: "800",
+          fontWeight: "500",
           letterSpacing: 0.2,
           color: theme.nameColor,
         }}
@@ -342,7 +342,7 @@ function FramedDetails({
         >
           <Text
             numberOfLines={1}
-            style={{ fontSize: 12, fontWeight: "700", color: theme.badgeColor }}
+            style={{ fontSize: 12, fontWeight: "600", color: theme.badgeColor }}
           >
             {badge}
           </Text>
@@ -437,7 +437,7 @@ function Avatar({
             <Text
               style={{
                 color: "white",
-                fontWeight: "800",
+                fontWeight: "500",
                 fontSize: size * 0.36,
               }}
             >

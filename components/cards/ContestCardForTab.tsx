@@ -2,7 +2,7 @@ import type { ColorTokens } from "@/types/tabkey";
 import { formatDateDisplay } from "@/utils/date";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { memo } from "react";
+import React, { memo, useCallback, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -26,7 +26,7 @@ type Contest = {
 type Props = {
   C: ColorTokens;
   contest: Contest;
-  onEvaluate?: (contest: Contest) => void;
+  onEvaluate?: (contest: Contest) => Promise<void> | void;
   onPress?: (contest: Contest) => void;
   style?: ViewStyle;
   titleStyle?: TextStyle;
@@ -50,7 +50,6 @@ function statusMeta(status: Contest["status"]) {
     return {
       label: "Đang diễn ra",
       icon: "play-outline" as const,
-      // cặp màu gradient tươi
       grad: ["#34d399", "#22d3ee"],
       fg: "#065f46",
       softBg: "rgba(52,211,153,0.12)",
@@ -156,6 +155,19 @@ function ContestCardColorful({
   const isActive = contest.status === "ACTIVE";
   const cat = categoryColors(contest.category);
   const examinerMeta = examinerRoleMeta(contest.examinerRole);
+
+  // Anti-spam: khoá nút trong lúc xử lý
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const handleEvaluate = useCallback(async () => {
+    if (isEvaluating) return;
+    setIsEvaluating(true);
+    try {
+      await onEvaluate?.(contest);
+    } finally {
+      // nới tay một nhịp để chặn double tap/gõ liên tục
+      setTimeout(() => setIsEvaluating(false), 800);
+    }
+  }, [isEvaluating, onEvaluate, contest]);
 
   return (
     <Pressable
@@ -336,13 +348,14 @@ function ContestCardColorful({
           {/* Actions */}
           <View style={styles.actions}>
             <Pressable
-              onPress={() => onEvaluate?.(contest)}
+              onPress={handleEvaluate}
+              disabled={isEvaluating}
               android_ripple={{ color: "#ffffff22" }}
               style={({ pressed }) => [
                 styles.primaryBtn,
                 {
                   backgroundColor: "transparent",
-                  opacity: pressed ? 0.96 : 1,
+                  opacity: isEvaluating ? 0.6 : pressed ? 0.96 : 1,
                   shadowColor: st.grad[1],
                 },
               ]}
@@ -353,8 +366,14 @@ function ContestCardColorful({
                 end={{ x: 1, y: 1 }}
                 style={styles.primaryBtnFill}
               >
-                <Ionicons name="star-outline" size={16} color="#fff" />
-                <Text style={styles.primaryBtnText}>Đánh giá tác phẩm</Text>
+                <Ionicons
+                  name={isEvaluating ? "time" : "star-outline"}
+                  size={16}
+                  color="#fff"
+                />
+                <Text style={styles.primaryBtnText}>
+                  {isEvaluating ? "Đang xử lý..." : "Đánh giá tác phẩm"}
+                </Text>
               </LinearGradient>
             </Pressable>
           </View>

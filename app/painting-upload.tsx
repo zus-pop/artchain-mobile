@@ -1,10 +1,9 @@
 // app/painting-upload.tsx
+import AppHeader from "@/components/AppHeader";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BlurView } from "expo-blur";
 import * as ImagePicker from "expo-image-picker";
-import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -14,7 +13,6 @@ import {
   Animated,
   Dimensions,
   Image,
-  ImageBackground,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -34,8 +32,7 @@ import { Colors } from "@/constants/theme";
 import { useUploadPainting } from "../apis/painting";
 import { useUserById } from "../apis/user";
 
-const BG_IMAGE = require("@/assets/images/banner/bannerUpload.jpg");
-
+/* ------------------------ Config & Schema ------------------------ */
 const SIZE = 10; // MB
 const MAX_FILE_SIZE = 1024 * 1024 * SIZE;
 const ACCEPTED_IMAGE_TYPES = [
@@ -44,6 +41,9 @@ const ACCEPTED_IMAGE_TYPES = [
   "image/png",
   "image/webp",
 ];
+
+// ✳️ Màu thương hiệu (theo ảnh bạn cung cấp).
+const BORDER_COLOR = "#dc5a54";
 
 const paintingUploadSchema = z.object({
   title: z
@@ -61,137 +61,160 @@ export type PaintingUploadForm = z.infer<typeof paintingUploadSchema>;
 
 const { width: screenWidth } = Dimensions.get("window");
 
-/* ---------- Colors & Styles ---------- */
-const getColorScheme = (scheme: "light" | "dark") => {
-  const themed = Colors[scheme];
-  return {
-    background: themed.background,
-    foreground: themed.foreground,
-    card: themed.card,
-    border: themed.border,
-    input: themed.input,
-    muted: themed.muted,
-    mutedForeground: themed.mutedForeground,
-    primary: "#22d3ee",
-    primaryForeground: "#ffffff",
-    accent: "#38bdf8",
-  };
-};
-
-const createStyles = (colors: any) =>
+/* ------------------------ Styles Factory ------------------------ */
+const createStyles = (C: any, scheme: "light" | "dark") =>
   StyleSheet.create({
-    container: { flex: 1 },
-    gradient: { ...StyleSheet.absoluteFillObject },
-
+    screen: {
+      flex: 1,
+      backgroundColor: C.background,
+    },
     contentScroll: { flex: 1 },
     contentInset: { padding: 20, paddingBottom: 32 },
 
     /* Headings */
     title: {
-      fontSize: 28,
+      fontSize: 24,
       fontWeight: "900",
-      color: colors.primaryForeground,
-      textAlign: "center",
-      letterSpacing: 0.6,
-      marginBottom: 12,
-      textShadowColor: "rgba(0,0,0,0.35)",
-      textShadowOffset: { width: 0, height: 2 },
-      textShadowRadius: 4,
+      color: C.foreground,
+      marginBottom: 6,
     },
     subtitle: {
       fontSize: 14,
-      color: "#e2e8f0",
-      textAlign: "center",
-      marginBottom: 20,
-      opacity: 0.95,
-      letterSpacing: 0.2,
+      color: C.mutedForeground,
+      marginBottom: 16,
     },
 
-    /* Card container */
-    card: {
-      borderRadius: 20,
+    /* ------ Featured Candidate Card (THÍ SINH) ------ */
+    cardFeatured: {
+      flexDirection: "row",
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: BORDER_COLOR,
+      backgroundColor: C.card,
+      marginBottom: 16,
       overflow: "hidden",
-      marginBottom: 18,
-      borderWidth: 1.8,
-      borderColor: "rgba(255,255,255,0.32)",
-      backgroundColor: "rgba(10,10,12,0.38)",
-      shadowColor: "#000",
-      shadowOpacity: 0.38,
-      shadowRadius: 14,
-      shadowOffset: { width: 0, height: 10 },
-      elevation: 8,
     },
-    cardInner: { padding: 18 },
+    leftAccent: {
+      width: 6,
+      backgroundColor: BORDER_COLOR,
+    },
+    featuredInner: { flex: 1, padding: 14 },
+    cardFeaturedHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 8,
+    },
+    badgeStrong: {
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 999,
+      backgroundColor: BORDER_COLOR,
+    },
+    badgeStrongText: {
+      color: "#fff",
+      fontSize: 11,
+      fontWeight: "800",
+      letterSpacing: 0.5,
+    },
+    userNameFeatured: {
+      color: C.foreground,
+      fontSize: 20,
+      lineHeight: 24,
+      fontWeight: "900",
+      marginTop: 4,
+      marginBottom: 10,
+    },
+    pillRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+    pillStrong: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+      backgroundColor: BORDER_COLOR,
+    },
+    pillStrongText: { color: "#fff", fontSize: 12.5, fontWeight: "700" },
+    pillSoft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: BORDER_COLOR,
+      backgroundColor: scheme === "dark" ? "rgba(255,255,255,0.05)" : "#F9FAFB",
+    },
+    pillSoftText: { color: C.foreground, fontSize: 12.5, fontWeight: "600" },
+
+    /* ------ Generic Card ------ */
+    card: {
+      borderRadius: 12,
+      overflow: "hidden",
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor:
+        scheme === "light" ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)",
+      backgroundColor: C.card,
+    },
+    cardInner: { padding: 16 },
 
     /* Labels */
     label: {
-      fontSize: 15,
-      fontWeight: "900",
-      color: "#f1f5f9",
+      fontSize: 14,
+      fontWeight: "800",
+      color: C.foreground,
       marginBottom: 10,
-      letterSpacing: 0.3,
       textTransform: "uppercase",
     },
 
     /* Inputs */
     input: {
-      borderWidth: 2,
-      borderColor: "rgba(255,255,255,0.42)",
-      backgroundColor: "rgba(0,0,0,0.28)",
-      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor:
+        scheme === "light" ? "rgba(0,0,0,0.14)" : "rgba(255,255,255,0.16)",
+      backgroundColor: scheme === "light" ? "#fff" : "rgba(255,255,255,0.04)",
+      borderRadius: 10,
       paddingVertical: 12,
       paddingHorizontal: 14,
-      fontSize: 17,
-      color: "#fff",
-      shadowColor: "#000",
-      shadowOpacity: 0.28,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: 3,
+      fontSize: 16,
+      color: C.foreground,
     },
     inputMultiline: { textAlignVertical: "top", minHeight: 120 },
 
     /* Upload area */
     uploadDrop: {
-      borderWidth: 2.2,
-      borderColor: "rgba(255,255,255,0.42)",
+      borderWidth: 1.5,
+      borderColor: BORDER_COLOR,
       borderStyle: "dashed",
-      borderRadius: 18,
-      padding: 28,
+      borderRadius: 12,
+      padding: 20,
       alignItems: "center",
-      backgroundColor: "rgba(0,0,0,0.22)",
-      shadowColor: "#000",
-      shadowOpacity: 0.28,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 4,
+      backgroundColor: scheme === "light" ? "#fff" : "rgba(255,255,255,0.03)",
     },
     uploadTitle: {
-      fontSize: 17,
-      fontWeight: "900",
-      color: "#fff",
+      fontSize: 16,
+      fontWeight: "800",
+      color: C.foreground,
       marginTop: 10,
-      letterSpacing: 0.35,
     },
     uploadHint: {
       fontSize: 13,
-      color: "#cbd5e1",
+      color: C.mutedForeground,
       marginTop: 6,
-      letterSpacing: 0.2,
+      textAlign: "center",
     },
 
     /* Image preview */
     imageFrame: {
-      borderRadius: 18,
+      borderRadius: 12,
       overflow: "hidden",
-      borderWidth: 2,
-      borderColor: "rgba(255,255,255,0.42)",
-      backgroundColor: "rgba(0,0,0,0.18)",
-      shadowColor: "#000",
-      shadowOpacity: 0.32,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: 6,
+      borderWidth: 1.5,
+      borderColor:
+        scheme === "light" ? "rgba(0,0,0,0.14)" : "rgba(255,255,255,0.16)",
+      backgroundColor: scheme === "light" ? "#fff" : "rgba(255,255,255,0.03)",
     },
     imagePreview: {
       width: "100%",
@@ -200,164 +223,112 @@ const createStyles = (colors: any) =>
     },
     chipBar: {
       position: "absolute",
-      right: 12,
-      top: 12,
+      right: 10,
+      top: 10,
       flexDirection: "row",
-      gap: 10,
+      gap: 8,
     },
     chip: {
-      backgroundColor: "rgba(0,0,0,0.7)",
-      padding: 9,
-      borderRadius: 24,
-      borderWidth: 1.4,
-      borderColor: "rgba(255,255,255,0.38)",
+      backgroundColor: "rgba(0,0,0,0.6)",
+      padding: 8,
+      borderRadius: 18,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: "rgba(255,255,255,0.25)",
     },
 
     /* Submit */
     submitBtn: {
-      borderRadius: 18,
-      paddingVertical: 16,
+      borderRadius: 12,
+      paddingVertical: 14,
       alignItems: "center",
-      marginTop: 10,
-      marginBottom: 26,
-      backgroundColor: colors.primary,
-      shadowColor: "#000",
-      shadowOpacity: 0.25,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 4,
-      borderWidth: 1.6,
-      borderColor: "rgba(255,255,255,0.42)",
+      marginTop: 4,
+      marginBottom: 22,
+      backgroundColor: BORDER_COLOR,
     },
     submitText: {
-      fontSize: 17,
+      fontSize: 16,
       fontWeight: "900",
-      color: colors.primaryForeground,
-      letterSpacing: 0.35,
+      color: "#ffffff",
+      letterSpacing: 0.3,
     },
-    submitDisabled: { backgroundColor: "rgba(255,255,255,0.25)" },
+    submitDisabled: { opacity: 0.6 },
 
     /* Note */
     note: {
-      borderRadius: 14,
-      padding: 14,
-      backgroundColor: "rgba(0,0,0,0.28)",
-      borderWidth: 1.6,
-      borderColor: "rgba(255,255,255,0.32)",
+      borderRadius: 10,
+      padding: 12,
+      backgroundColor:
+        scheme === "light" ? "#F9FAFB" : "rgba(255,255,255,0.05)",
+      borderWidth: 1,
+      borderColor:
+        scheme === "light" ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)",
     },
     noteText: {
-      color: "#e2e8f0",
-      fontSize: 12,
+      color: C.mutedForeground,
+      fontSize: 12.5,
       textAlign: "center",
       lineHeight: 18,
-    },
-
-    /* User card specifics */
-    userHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 10,
-    },
-    userTitle: {
-      color: "#f8fafc",
-      fontSize: 15,
-      fontWeight: "900",
-      letterSpacing: 0.3,
-      textTransform: "uppercase",
-    },
-    userName: {
-      color: "#fff",
-      fontSize: 20,
-      fontWeight: "900",
-      letterSpacing: 0.2,
-      marginBottom: 8,
-    },
-    pillRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-    pill: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      paddingVertical: 6,
-      paddingHorizontal: 10,
-      borderRadius: 999,
-      backgroundColor: "rgba(0,0,0,0.35)",
-      borderWidth: 1.4,
-      borderColor: "rgba(255,255,255,0.28)",
-    },
-    pillText: {
-      color: "#e2e8f0",
-      fontSize: 12.5,
-      fontWeight: "700",
-      letterSpacing: 0.2,
     },
 
     /* Bottom Sheet Modal */
     modalContainer: {
       flex: 1,
       justifyContent: "flex-end",
-      backgroundColor: "rgba(0,0,0,0.6)",
+      backgroundColor: "rgba(0,0,0,0.45)",
     },
     sheetWrap: { width: "100%", alignSelf: "stretch" },
     sheet: {
       width: "100%",
       alignSelf: "stretch",
-      backgroundColor: "#0b1220",
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      paddingTop: 8,
-      paddingHorizontal: 20,
-      paddingBottom: 2,
-      maxHeight: "100%",
-      borderWidth: 1.8,
-      borderColor: "rgba(255,255,255,0.24)",
-      shadowColor: "#000",
-      shadowOpacity: 0.4,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: -8 },
-      elevation: 16,
+      backgroundColor: C.card,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      paddingTop: 6,
+      paddingHorizontal: 16,
+      paddingBottom: 10,
+      borderWidth: 1,
+      borderColor:
+        scheme === "light" ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)",
     },
     sheetDragArea: {
       alignItems: "center",
-      paddingVertical: 12,
-      marginBottom: 10,
+      paddingVertical: 10,
+      marginBottom: 6,
     },
     sheetHandle: {
-      width: 60,
-      height: 5,
-      borderRadius: 3,
-      backgroundColor: "#475569",
+      width: 44,
+      height: 4,
+      borderRadius: 4,
+      backgroundColor: scheme === "light" ? "#CBD5E1" : "#475569",
     },
     sheetTitle: {
-      color: "#fff",
+      color: C.foreground,
       fontWeight: "900",
-      fontSize: 19,
+      fontSize: 17,
       textAlign: "center",
-      marginBottom: 20,
-      letterSpacing: 0.3,
-      textTransform: "uppercase",
+      marginBottom: 10,
     },
     sheetOption: {
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: 16,
-      paddingHorizontal: 14,
-      borderRadius: 16,
-      marginBottom: 12,
-      backgroundColor: "rgba(255,255,255,0.08)",
-      borderWidth: 1.8,
-      borderColor: "rgba(255,255,255,0.2)",
+      paddingVertical: 14,
+      paddingHorizontal: 12,
+      borderRadius: 10,
+      marginBottom: 10,
+      backgroundColor: scheme === "light" ? "#fff" : "rgba(255,255,255,0.03)",
+      borderWidth: 1,
+      borderColor:
+        scheme === "light" ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)",
     },
     sheetText: {
-      color: "#fff",
-      fontSize: 16.5,
+      color: C.foreground,
+      fontSize: 15.5,
       marginLeft: 12,
       fontWeight: "800",
-      letterSpacing: 0.25,
     },
   });
 
-/* ---------- Component ---------- */
+/* ------------------------ Component ------------------------ */
 type PaintingUploadParams = {
   type: "COMPETITOR" | "GUARDIAN";
   contestId: string;
@@ -372,10 +343,9 @@ export default function PaintingUpload() {
     competitorId,
     roundId,
   } = useLocalSearchParams<PaintingUploadParams>();
-
   const scheme = (useColorScheme() ?? "dark") as "light" | "dark";
-  const colors = getColorScheme(scheme);
-  const styles = createStyles(colors);
+  const C = Colors[scheme];
+  const s = createStyles(C, scheme);
 
   const { control, handleSubmit, formState } = useForm<PaintingUploadForm>({
     mode: "all",
@@ -393,14 +363,14 @@ export default function PaintingUpload() {
     setSheetOpen(true);
     Animated.timing(sheetAnim, {
       toValue: 1,
-      duration: 280,
+      duration: 240,
       useNativeDriver: true,
     }).start();
   };
   const hideSheet = () => {
     Animated.timing(sheetAnim, {
       toValue: 0,
-      duration: 260,
+      duration: 220,
       useNativeDriver: true,
     }).start(() => setSheetOpen(false));
   };
@@ -411,14 +381,12 @@ export default function PaintingUpload() {
         if (g.dy > 0) sheetAnim.setValue(1 - g.dy / 320);
       },
       onPanResponderRelease: (_, g) => {
-        if (g.dy > 100) {
-          hideSheet();
-        } else {
+        if (g.dy > 100) hideSheet();
+        else
           Animated.spring(sheetAnim, {
             toValue: 1,
             useNativeDriver: true,
           }).start();
-        }
       },
     })
   ).current;
@@ -504,85 +472,84 @@ export default function PaintingUpload() {
       Alert.alert("Thông báo", "Vui lòng chọn ảnh tranh vẽ để gửi bài thi");
       return;
     }
-    mutate({
-      title: data.title,
-      description: data.description,
-      file: {
-        uri: image.uri,
-        name: image.fileName ?? `Painting of ${currentUser?.fullName}`,
-        type: image.mimeType ?? "image/jpeg",
+    mutate(
+      {
+        title: data.title,
+        description: data.description,
+        file: {
+          uri: image.uri,
+          name: image.fileName ?? `Painting of ${currentUser?.fullName}`,
+          type: image.mimeType ?? "image/jpeg",
+        },
+        contestId: String(contestId),
+        roundId: String(roundId),
+        competitorId: String(competitorId),
       },
-      contestId: String(contestId),
-      roundId: String(roundId),
-      competitorId: String(competitorId),
-    });
+      {
+        onSuccess: () => {
+          Alert.alert("Thành công", "Đã gửi bài thi!", [
+            { text: "OK", onPress: () => router.back() },
+          ]);
+        },
+        onError: () => {
+          Alert.alert("Lỗi", "Gửi bài thi thất bại, vui lòng thử lại.");
+        },
+      } as any // tuỳ hook của bạn; xoá `as any` nếu type hỗ trợ
+    );
   };
 
-  /* ---------- Loading/Guard ---------- */
+  /* ------------------------ Loading/Guard ------------------------ */
   if (isLoading) {
     return (
-      <ImageBackground source={BG_IMAGE} style={{ flex: 1 }}>
-        <LinearGradient
-          colors={[
-            "rgba(7,13,22,0.20)", // ↓ từ 0.86
-            "rgba(7,13,22,0.28)", // ↓ từ 0.72
-            "rgba(7,13,22,0.24)", // ↓ từ 0.90
-          ]}
-          style={styles.gradient}
-        />
-        <View
-          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-        >
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={{ color: "#fff", marginTop: 10 }}>
-            Đang tải thông tin…
-          </Text>
-        </View>
-      </ImageBackground>
+      <View
+        style={[
+          { flex: 1, alignItems: "center", justifyContent: "center" },
+          { backgroundColor: C.background },
+        ]}
+      >
+        <ActivityIndicator size="large" color={BORDER_COLOR} />
+        <Text style={{ color: C.mutedForeground, marginTop: 10 }}>
+          Đang tải thông tin…
+        </Text>
+      </View>
     );
   }
 
   if (isError) {
     return (
-      <ImageBackground source={BG_IMAGE} style={{ flex: 1 }}>
-        <LinearGradient
-          colors={["rgba(0,0,0,0.6)", "rgba(0,0,0,0.8)"]}
-          style={styles.gradient}
-        />
-        <View
-          style={{
+      <View
+        style={[
+          {
             flex: 1,
             alignItems: "center",
             justifyContent: "center",
             padding: 24,
-          }}
+          },
+          { backgroundColor: C.background },
+        ]}
+      >
+        <Text
+          style={{ color: C.foreground, fontSize: 16, textAlign: "center" }}
         >
-          <Text style={{ color: "#fff", fontSize: 16, textAlign: "center" }}>
-            Bạn cần đăng nhập trước khi có thể tham dự cuộc thi
-          </Text>
-          <TouchableOpacity
-            onPress={() => router.push("/login")}
-            style={[styles.submitBtn, { marginTop: 20 }]}
-          >
-            <Text style={styles.submitText}>Đăng nhập</Text>
-          </TouchableOpacity>
-        </View>
-      </ImageBackground>
+          Bạn cần đăng nhập trước khi có thể tham dự cuộc thi
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.push("/login")}
+          style={[s.submitBtn, { marginTop: 16 }]}
+        >
+          <Text style={s.submitText}>Đăng nhập</Text>
+        </TouchableOpacity>
+      </View>
     );
   }
 
-  /* ---------- UI ---------- */
+  /* ------------------------ UI ------------------------ */
   return (
-    <ImageBackground source={BG_IMAGE} style={styles.container}>
-      <LinearGradient
-        style={styles.gradient}
-        colors={[
-          "rgba(7,13,22,0.86)",
-          "rgba(7,13,22,0.72)",
-          "rgba(7,13,22,0.9)",
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+    <View style={s.screen}>
+      <AppHeader
+        title="Bài vẽ dự thi"
+        backgroundColor={BORDER_COLOR}
+        borderBottom
       />
 
       <KeyboardAvoidingView
@@ -590,142 +557,146 @@ export default function PaintingUpload() {
         style={{ flex: 1 }}
       >
         <ScrollView
-          style={styles.contentScroll}
-          contentContainerStyle={styles.contentInset}
+          style={s.contentScroll}
+          contentContainerStyle={s.contentInset}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.title}>Bài vẽ dự thi</Text>
-          <Text style={styles.subtitle}>
+          <Text style={s.title}>Bài vẽ dự thi</Text>
+          <Text style={s.subtitle}>
             Tải ảnh tác phẩm của bạn và điền thông tin bên dưới
           </Text>
 
-          {/* USER CARD */}
-          <View className="user-card" style={styles.card}>
-            <BlurView intensity={2} tint="dark" style={styles.cardInner}>
-              <View style={styles.userHeader}>
-                <Text style={styles.userTitle}>Thí sinh</Text>
+          {/* USER CARD — FEATURED */}
+          <View style={s.cardFeatured}>
+            <View style={s.leftAccent} />
+            <View style={s.featuredInner}>
+              <View style={s.cardFeaturedHeader}>
+                <View style={s.badgeStrong}>
+                  <Text style={s.badgeStrongText}>THÍ SINH</Text>
+                </View>
                 <Ionicons
                   name="person-circle-outline"
-                  size={32}
-                  color="#e2e8f0"
+                  size={30}
+                  color={C.foreground}
                 />
               </View>
-              <Text style={styles.userName}>{currentUser?.fullName}</Text>
-              <View style={styles.pillRow}>
+
+              <Text style={s.userNameFeatured} numberOfLines={1}>
+                {currentUser?.fullName}
+              </Text>
+
+              <View style={s.pillRow}>
                 {!!currentUser?.schoolName && (
-                  <View style={styles.pill}>
-                    <Ionicons
-                      name="school-outline"
-                      size={16}
-                      color={colors.accent}
-                    />
-                    <Text style={styles.pillText}>
+                  <View style={s.pillStrong}>
+                    <Ionicons name="school-outline" size={16} color="#fff" />
+                    <Text style={s.pillStrongText}>
                       {currentUser.schoolName}
                     </Text>
                   </View>
                 )}
                 {!!currentUser?.grade && (
-                  <View style={styles.pill}>
+                  <View style={s.pillSoft}>
                     <Ionicons
                       name="ribbon-outline"
                       size={16}
-                      color={colors.accent}
+                      color={BORDER_COLOR}
                     />
-                    <Text style={styles.pillText}>Lớp {currentUser.grade}</Text>
+                    <Text style={s.pillSoftText}>Lớp {currentUser.grade}</Text>
                   </View>
                 )}
               </View>
-            </BlurView>
+            </View>
           </View>
 
           {/* TITLE */}
-          <View style={styles.card}>
-            <BlurView intensity={28} tint="dark" style={styles.cardInner}>
-              <Text style={styles.label}>Tiêu đề tác phẩm *</Text>
+          <View style={s.card}>
+            <View style={s.cardInner}>
+              <Text style={s.label}>Tiêu đề tác phẩm *</Text>
               <Controller
                 control={control}
                 name="title"
                 render={({ field }) => (
                   <TextInput
                     placeholder="Nhập tiêu đề cho tác phẩm của bạn"
-                    placeholderTextColor="#94a3b8"
-                    style={styles.input}
+                    placeholderTextColor={
+                      scheme === "dark" ? "#94a3b8" : "#9aa5b1"
+                    }
+                    style={s.input}
                     maxLength={100}
                     value={field.value}
                     onChangeText={field.onChange}
-                    cursorColor={colors.primary}
-                    selectionColor="rgba(34,211,238,0.35)"
+                    cursorColor={BORDER_COLOR}
+                    selectionColor="rgba(220,90,84,0.25)"
                   />
                 )}
               />
               {formState.errors.title && (
                 <Text
-                  style={{ color: "#fecaca", fontSize: 12.5, marginTop: 8 }}
+                  style={{ color: "#dc2626", fontSize: 12.5, marginTop: 8 }}
                 >
                   {formState.errors.title.message}
                 </Text>
               )}
-            </BlurView>
+            </View>
           </View>
 
           {/* DESCRIPTION */}
-          <View style={styles.card}>
-            <BlurView intensity={28} tint="dark" style={styles.cardInner}>
-              <Text style={styles.label}>Mô tả (tùy chọn)</Text>
+          <View style={s.card}>
+            <View style={s.cardInner}>
+              <Text style={s.label}>Mô tả (tùy chọn)</Text>
               <Controller
                 control={control}
                 name="description"
                 render={({ field }) => (
                   <TextInput
                     placeholder="Chia sẻ về tác phẩm, cảm hứng sáng tác…"
-                    placeholderTextColor="#94a3b8"
-                    style={[styles.input, styles.inputMultiline]}
+                    placeholderTextColor={
+                      scheme === "dark" ? "#94a3b8" : "#9aa5b1"
+                    }
+                    style={[s.input, s.inputMultiline]}
                     multiline
                     numberOfLines={5}
                     maxLength={500}
                     value={field.value}
                     onChangeText={field.onChange}
-                    cursorColor={colors.primary}
-                    selectionColor="rgba(34,211,238,0.35)"
+                    cursorColor={BORDER_COLOR}
+                    selectionColor="rgba(220,90,84,0.25)"
                   />
                 )}
               />
-            </BlurView>
+            </View>
           </View>
 
           {/* IMAGE UPLOAD */}
-          <View style={styles.card}>
-            <BlurView intensity={28} tint="dark" style={styles.cardInner}>
-              <Text style={styles.label}>Ảnh tác phẩm *</Text>
+          <View style={s.card}>
+            <View style={s.cardInner}>
+              <Text style={s.label}>Ảnh tác phẩm *</Text>
               {!image ? (
-                <TouchableOpacity style={styles.uploadDrop} onPress={showSheet}>
+                <TouchableOpacity style={s.uploadDrop} onPress={showSheet}>
                   <Ionicons
                     name="cloud-upload-outline"
-                    size={52}
-                    color="#cbd5e1"
+                    size={44}
+                    color={scheme === "dark" ? "#cbd5e1" : "#64748b"}
                   />
-                  <Text style={styles.uploadTitle}>Tải ảnh tranh vẽ</Text>
-                  <Text style={styles.uploadHint}>
+                  <Text style={s.uploadTitle}>Tải ảnh tranh vẽ</Text>
+                  <Text style={s.uploadHint}>
                     Chọn ảnh từ thư viện hoặc chụp ảnh mới
                   </Text>
                 </TouchableOpacity>
               ) : (
-                <View style={styles.imageFrame}>
-                  <Image
-                    source={{ uri: image.uri }}
-                    style={styles.imagePreview}
-                  />
-                  <View style={styles.chipBar}>
-                    <TouchableOpacity onPress={removeImage} style={styles.chip}>
+                <View style={s.imageFrame}>
+                  <Image source={{ uri: image.uri }} style={s.imagePreview} />
+                  <View style={s.chipBar}>
+                    <TouchableOpacity onPress={removeImage} style={s.chip}>
                       <Ionicons name="close" size={18} color="#fff" />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={showSheet} style={styles.chip}>
+                    <TouchableOpacity onPress={showSheet} style={s.chip}>
                       <Ionicons name="camera" size={18} color="#fff" />
                     </TouchableOpacity>
                   </View>
                 </View>
               )}
-            </BlurView>
+            </View>
           </View>
 
           {/* SUBMIT */}
@@ -733,18 +704,17 @@ export default function PaintingUpload() {
             onPress={handleSubmit(onSubmit)}
             disabled={isPending || !formState.isValid || !image}
             style={[
-              styles.submitBtn,
-              (isPending || !formState.isValid || !image) &&
-                styles.submitDisabled,
+              s.submitBtn,
+              (isPending || !formState.isValid || !image) && s.submitDisabled,
             ]}
           >
-            <Text style={styles.submitText}>
+            <Text style={s.submitText}>
               {isPending ? "Đang gửi…" : "Gửi bài thi"}
             </Text>
           </TouchableOpacity>
 
-          <View style={styles.note}>
-            <Text style={styles.noteText}>
+          <View style={s.note}>
+            <Text style={s.noteText}>
               Lưu ý: Sau khi gửi bài thi, bạn không thể chỉnh sửa. Vui lòng kiểm
               tra kỹ trước khi gửi.
             </Text>
@@ -760,60 +730,67 @@ export default function PaintingUpload() {
         onRequestClose={hideSheet}
         statusBarTranslucent
       >
-        <View style={styles.modalContainer}>
-          {/* Backdrop click-to-close (full-screen) */}
+        <View style={s.modalContainer}>
           <TouchableWithoutFeedback onPress={hideSheet}>
             <View style={StyleSheet.absoluteFill} />
           </TouchableWithoutFeedback>
 
-          {/* Sheet */}
           <Animated.View
             style={[
-              styles.sheetWrap,
+              s.sheetWrap,
               {
                 transform: [
                   {
                     translateY: sheetAnim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [380, 0],
+                      outputRange: [360, 0],
                     }),
                   },
                 ],
               },
             ]}
           >
-            <View style={styles.sheet}>
-              <View style={styles.sheetDragArea} {...panResponder.panHandlers}>
-                <View style={styles.sheetHandle} />
+            <View style={s.sheet}>
+              <View style={s.sheetDragArea} {...panResponder.panHandlers}>
+                <View style={s.sheetHandle} />
               </View>
 
-              <Text style={styles.sheetTitle}>Chọn ảnh</Text>
+              <Text style={s.sheetTitle}>Chọn ảnh</Text>
 
               <TouchableOpacity
-                style={styles.sheetOption}
+                style={s.sheetOption}
                 onPress={() => {
                   hideSheet();
                   pickImage();
                 }}
               >
-                <Ionicons name="images" size={26} color={colors.primary} />
-                <Text style={styles.sheetText}>Chọn từ thư viện</Text>
+                <Ionicons name="images" size={24} color={BORDER_COLOR} />
+                <Text style={s.sheetText}>Chọn từ thư viện</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.sheetOption}
+                style={s.sheetOption}
                 onPress={() => {
                   hideSheet();
                   takePhoto();
                 }}
               >
-                <Ionicons name="camera" size={26} color={colors.primary} />
-                <Text style={styles.sheetText}>Chụp ảnh mới</Text>
+                <Ionicons name="camera" size={24} color={BORDER_COLOR} />
+                <Text style={s.sheetText}>Chụp ảnh mới</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.sheetOption} onPress={hideSheet}>
-                <Ionicons name="close" size={26} color="#94a3b8" />
-                <Text style={[styles.sheetText, { color: "#94a3b8" }]}>
+              <TouchableOpacity style={s.sheetOption} onPress={hideSheet}>
+                <Ionicons
+                  name="close"
+                  size={24}
+                  color={scheme === "dark" ? "#94a3b8" : "#64748b"}
+                />
+                <Text
+                  style={[
+                    s.sheetText,
+                    { color: scheme === "dark" ? "#94a3b8" : "#64748b" },
+                  ]}
+                >
                   Hủy
                 </Text>
               </TouchableOpacity>
@@ -821,6 +798,6 @@ export default function PaintingUpload() {
           </Animated.View>
         </View>
       </Modal>
-    </ImageBackground>
+    </View>
   );
 }
