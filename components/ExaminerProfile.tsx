@@ -142,7 +142,7 @@ export default function ExaminerProfileScreen() {
         {withActions && (
           <View style={{ flexDirection: "row" }}>
             <TouchableOpacity
-              onPress={() => router.push("/painting-evaluationR2")}
+              onPress={() => router.push("/notifications")}
               style={t.iconBtn}
             >
               <Ionicons
