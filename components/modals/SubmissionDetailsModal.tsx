@@ -349,7 +349,7 @@ const SubmissionDetailsModal: React.FC<Props> = ({
                         {
                           backgroundColor:
                             submission.isPassed !== null && submission.isPassed
-                              ? "#10b981" // green for passed
+                              ? "#10b981cont" // green for passed
                               : "#ef4444", // red for failed
                         },
                       ]}
