@@ -8,8 +8,23 @@ export interface Contest {
   endDate: string;
   status: ContestStatus;
   createdBy: string;
-  roundId: string;
+  rounds: Rounds[];
   examinerRole: ExaminerRole;
+}
+
+export interface Rounds {
+  roundId: string;
+  contestId: string;
+  table: string | null;
+  name: "ROUND_1" | "ROUND_2";
+  startDate: string;
+  endDate: string;
+  submissionDeadline: string;
+  resultAnnounceDate: string;
+  sendOriginalDeadline: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ContestFilter {

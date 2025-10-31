@@ -16,6 +16,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AnimatedSection, {
+  sectionShadow,
+} from "../components/header/contest/AnimatedSection";
 
 /** Brand từ ảnh bạn cung cấp */
 const BRAND = "#dc5a54";
@@ -87,7 +90,7 @@ export default function ContestDetail() {
   const tone =
     STATUS[(contest?.status ?? "UPCOMING") as keyof typeof STATUS] ??
     STATUS.UPCOMING;
-  const rules = (contest?.rules?.length ? contest.rules : DEFAULT_RULES)!;
+  const rules = DEFAULT_RULES;
 
   return (
     <View style={s.screen}>
@@ -141,8 +144,8 @@ export default function ContestDetail() {
           {/* Tiêu đề + mô tả ngắn */}
           <View style={{ padding: 14, paddingTop: 6 }}>
             <Text style={s.title}>{contest?.title}</Text>
-            {!!contest?.subTitle && (
-              <Text style={s.subTitle}>{contest?.subTitle}</Text>
+            {!!(contest as any)?.subTitle && (
+              <Text style={s.subTitle}>{(contest as any)?.subTitle}</Text>
             )}
           </View>
         </View>
@@ -172,6 +175,30 @@ export default function ContestDetail() {
               </View>
             </View>
           </View>
+
+          {/* CTA + Rewards */}
+          <AnimatedSection delay={360}>
+            {["ACTIVE", "ENDED"].includes(contest!.status) && (
+              <View style={[s.rewardsBox, sectionShadow.base]}>
+                <Text style={s.rewardsTitle}>Award-Winning Paintings</Text>
+                <TouchableOpacity
+                  style={[s.rewardsBtn, { backgroundColor: C.accent }]}
+                  onPress={() => router.push("/reward-painting")}
+                  activeOpacity={0.9}
+                >
+                  <Text style={s.rewardsBtnText}>See Rewards</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </AnimatedSection>
+
+          {/* Rules */}
+          {/* <AnimatedSection delay={420}>
+            <View style={[s.block, sectionShadow.base]}>
+              <Text style={s.blockTitle}>Rules</Text>
+              <Text style={s.rules}>{contest.rules}</Text>
+            </View>
+          </AnimatedSection> */}
         </View>
 
         {/* THỂ LỆ (dùng fake data nếu rỗng) */}
@@ -194,18 +221,36 @@ export default function ContestDetail() {
         {/* CTA */}
         {contest?.status === "ACTIVE" && (
           <TouchableOpacity
-            style={[s.primaryBtn, { alignSelf: "flex-start", marginTop: 8 }]}
+            style={[s.primaryBtn, { alignSelf: "center", marginTop: 8 }]}
             onPress={() => {
-              if (!me) return router.push("/login");
-              router.push({
-                pathname: "/painting-upload",
-                params: {
-                  type: me.role ?? "COMPETITOR",
-                  contestId: contest!.contestId,
-                  competitorId: me.userId,
-                  roundId: contest!.roundId,
-                },
-              });
+              if (!me) {
+                router.push("/login");
+                return;
+              }
+              if (me.role === "COMPETITOR") {
+                router.push({
+                  pathname: "/painting-upload",
+                  params: {
+                    type: "COMPETITOR",
+                    contestId: contest.contestId,
+                    competitorId: me.userId,
+                    roundId: contest.rounds.find((r) => r.name === "ROUND_1")
+                      ?.roundId,
+                  },
+                });
+                return;
+              }
+
+              if (me.role === "GUARDIAN") {
+                router.push({
+                  pathname: "/children-participate",
+                  params: {
+                    contestId: contest.contestId,
+                    roundId: contest.rounds.find((r) => r.name === "ROUND_1")
+                      ?.roundId,
+                  },
+                });
+              }
             }}
           >
             <Text style={s.primaryBtnText}>Tham gia</Text>
@@ -323,6 +368,40 @@ const styles = (C: any) => {
       borderRadius: R,
     },
     primaryBtnText: { color: "#fff", fontWeight: "900" },
+
+    ctaBtn: {
+      paddingVertical: 14,
+      paddingHorizontal: 18,
+      borderRadius: R,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 8,
+      marginBottom: 12,
+    },
+    ctaText: { color: "#fff", fontWeight: "800", fontSize: 15 },
+
+    rewardsBox: {
+      backgroundColor: C.card,
+      borderRadius: R,
+      padding: 16,
+      alignItems: "center",
+    },
+    rewardsTitle: {
+      color: C.foreground,
+      fontSize: 16,
+      fontWeight: "700",
+      marginBottom: 12,
+      textAlign: "center",
+    },
+    rewardsBtn: {
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: R - 2,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    rewardsBtnText: { color: "#fff", fontWeight: "800", fontSize: 14 },
 
     text: { color: C.foreground },
     muted: { color: C.mutedForeground },

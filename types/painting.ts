@@ -26,12 +26,14 @@ export interface Painting {
   status: string;
   createdAt: Date;
   updatedAt: Date;
+  isPassed: boolean | null;
 }
 
 export interface PaintingFilter {
   contestId?: string;
   roundName?: "ROUND_1" | "ROUND_2";
   is_passed?: boolean | null;
+  status?: "PENDING" | "ACCEPTED" | "REJECTED";
 }
 
 export interface Round1EvaluationRequest {

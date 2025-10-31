@@ -198,7 +198,6 @@ const SubmissionDetailsModal: React.FC<Props> = ({
   }, [evaluations]);
 
   if (!visible || !submission) return null;
-
   return (
     <Modal
       visible
@@ -343,6 +342,23 @@ const SubmissionDetailsModal: React.FC<Props> = ({
                       {STATUS.text}
                     </Text>
                   </View>
+                  {submission.isPassed !== null && (
+                    <View
+                      style={[
+                        st.statusBadge,
+                        {
+                          backgroundColor:
+                            submission.isPassed !== null && submission.isPassed
+                              ? "#10b981cont" // green for passed
+                              : "#ef4444", // red for failed
+                        },
+                      ]}
+                    >
+                      <Text style={[st.statusTxt, { color: "#fff" }]}>
+                        {submission.isPassed ? "Đạt" : "Không Đạt"}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </View>
             </View>

@@ -8,7 +8,7 @@ export type SubmissionItem = {
   title: string;
   contestTitle: string;
   date: string;
-  status: "APPROVED" | "PENDING" | "REJECTED";
+  status: "ACCEPTED" | "PENDING" | "REJECTED";
   imageUrl?: string;
 };
 
@@ -28,14 +28,14 @@ export default function SubmissionCard({
   const [g0, g1] = pickGrad(item.title);
 
   const statusStyle =
-    item.status === "APPROVED"
+    item.status === "ACCEPTED"
       ? styles.statusApproved
       : item.status === "PENDING"
       ? styles.statusPending
       : styles.statusRejected;
 
   const statusText =
-    item.status === "APPROVED"
+    item.status === "ACCEPTED"
       ? "Đã duyệt"
       : item.status === "PENDING"
       ? "Chờ duyệt"

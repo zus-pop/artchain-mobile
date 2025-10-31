@@ -266,13 +266,19 @@ export default function PaintingEvaluationRound1Screen() {
             <View style={styles(colors).section}>
               {/* dùng component mới */}
               <PaintingInfoCard
+                C={{
+                  card: colors.card,
+                  foreground: colors.foreground,
+                  mutedForeground: colors.mutedForeground,
+                  border: colors.border,
+                }}
                 scheme={(scheme ?? "light") as "light" | "dark"}
-                paintingTitle={String(paintingTitle)}
+                paintingTitle={paintingTitle}
                 artistName={String(artistName)}
-                contestTitle={String(contestTitle)}
+                title={contestTitle}
                 imageUrl={String(imageUrl)}
-                seed={String(paintingId) + String(paintingTitle)}
-                onOpenViewer={() => setViewerOpen(true)}
+                accentHex={String(paintingId) + String(paintingTitle)}
+                onPress={() => setViewerOpen(true)}
               />
             </View>
 

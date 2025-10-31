@@ -152,8 +152,9 @@ export default function ContestPaintingsScreen() {
         : examinerRole === "REVIEW_ROUND_1"
         ? undefined // REVIEW_ROUND_1 doesn't view paintings here
         : examinerRole === "ROUND_2"
-        ? null
+        ? undefined
         : null,
+    status: examinerRole !== "ROUND_2" ? "ACCEPTED" : undefined,
   });
 
   /* =============== NAV-LOCK chống double push =============== */
@@ -226,12 +227,14 @@ export default function ContestPaintingsScreen() {
               />
 
               {/* Top-right date chip */}
-              <View style={s.dateBadgeVip}>
-                <Ionicons name="calendar-outline" size={12} color="#111827" />
-                <Text style={s.dateBadgeVipText}>
-                  {new Date(painting.submissionDate).toLocaleDateString()}
-                </Text>
-              </View>
+              {painting.submissionDate && (
+                <View style={s.dateBadgeVip}>
+                  <Ionicons name="calendar-outline" size={12} color="#111827" />
+                  <Text style={s.dateBadgeVipText}>
+                    {new Date(painting.submissionDate).toLocaleDateString()}
+                  </Text>
+                </View>
+              )}
 
               {/* Title on media */}
               <View style={s.titleOnMedia}>
