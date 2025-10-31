@@ -85,8 +85,12 @@ export function useEvaluatePainting() {
       toast.success("Chấm bài thành công");
       router.back();
     },
-    onError: (err) => {
-      toast.error(err.message);
+    onError: (error) => {
+      let message = error.message;
+      if (error instanceof AxiosError) {
+        message = error.response?.data.message;
+      }
+      toast.error(message);
     },
   });
 }
