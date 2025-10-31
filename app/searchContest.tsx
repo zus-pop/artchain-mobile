@@ -1,43 +1,44 @@
-// app/search/index.tsx
+// app/searchContest.tsx
 import { useContest } from "@/apis/contest";
 import SearchBar from "@/components/search/SearchBar";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { ChevronLeft } from "lucide-react-native";
+import {
+  CalendarClock,
+  CalendarDays,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  CircleSlash,
+  Pencil,
+  PlayCircle,
+  Trophy,
+} from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
   FlatList,
+  Image,
   Pressable,
   StyleSheet,
   Text,
   View,
+  type FlexAlignType,
+  type PressableStateCallbackType,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const MIN = 2;
-
-/* ---------- Color pools & helpers ---------- */
-const POOLS: [string, string][] = [
-  ["#FF6B6B", "#FFD166"],
-  ["#06B6D4", "#3B82F6"],
-  ["#22C55E", "#A3E635"],
-  ["#F472B6", "#A78BFA"],
-  ["#F59E0B", "#F97316"],
-  ["#14B8A6", "#84CC16"],
-  ["#60A5FA", "#F472B6"],
-  ["#F43F5E", "#FB7185"],
-];
-const hashStr = (s: string) => {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-};
-const pickGrad = (seed = ""): [string, string] =>
-  POOLS[hashStr(seed) % POOLS.length];
+const BRAND = {
+  base: "#DC5A54",
+  a08: "rgba(220,90,84,0.08)",
+  a12: "rgba(220,90,84,0.12)",
+} as const;
 
 function normalizeVN(s = "") {
   return s
@@ -46,10 +47,46 @@ function normalizeVN(s = "") {
     .toLowerCase()
     .trim();
 }
+const fmtVN = (d?: string) =>
+  d ? new Date(d).toLocaleDateString("vi-VN") : "";
 
-export default function SearchSuggestionsScreen() {
+const statusMeta = (s?: string) => {
+  const k = String(s ?? "").toUpperCase();
+  switch (k) {
+    case "ACTIVE":
+      return {
+        text: "Đang diễn ra",
+        color: "#0EA5E9",
+        Icon: PlayCircle as any,
+      };
+    case "UPCOMING":
+      return {
+        text: "Sắp diễn ra",
+        color: "#D97706",
+        Icon: CalendarClock as any,
+      };
+    case "COMPLETED":
+      return {
+        text: "Hoàn thành",
+        color: "#16A34A",
+        Icon: CheckCircle2 as any,
+      };
+    case "ENDED":
+      return {
+        text: "Đã kết thúc",
+        color: "#64748B",
+        Icon: CircleSlash as any,
+      };
+    case "DRAFT":
+      return { text: "Nháp", color: "#94A3B8", Icon: Pencil as any };
+    default:
+      return { text: s || "—", color: "#64748B", Icon: CircleSlash as any };
+  }
+};
+
+export default function SearchContestScreen() {
   const insets = useSafeAreaInsets();
-  const HEADER_H = 64 + insets.top;
+  const HEADER_H = 56 + insets.top;
 
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const C = Colors[scheme];
@@ -57,6 +94,7 @@ export default function SearchSuggestionsScreen() {
 
   const [value, setValue] = useState("");
   const [deb, setDeb] = useState("");
+
   useEffect(() => {
     const t = setTimeout(() => setDeb(value.trim()), 220);
     return () => clearTimeout(t);
@@ -64,7 +102,6 @@ export default function SearchSuggestionsScreen() {
 
   const canQuery = deb.length >= MIN;
 
-  // BE suggestions (đổi key cho hợp API của bạn nếu khác)
   const { data, isLoading } = useContest({
     suggest: canQuery ? deb : undefined,
   } as any);
@@ -74,148 +111,60 @@ export default function SearchSuggestionsScreen() {
     if (!canQuery) return [];
     const q = normalizeVN(deb);
     return source
+      .filter((x: any) => normalizeVN(x.title ?? x.name ?? "").includes(q))
+      .slice(0, 12)
       .map((x: any) => ({
-        id: x.id ?? x.contestId ?? x.title,
-        title: x.title ?? x.name ?? "",
-      }))
-      .filter((x: any) => normalizeVN(x.title).includes(q))
-      .slice(0, 12);
+        id: String(x.id ?? x.contestId ?? x.title),
+        contest: x,
+      }));
   }, [source, deb, canQuery]);
 
-  /* ---------- Animated pulsing backdrop ---------- */
-  const pulse = useRef(new Animated.Value(0)).current;
+  const fade = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.timing(pulse, {
-        toValue: 1,
-        duration: 6000,
-        easing: Easing.linear,
-        useNativeDriver: false,
-      })
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [pulse]);
+    Animated.timing(fade, {
+      toValue: canQuery ? 0 : 1,
+      duration: 180,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [canQuery, fade]);
 
-  const g1 = pulse.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [C.primary, C.chart2 ?? "#22c55e", C.primary],
-  });
-  const g2 = pulse.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [
-      C.chart1 ?? "#8b5cf6",
-      C.chart3 ?? "#3b82f6",
-      C.chart1 ?? "#8b5cf6",
-    ],
-  });
-
-  /* ---------- Header glass content ---------- */
-  const ListHeader = (
-    <View style={{ marginBottom: 12 }}>
-      <View style={s.glassHeader}>
-        <View style={s.dotsRow}>
-          {Array.from({ length: 5 }).map((_, i) => {
-            const [c0] = pickGrad("dot" + i);
-            return <View key={i} style={[s.dot, { backgroundColor: c0 }]} />;
-          })}
-        </View>
-        <Text style={s.headerTitle}>Tìm kiếm cuộc thi</Text>
-        <Text style={s.headerSub}>Nhập từ khóa để xem gợi ý nhanh</Text>
-      </View>
+  const HeaderBar = (
+    <View style={[s.header, { backgroundColor: BRAND.base }]}>
+      <Pressable
+        onPress={() => router.back()}
+        style={({ pressed }) => [
+          s.iconBtn,
+          pressed ? { opacity: 0.7 } : undefined,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel="Quay lại"
+      >
+        <ChevronLeft size={20} color="#fff" />
+      </Pressable>
+      <Text numberOfLines={1} style={s.headerTitle}>
+        Gợi ý tìm kiếm
+      </Text>
+      <View style={{ width: 36 }} />
     </View>
   );
 
-  /* ---------- Suggestion Item (gradient pill) ---------- */
-  const renderItem = ({ item }: { item: { id: string; title: string } }) => {
-    const [c0, c1] = pickGrad(item.title);
-    return (
-      <Pressable
-        onPress={() =>
-          router.push({ pathname: "/results", params: { q: item.title } })
-        }
-        style={({ pressed }) => [
-          s.pillWrap,
-          pressed && { transform: [{ scale: 0.98 }] },
-        ]}
-      >
-        <LinearGradient
-          colors={[c0, c1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={s.pillBorder}
-        />
-        <View style={[s.pillInner, { backgroundColor: C.card }]}>
-          <Text
-            numberOfLines={1}
-            style={[s.suggestText, { color: C.foreground }]}
-          >
-            {item.title}
-          </Text>
-        </View>
-      </Pressable>
-    );
-  };
+  const renderItem = ({ item }: { item: { id: string; contest: any } }) => (
+    <HorizontalContestItem
+      key={item.id}
+      C={C}
+      data={item.contest}
+      onPress={() =>
+        router.push({ pathname: "/results", params: { q: item.contest.title } })
+      }
+    />
+  );
 
   return (
     <View style={s.container}>
-      {/* Pulsing colorful backdrop + orbs */}
-      <Animated.View style={s.backdrop}>
-        <LinearGradient
-          colors={["transparent", "transparent"]}
-          style={StyleSheet.absoluteFill}
-        />
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: g1 as any, opacity: 0.12 },
-          ]}
-        />
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: g2 as any, opacity: 0.12 },
-          ]}
-        />
-        {/* Orbs */}
-        <LinearGradient
-          colors={["#fda4af55", "#fde68a55"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={s.orbTL}
-        />
-        <LinearGradient
-          colors={["#93c5fd55", "#a78bfa55"]}
-          start={{ x: 1, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={s.orbBR}
-        />
-      </Animated.View>
+      {HeaderBar}
 
-      {/* Sticky colorful header */}
-      <LinearGradient
-        colors={[C.primary, C.chart3 ?? "#3b82f6", C.chart1 ?? "#8b5cf6"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={s.header}
-      >
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [s.iconBtn, pressed && { opacity: 0.7 }]}
-          accessibilityRole="button"
-          accessibilityLabel="Quay lại"
-        >
-          <ChevronLeft size={20} color="#fff" />
-        </Pressable>
-
-        <Text numberOfLines={1} style={s.headerCaption}>
-          Gợi ý tìm kiếm
-        </Text>
-        <View style={{ width: 36 }} />
-      </LinearGradient>
-
-      {/* SearchBar dưới header */}
-      <View style={{ paddingHorizontal: 16, paddingTop: HEADER_H + 12 }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: HEADER_H + 10 }}>
         <SearchBar
           scheme={scheme}
           value={value}
@@ -229,16 +178,31 @@ export default function SearchSuggestionsScreen() {
         />
       </View>
 
-      {/* Gợi ý */}
       {!canQuery ? (
-        <Text style={[s.hint, { paddingHorizontal: 16, marginTop: 12 }]}>
+        <Animated.Text
+          style={[
+            s.hint,
+            {
+              paddingHorizontal: 16,
+              marginTop: 12,
+              transform: [
+                {
+                  translateY: fade.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [6, 0],
+                  }),
+                },
+              ],
+              opacity: fade,
+            },
+          ]}
+        >
           Nhập ≥ {MIN} ký tự để hiện gợi ý…
-        </Text>
+        </Animated.Text>
       ) : (
         <FlatList
           data={suggestions}
-          keyExtractor={(it) => String(it.id)}
-          ListHeaderComponent={ListHeader}
+          keyExtractor={(it) => it.id}
           contentContainerStyle={{
             paddingTop: 12,
             paddingBottom: 32,
@@ -259,51 +223,176 @@ export default function SearchSuggestionsScreen() {
   );
 }
 
+/* -------- Horizontal contest card (compact, không chồng chéo) -------- */
+function HorizontalContestItem({
+  data,
+  C,
+  onPress,
+}: {
+  data: any;
+  C: any;
+  onPress: () => void;
+}) {
+  const cover =
+    data?.bannerUrl ||
+    "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1600&auto=format&fit=crop";
+
+  const start = fmtVN(data?.startDate);
+  const end = fmtVN(data?.endDate);
+  const { text, color, Icon } = statusMeta(data?.status);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      android_ripple={{ color: BRAND.a12 }}
+      style={pressableItemStyle(C)}
+    >
+      {/* LEFT: cover */}
+      <Image source={{ uri: cover }} style={itemStyles.cover} />
+
+      {/* CENTER: content */}
+      <View style={itemStyles.content}>
+        <Text numberOfLines={2} style={itemStyles.title(C)}>
+          {data?.title || "Cuộc thi"}
+        </Text>
+
+        <View style={itemStyles.metaBlock}>
+          <View style={itemStyles.row}>
+            <CalendarDays size={16} color={C.mutedForeground} />
+            <Text numberOfLines={1} style={itemStyles.metaText(C)}>
+              {start && end ? `${start} - ${end}` : end || "—"}
+            </Text>
+          </View>
+
+          <View style={itemStyles.row}>
+            <Trophy size={16} color={C.mutedForeground} />
+            <Text numberOfLines={1} style={itemStyles.metaText(C)}>
+              {data?.numOfAward ?? 0} giải
+            </Text>
+          </View>
+        </View>
+
+        <View
+          style={[
+            itemStyles.statusPill,
+            { backgroundColor: `${color}1A`, borderColor: `${color}66` },
+          ]}
+        >
+          <Icon size={14} color={color} />
+          <Text numberOfLines={1} style={[itemStyles.statusText, { color }]}>
+            {text}
+          </Text>
+        </View>
+      </View>
+
+      {/* RIGHT: chevron */}
+      <View style={itemStyles.chevron}>
+        <ChevronRight size={20} color={C.mutedForeground} />
+      </View>
+    </Pressable>
+  );
+}
+
+/* ---- Style helpers (typed) ---- */
+const pressableItemStyle =
+  (C: any) =>
+  ({ pressed }: PressableStateCallbackType): StyleProp<ViewStyle> =>
+    [
+      itemStyles.card(C),
+      pressed ? { opacity: 0.96, transform: [{ scale: 0.995 }] } : undefined,
+    ] as StyleProp<ViewStyle>;
+
+const itemStyles = {
+  card: (C: any): ViewStyle => ({
+    flexDirection: "row",
+    alignItems: "center" as FlexAlignType,
+    backgroundColor: C.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.border,
+    padding: 10,
+    gap: 10,
+    minHeight: 90,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  }),
+  cover: {
+    width: 72,
+    height: 72,
+    borderRadius: 10,
+    backgroundColor: "#eee",
+  } as ViewStyle,
+  content: {
+    flex: 1,
+    minWidth: 0,
+    gap: 6,
+  } as ViewStyle,
+  title: (C: any): TextStyle => ({
+    color: C.foreground,
+    fontSize: 15.5,
+    fontWeight: "800" as TextStyle["fontWeight"],
+    lineHeight: 20,
+  }),
+  metaBlock: { gap: 4 } as ViewStyle,
+  row: {
+    flexDirection: "row",
+    alignItems: "center" as FlexAlignType,
+    gap: 6,
+  } as ViewStyle,
+  metaText: (C: any): TextStyle => ({
+    color: C.mutedForeground,
+    fontSize: 13.5,
+    flexShrink: 1,
+  }),
+  statusPill: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center" as FlexAlignType,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginTop: 4,
+  } as ViewStyle,
+  statusText: {
+    fontSize: 12.5,
+    fontWeight: "800" as TextStyle["fontWeight"],
+    maxWidth: 230,
+  } as TextStyle,
+  chevron: {
+    justifyContent: "center",
+    alignItems: "center" as FlexAlignType,
+    paddingLeft: 2,
+    paddingRight: 2,
+  } as ViewStyle,
+};
+
+/* -------------------- Screen styles -------------------- */
 const styles = (C: any, insets: any) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: C.background },
-    backdrop: { ...StyleSheet.absoluteFillObject },
-    orbTL: {
-      position: "absolute",
-      top: 80,
-      right: -50,
-      width: 220,
-      height: 220,
-      borderRadius: 140,
-      transform: [{ rotate: "18deg" }],
-      opacity: 0.9,
-    },
-    orbBR: {
-      position: "absolute",
-      bottom: 40,
-      left: -60,
-      width: 260,
-      height: 260,
-      borderRadius: 160,
-      transform: [{ rotate: "-12deg" }],
-      opacity: 0.85,
-    },
-
-    // Header
     header: {
       position: "absolute",
       top: 0,
       left: 0,
       right: 0,
-      height: 64 + insets.top,
+      height: 56 + insets.top,
+      paddingTop: insets.top + 12,
       paddingHorizontal: 12,
-      paddingTop: insets.top + 14,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       zIndex: 10,
-      borderBottomLeftRadius: 16,
-      borderBottomRightRadius: 16,
+      borderBottomLeftRadius: 12,
+      borderBottomRightRadius: 12,
       shadowColor: "#000",
-      shadowOpacity: 0.2,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 8,
+      shadowOpacity: 0.15,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 6,
     },
     iconBtn: {
       width: 36,
@@ -313,77 +402,25 @@ const styles = (C: any, insets: any) =>
       justifyContent: "center",
       backgroundColor: "rgba(255,255,255,0.18)",
     },
-    headerCaption: {
+    headerTitle: {
       color: "#fff",
-      fontWeight: "800",
+      fontWeight: "800" as TextStyle["fontWeight"],
       fontSize: 16,
-      letterSpacing: 0.3,
+      letterSpacing: 0.2,
     },
-
-    // Glass block under header
-    glassHeader: {
+    infoBlock: {
       backgroundColor: C.card,
-      borderRadius: 16,
+      borderRadius: 12,
       padding: 14,
       borderWidth: 1,
       borderColor: C.border,
-      shadowColor: "#000",
-      shadowOpacity: 0.12,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 6 },
+      marginTop: 8,
     },
-    dotsRow: {
-      flexDirection: "row",
-      gap: 6,
-      marginBottom: 8,
-    },
-    dot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      opacity: 0.9,
-    },
-    headerTitle: {
+    infoTitle: {
       color: C.foreground,
-      fontSize: 18,
-      fontWeight: "800",
+      fontSize: 16,
+      fontWeight: "800" as TextStyle["fontWeight"],
     },
-    headerSub: {
-      marginTop: 6,
-      color: C.mutedForeground,
-      fontSize: 13,
-    },
-
-    // Hint
+    infoSub: { marginTop: 6, color: C.mutedForeground, fontSize: 13 },
     hint: { color: C.mutedForeground, fontSize: 14 },
-
-    // Suggestion “bubbles”
-    pillWrap: {
-      position: "relative",
-      borderRadius: 999,
-    },
-    pillBorder: {
-      position: "absolute",
-      left: 0,
-      right: 0,
-      top: 0,
-      bottom: 0,
-      borderRadius: 999,
-      opacity: 0.95,
-    },
-    pillInner: {
-      margin: 1.5,
-      borderRadius: 999,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      justifyContent: "center",
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: C.border,
-      shadowColor: "#000",
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 2,
-    },
-    suggestText: { fontSize: 15, fontWeight: "800", letterSpacing: 0.2 },
   });

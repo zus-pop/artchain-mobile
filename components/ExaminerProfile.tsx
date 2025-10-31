@@ -1,10 +1,8 @@
 import PillButton from "@/components/buttons/PillButton";
-
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
 import SegmentedTabsForExaminer, {
   TabItem,
 } from "@/components/tabs/SegmentedTabsForExamine";
-
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,7 +16,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 import { useWhoAmI } from "@/apis/auth";
 import { useExaminerContest } from "@/apis/contest";
@@ -29,6 +30,10 @@ import { useSchedules } from "../apis/schedule";
 import ContestCardForTab from "./cards/ContestCardForTab";
 import ScheduleCard from "./cards/ScheduleCard";
 import EmptyTab from "./tabs/EmptyTab";
+
+/* -------------------- BRAND COLOR -------------------- */
+const BRAND = "#E25752";
+const BRAND_DARK = "#C94742";
 
 /* -------------------- Color helpers -------------------- */
 const VIVID_POOLS: [string, string][] = [
@@ -46,15 +51,14 @@ const hashStr = (s: string) => {
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
   return Math.abs(h);
 };
-const pickGrad = (seed?: string): [string, string] => {
-  const i = hashStr(seed || Math.random().toString()) % VIVID_POOLS.length;
-  return VIVID_POOLS[i];
-};
+const pickGrad = (seed?: string): [string, string] =>
+  VIVID_POOLS[hashStr(seed || "") % VIVID_POOLS.length];
 
 /* -------------------- Screen -------------------- */
 export default function ExaminerProfileScreen() {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const C = Colors[scheme];
+  const insets = useSafeAreaInsets();
 
   const accessToken = useAuthStore((s) => s.accessToken);
   const { data: user, isLoading, refetch: reloadMe } = useWhoAmI();
@@ -65,12 +69,23 @@ export default function ExaminerProfileScreen() {
     "contests"
   );
 
+  // Header animation
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerTranslateY = scrollY.interpolate({
     inputRange: [0, 100],
     outputRange: [0, -20],
     extrapolate: "clamp",
   });
+
+  // Đo chiều cao header để cộng paddingTop cho nội dung
+  const [headerH, setHeaderH] = useState(0);
+  const onHeaderLayout = useCallback(
+    (e: any) => {
+      const h = e.nativeEvent.layout.height;
+      if (h && Math.abs(h - headerH) > 1) setHeaderH(h);
+    },
+    [headerH]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -106,12 +121,11 @@ export default function ExaminerProfileScreen() {
     []
   );
 
-  // Schedules demo
+  // Schedules
   const { data: schedules } = useSchedules(user?.userId);
-  /* ---------- Inline components using user/C ---------- */
 
+  /* ---------- Inline components ---------- */
   function TopBar({
-    C,
     title,
     withActions,
   }: {
@@ -119,21 +133,22 @@ export default function ExaminerProfileScreen() {
     title: string;
     withActions?: boolean;
   }) {
-    const [g0, g1] = pickGrad(title);
     return (
       <LinearGradient
-        colors={[g0, g1]}
+        colors={[BRAND, BRAND_DARK]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
-        style={[t.topbarGrad, { borderBottomColor: C.border }]}
+        // Absolute + zIndex để “ăn” trên nội dung, tôn trọng safe area
+        style={[t.topbarGrad, { paddingTop: insets.top, zIndex: 20 }]}
+        onLayout={onHeaderLayout}
       >
         <Text
           style={[
             t.headerTitle,
             {
-              color: C.primaryForeground,
+              color: "#fff",
               textShadowColor: "rgba(0,0,0,0.25)",
-              textShadowRadius: 4,
+              textShadowRadius: 2,
             },
           ]}
         >
@@ -145,21 +160,13 @@ export default function ExaminerProfileScreen() {
               onPress={() => router.push("/notifications")}
               style={t.iconBtn}
             >
-              <Ionicons
-                name="notifications-outline"
-                size={24}
-                color={C.primaryForeground}
-              />
+              <Ionicons name="notifications-outline" size={24} color="#fff" />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push("/setting")}
               style={t.iconBtn}
             >
-              <Ionicons
-                name="settings-outline"
-                size={24}
-                color={C.primaryForeground}
-              />
+              <Ionicons name="settings-outline" size={24} color="#fff" />
             </TouchableOpacity>
           </View>
         )}
@@ -225,23 +232,22 @@ export default function ExaminerProfileScreen() {
   }
 
   /* ---------- Loading / Auth states ---------- */
-
   if (isLoading) {
     return (
-      <View style={s.container}>
+      <SafeAreaView style={s.container}>
         <TopBar C={C} title="Hồ sơ" />
         <CenteredState
           C={C}
           icon="person-circle-outline"
           title="Đang tải hồ sơ..."
         />
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!accessToken || !user) {
     return (
-      <View style={s.container}>
+      <SafeAreaView style={s.container}>
         <TopBar C={C} title="Hồ sơ" />
         <CenteredState
           C={C}
@@ -253,17 +259,22 @@ export default function ExaminerProfileScreen() {
             onPress: () => router.push("/login"),
           }}
         />
-      </View>
+      </SafeAreaView>
     );
   }
 
   /* ---------- Main render ---------- */
+  // Đệm nội dung = chiều cao header đã đo
+  const TOP_PAD = Math.max(headerH, insets.top + 56); // fallback an toàn
 
   return (
-    <SafeAreaProvider style={s.container}>
-      <TopBar C={C} title="Hồ sơ giám khảo" withActions />
+    <SafeAreaView style={s.container}>
+      {/* Header nổi */}
+      <View style={t.topbarHolder}>
+        <TopBar C={C} title="Hồ sơ giám khảo" withActions />
+      </View>
 
-      {/* Background blobs (mềm, đa sắc) */}
+      {/* Background blobs */}
       <LinearGradient
         colors={["#a78bfa22", "#60a5fa16"]}
         start={{ x: 0, y: 0 }}
@@ -278,15 +289,20 @@ export default function ExaminerProfileScreen() {
       />
 
       <Animated.ScrollView
-        contentContainerStyle={{ paddingBottom: 110 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 110, paddingTop: TOP_PAD }}
         showsVerticalScrollIndicator={false}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }
         )}
         scrollEventThrottle={16}
+        // iOS: tự kiểm soát inset, tránh header bị “ăn”
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false as any}
+        scrollIndicatorInsets={{ top: TOP_PAD, bottom: 0, left: 0, right: 0 }}
       >
-        {/* Header compact */}
+        {/* Header compact (nằm trong content bên dưới header nổi) */}
         <Animated.View
           style={[
             s.headerWrap,
@@ -344,14 +360,14 @@ export default function ExaminerProfileScreen() {
           />
         </Animated.View>
 
-        {/* KPI row (tonal + viền mỏng) */}
+        {/* KPI row */}
         <View
           style={[
             s.kpiCard,
             {
               backgroundColor: C.card,
               shadowColor: "#000",
-              borderColor: C.border,
+              borderColor: BRAND + "44",
               borderWidth: StyleSheet.hairlineWidth,
             },
           ]}
@@ -366,7 +382,7 @@ export default function ExaminerProfileScreen() {
           ))}
         </View>
 
-        {/* Tabs (Segemented) */}
+        {/* Tabs */}
         <SegmentedTabsForExaminer
           tabs={tabs}
           activeKey={activeTab}
@@ -389,7 +405,6 @@ export default function ExaminerProfileScreen() {
                     contest={contest as any}
                     onEvaluate={(c) => {
                       if (c.examinerRole === "REVIEW_ROUND_1") {
-                        // REVIEW_ROUND_1 examiners go directly to review screen
                         router.push({
                           pathname: "/painting-review-round1",
                           params: {
@@ -398,7 +413,6 @@ export default function ExaminerProfileScreen() {
                           },
                         });
                       } else {
-                        // Other roles go to paintings list
                         router.push({
                           pathname: "/contest-paintings",
                           params: {
@@ -422,13 +436,10 @@ export default function ExaminerProfileScreen() {
           ) : (
             <>
               {schedules?.data && schedules.data.length > 0 ? (
-                // Group schedules by date
                 Object.entries(
                   schedules.data.reduce((groups, schedule) => {
-                    const dateKey = schedule.date.toString().split("T")[0]; // Use date string, normalize to YYYY-MM-DD format
-                    if (!groups[dateKey]) {
-                      groups[dateKey] = [];
-                    }
+                    const dateKey = schedule.date.toString().split("T")[0];
+                    if (!groups[dateKey]) groups[dateKey] = [];
                     groups[dateKey].push(schedule);
                     return groups;
                   }, {} as Record<string, Schedule[]>)
@@ -524,12 +535,11 @@ export default function ExaminerProfileScreen() {
           phone: user.phone || "",
         }}
       />
-    </SafeAreaProvider>
+    </SafeAreaView>
   );
 }
 
 /* ---------- Shared sub-components ---------- */
-
 function CenteredState({
   C,
   icon,
@@ -602,9 +612,8 @@ function CenteredState({
 }
 
 /* ---------- Styles ---------- */
-
 const s = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: "transparent" },
   headerWrap: {
     flexDirection: "row",
     alignItems: "center",
@@ -616,16 +625,14 @@ const s = StyleSheet.create({
   },
   name: { fontSize: 16, fontWeight: "900" },
   handle: { marginTop: 2, opacity: 0.8 },
-  avatar: { width: 64, height: 64, borderRadius: 32 },
   addBadge: {
     position: "absolute",
     right: -2,
     bottom: -2,
     borderRadius: 12,
-    padding: 0, // bọc LinearGradient bên trong
+    padding: 0,
     borderWidth: 2,
   },
-
   kpiCard: {
     flexDirection: "row",
     alignItems: "stretch",
@@ -643,23 +650,25 @@ const s = StyleSheet.create({
 });
 
 const t = StyleSheet.create({
+  // Holder để header absolute chiếm chỗ ở top (zIndex cao)
+  topbarHolder: { position: "absolute", top: 0, left: 0, right: 0 },
   topbarGrad: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 18,
+    paddingVertical: 13,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "transparent",
+    borderBottomColor: BRAND_DARK + "55",
   },
-  headerTitle: { fontSize: 24, fontWeight: "900" },
+  headerTitle: { fontSize: 24, fontWeight: "600" },
   iconBtn: { padding: 8, marginLeft: 4 },
 });
 
 const bg = StyleSheet.create({
   blobTL: {
     position: "absolute",
-    top: 80,
+    top: 120,
     right: -40,
     width: 200,
     height: 200,

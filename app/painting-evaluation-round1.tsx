@@ -9,6 +9,7 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Zoomable } from "@likashefqet/react-native-image-zoom";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
@@ -25,11 +26,12 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { toast } from "sonner-native";
 import { z } from "zod";
 
-import { Zoomable } from "@likashefqet/react-native-image-zoom";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+// NEW: card tách riêng
+import PaintingInfoCard from "@/components/cards/PaintingInfoCard";
 
 /* ---------- Color helpers ---------- */
 const POOLS: [string, string][] = [
@@ -104,20 +106,12 @@ function ZoomModal({
     </AnimatedModal>
   );
 }
-
-/* --------- Modal wrapper để đồng nhất import React Native <=/>=0.73 --------- */
 const AnimatedModal = (props: any) => <Modal {...props} />;
 
 /* ---------- Schema ---------- */
-const evaluationSchema = z.object({
-  isPassed: z.boolean(),
-});
-
+const evaluationSchema = z.object({ isPassed: z.boolean() });
 type EvaluationFormData = z.infer<typeof evaluationSchema>;
 
-/* ---------- Helpers ---------- */
-
-/* ---------- Tiny pressable ---------- */
 const PressableScale: React.FC<
   React.PropsWithChildren<{
     onPress?: () => void;
@@ -172,7 +166,7 @@ export default function PaintingEvaluationRound1Screen() {
     control,
     handleSubmit,
     getValues,
-    formState: { errors, isValid },
+    formState: { isValid },
   } = useForm<EvaluationFormData>({
     resolver: zodResolver(evaluationSchema),
     defaultValues: { isPassed: true },
@@ -183,24 +177,15 @@ export default function PaintingEvaluationRound1Screen() {
   const { mutate, isPending } = useEvaluationPaintingRound1();
 
   const [viewerOpen, setViewerOpen] = useState(false);
-
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
 
-  const handleBack = () => {
-    router.back();
-  };
+  const handleBack = () => router.back();
 
-  /* ---------- Submit flow ---------- */
   const onConfirmSubmit = (data: EvaluationFormData) => {
-    if (!examiner) {
-      toast.info("Không có thông tin giám khảo");
-      return;
-    }
-    if (examiner.role !== "EXAMINER") {
-      toast.info("Người dùng đăng nhập không phải giám khảo chấm thi");
-      return;
-    }
+    if (!examiner) return toast.info("Không có thông tin giám khảo");
+    if (examiner.role !== "EXAMINER")
+      return toast.info("Người dùng đăng nhập không phải giám khảo chấm thi");
     mutate(
       {
         examinerId: examiner.userId,
@@ -208,24 +193,21 @@ export default function PaintingEvaluationRound1Screen() {
         isPassed: data.isPassed,
       },
       {
-        onSuccess: async () => {
+        onSuccess: () => {
           setConfirmOpen(false);
           setSuccessOpen(true);
         },
       }
     );
   };
-
   const onSubmit = () => setConfirmOpen(true);
 
-  /* ---------- BG gradient ---------- */
   const gradientColors = (
     scheme === "dark"
       ? ["#1b1b2f", "#162447", "#1f4068", "#53354a"]
       : ["#a1c4fd", "#c2e9fb", "#fbc2eb", "#a6c0fe"]
   ) as [ColorValue, ColorValue, ...ColorValue[]];
-
-  const [g0, g1] = pickGrad(String(paintingId) + paintingTitle);
+  const [g0, g1] = pickGrad(String(paintingId) + String(paintingTitle));
 
   return (
     <View style={{ flex: 1 }}>
@@ -235,7 +217,6 @@ export default function PaintingEvaluationRound1Screen() {
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
-
       <LinearGradient
         colors={[g0 + "33", g1 + "22"]}
         start={{ x: 0, y: 0 }}
@@ -257,6 +238,7 @@ export default function PaintingEvaluationRound1Screen() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
         >
+          {/* Header */}
           <View
             style={[styles(colors).header, { backgroundColor: glassBgStrong }]}
           >
@@ -266,14 +248,13 @@ export default function PaintingEvaluationRound1Screen() {
             >
               <Ionicons name="chevron-back" size={18} color={colors.primary} />
             </PressableScale>
-
             <ThemedText style={styles(colors).headerTitle}>
               Đánh giá Vòng 1
             </ThemedText>
-
-            <View style={styles(colors).headerRight}></View>
+            <View style={styles(colors).headerRight} />
           </View>
 
+          {/* Content */}
           <ScrollView
             contentContainerStyle={[
               styles(colors).scrollContent,
@@ -283,117 +264,16 @@ export default function PaintingEvaluationRound1Screen() {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles(colors).section}>
-              <View style={styles(colors).frameWrap}>
-                <LinearGradient
-                  colors={[g0, g1]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles(colors).frameBorder}
-                />
-                <View
-                  style={[
-                    styles(colors).paintingCard,
-                    { backgroundColor: glassBg },
-                  ]}
-                >
-                  <PressableScale
-                    onPress={() => setViewerOpen(true)}
-                    style={{ borderRadius: 14 }}
-                  >
-                    <Image
-                      source={{ uri: String(imageUrl) }}
-                      style={styles(colors).paintingImage}
-                      placeholder={require("@/assets/images/partial-react-logo.png")}
-                      contentFit="cover"
-                      transition={150}
-                    />
-                  </PressableScale>
-
-                  <View style={styles(colors).detailsCard}>
-                    <View style={styles(colors).detailItem}>
-                      <View style={styles(colors).detailIconCircle}>
-                        <Ionicons
-                          name="color-palette-outline"
-                          size={16}
-                          color="#fff"
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <ThemedText style={styles(colors).detailLabel}>
-                          Tên tác phẩm
-                        </ThemedText>
-                        <ThemedText style={styles(colors).detailValue}>
-                          {paintingTitle}
-                        </ThemedText>
-                      </View>
-                    </View>
-
-                    <View style={styles(colors).detailItem}>
-                      <View style={styles(colors).detailIconCircle}>
-                        <Ionicons
-                          name="person-outline"
-                          size={16}
-                          color="#fff"
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <ThemedText style={styles(colors).detailLabel}>
-                          Tác giả
-                        </ThemedText>
-                        <ThemedText style={styles(colors).detailValue}>
-                          {artistName}
-                        </ThemedText>
-                      </View>
-                    </View>
-
-                    <View style={styles(colors).detailItem}>
-                      <View style={styles(colors).detailIconCircle}>
-                        <Ionicons
-                          name="trophy-outline"
-                          size={16}
-                          color="#fff"
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <ThemedText style={styles(colors).detailLabel}>
-                          Cuộc thi
-                        </ThemedText>
-                        <ThemedText style={styles(colors).detailValue}>
-                          {contestTitle}
-                        </ThemedText>
-                      </View>
-                    </View>
-                  </View>
-
-                  <View style={styles(colors).paintingMetaRow}>
-                    <View style={styles(colors).pillBorderWrap}>
-                      <LinearGradient
-                        colors={[g0, g1]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles(colors).pillBorder}
-                      />
-                      <View
-                        style={[
-                          styles(colors).pillInner,
-                          { backgroundColor: colors.card },
-                        ]}
-                      >
-                        <Ionicons
-                          name="color-palette-outline"
-                          size={14}
-                          color={colors.mutedForeground}
-                        />
-                        <ThemedText style={styles(colors).metaText}>
-                          {paintingTitle}
-                        </ThemedText>
-                      </View>
-                    </View>
-                  </View>
-
-                  <View style={styles(colors).microDivider} />
-                </View>
-              </View>
+              {/* dùng component mới */}
+              <PaintingInfoCard
+                scheme={(scheme ?? "light") as "light" | "dark"}
+                paintingTitle={String(paintingTitle)}
+                artistName={String(artistName)}
+                contestTitle={String(contestTitle)}
+                imageUrl={String(imageUrl)}
+                seed={String(paintingId) + String(paintingTitle)}
+                onOpenViewer={() => setViewerOpen(true)}
+              />
             </View>
 
             <View
@@ -479,6 +359,7 @@ export default function PaintingEvaluationRound1Screen() {
           </ScrollView>
         </KeyboardAvoidingView>
 
+        {/* Modals */}
         <ZoomModal
           visible={viewerOpen}
           onClose={() => setViewerOpen(false)}
@@ -497,13 +378,10 @@ export default function PaintingEvaluationRound1Screen() {
           loading={isPending}
           onSecondary={() => setConfirmOpen(false)}
           onPrimary={() =>
-            onConfirmSubmit({
-              isPassed: getValues("isPassed")!,
-            })
+            onConfirmSubmit({ isPassed: getValues("isPassed")! })
           }
           onDismiss={() => setConfirmOpen(false)}
         />
-
         <EvaluationSubmitModal
           visible={successOpen}
           variant="success"
@@ -527,7 +405,6 @@ export default function PaintingEvaluationRound1Screen() {
 const styles = (colors: typeof Colors.light) =>
   StyleSheet.create({
     container: { flex: 1 },
-
     header: {
       flexDirection: "row",
       alignItems: "center",
@@ -547,7 +424,6 @@ const styles = (colors: typeof Colors.light) =>
       letterSpacing: 0.4,
     },
     headerRight: { width: 48, alignItems: "flex-end" },
-
     circleBtn: {
       width: 36,
       height: 36,
@@ -562,103 +438,7 @@ const styles = (colors: typeof Colors.light) =>
     scrollContent: { flexGrow: 1, paddingHorizontal: 18, paddingTop: 12 },
     section: { marginBottom: 16 },
 
-    frameWrap: { position: "relative", borderRadius: 16 },
-    frameBorder: {
-      position: "absolute",
-      inset: 0,
-      borderRadius: 16,
-      opacity: 0.85,
-    },
-    paintingCard: {
-      borderRadius: 16,
-      overflow: "hidden",
-      borderWidth: 1,
-      borderColor: "rgba(148, 163, 184, 0.35)",
-      position: "relative",
-      paddingBottom: 8,
-    },
-    paintingImage: {
-      width: "100%",
-      height: 280,
-      borderTopLeftRadius: 16,
-      borderTopRightRadius: 16,
-    },
-
-    detailsCard: {
-      marginTop: 10,
-      marginHorizontal: 12,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.card,
-      padding: 10,
-      gap: 10,
-    },
-    detailItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-    },
-    detailIconCircle: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: "#6366F1",
-      shadowColor: "#6366F1",
-      shadowOpacity: 0.25,
-      shadowRadius: 6,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: 2,
-    },
-    detailLabel: {
-      fontSize: 11,
-      color: colors.mutedForeground,
-      fontWeight: "700",
-    },
-    detailValue: { fontSize: 14, color: colors.foreground, fontWeight: "800" },
-
-    pillBorderWrap: { position: "relative", borderRadius: 999 },
-    pillBorder: {
-      position: "absolute",
-      left: 0,
-      top: 0,
-      right: 0,
-      bottom: 0,
-      borderRadius: 999,
-    },
-    pillInner: {
-      position: "relative",
-      margin: 1.5,
-      borderRadius: 999,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-    },
-    pillText: { fontSize: 12, fontWeight: "800", color: colors.primary },
-
-    paintingMetaRow: {
-      flexDirection: "row",
-      gap: 8,
-      paddingHorizontal: 12,
-      paddingTop: 8,
-      flexWrap: "wrap",
-    },
-    metaText: {
-      fontSize: 12,
-      color: colors.mutedForeground,
-      fontWeight: "700",
-    },
-    microDivider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: "rgba(2, 6, 23, 0.08)",
-      marginHorizontal: 12,
-      marginTop: 8,
-    },
-
+    // (đã loại bỏ các style card cũ: frameWrap/frameBorder/paintingCard/... vì đã move vào component)
     card: {
       borderRadius: 18,
       borderWidth: 1,
@@ -674,11 +454,7 @@ const styles = (colors: typeof Colors.light) =>
       letterSpacing: 0.3,
     },
 
-    passFailRow: {
-      flexDirection: "row",
-      gap: 16,
-      marginBottom: 12,
-    },
+    passFailRow: { flexDirection: "row", gap: 16, marginBottom: 12 },
     passFailBtn: {
       flex: 1,
       borderRadius: 16,
@@ -695,14 +471,8 @@ const styles = (colors: typeof Colors.light) =>
       backgroundColor: colors.primary,
       borderColor: colors.primary,
     },
-    passFailText: {
-      fontSize: 16,
-      fontWeight: "900",
-      color: colors.foreground,
-    },
-    passFailTextActive: {
-      color: "#fff",
-    },
+    passFailText: { fontSize: 16, fontWeight: "900", color: colors.foreground },
+    passFailTextActive: { color: "#fff" },
   });
 
 const orb = StyleSheet.create({

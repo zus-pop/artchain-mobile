@@ -420,7 +420,6 @@ export default function Home() {
       <CollapsibleHeader
         progress={headerProgress}
         username={data ? data.fullName : "Guest"}
-        gradientMode="rainbow"
       />
 
       <Animated.ScrollView
@@ -495,18 +494,6 @@ export default function Home() {
           >
             <View>
               <Text style={themedStyles.sectionTitle}>Thông báo mới</Text>
-              <LinearGradient
-                colors={["#60A5FA", "#A78BFA", "#22D3EE"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{
-                  height: 3,
-                  borderRadius: 999,
-                  marginTop: 6,
-                  width: 140,
-                  opacity: 0.9,
-                }}
-              />
             </View>
             <TouchableOpacity
               style={themedStyles.seeAllBtn}
@@ -544,7 +531,6 @@ export default function Home() {
                     key={item.post_id}
                     item={item}
                     thumbSize={88}
-                    radius={3}
                     showDivider
                     onPress={(post) =>
                       router.push({

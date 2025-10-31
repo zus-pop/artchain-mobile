@@ -1,11 +1,9 @@
 // app/(tabs)/contests.tsx
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
-  ImageBackground,
   LayoutChangeEvent,
   RefreshControl,
   StyleSheet,
@@ -15,18 +13,13 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useContest } from "@/apis/contest";
-// import { ContestCard } from "@/components/ContestCard"; // ❌ bỏ
-import ContestGridCard from "@/components/cards/ContestGridCard"; // ✅ dùng grid
+import { ContestCard } from "@/components/cards/ContestCard";
 import CollapsibleHeader, {
   FilterOption,
 } from "@/components/header/contest/CollapsibleHeader";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Contest } from "../../types";
-import { ContestCard } from "@/components/cards/ContestCard";
-
-/* ---------- BG image (đổi đường dẫn nếu cần) ---------- */
-const BG_IMAGE = require("@/assets/images/bg/contestBanner2.jpg");
 
 /* ======================== Types & helpers ======================== */
 type ContestStatus = "ALL" | "ACTIVE" | "UPCOMING" | "COMPLETED" | "ENDED";
@@ -71,11 +64,6 @@ export default function ContestsScreen() {
   const insets = useSafeAreaInsets();
   const TOP_INSET = insets.top ?? 0;
 
-  // Chỉ nhả header khi kéo gần sát đỉnh
-  const REVEAL_DISTANCE = 48; // px
-  const EPS = 4;
-  const snappingRef = useRef(false);
-
   // ===== API =====
   const {
     data: contests = [],
@@ -85,7 +73,6 @@ export default function ContestsScreen() {
     refetch,
   } = useContest({
     status: filterToStatus[selectedFilter],
-    // query: debouncedQuery.length === 0 || debouncedQuery.length >= 2 ? debouncedQuery || undefined : undefined,
   });
 
   // ===== Collapsible header =====
@@ -93,7 +80,9 @@ export default function ContestsScreen() {
   const listRef = useRef<Animated.FlatList<Contest>>(null);
 
   const isDraggingRef = useRef(false);
-  const [headerHeight, setHeaderHeight] = useState(0);
+  // Dự phòng chiều cao header để iOS không “ăn” mất UI lúc đầu
+  const ESTIMATED_HEADER = 96;
+  const [headerHeight, setHeaderHeight] = useState(ESTIMATED_HEADER);
   const HEADER_EXTRA_GAP = 12;
 
   const headerOnLayout = useCallback(
@@ -122,10 +111,13 @@ export default function ContestsScreen() {
     extrapolate: "clamp",
   });
 
+  const REVEAL_DISTANCE = 48;
+  const EPS = 4;
+  const snappingRef = useRef(false);
   const handleRevealNearTop = useCallback(
     (e: any) => {
       if (snappingRef.current) return;
-      const H = headerHeight;
+      const H = headerHeight; // độ cao header thực tế
       if (H <= 0) return;
       const y: number = e?.nativeEvent?.contentOffset?.y ?? 0;
 
@@ -146,7 +138,6 @@ export default function ContestsScreen() {
     [headerHeight]
   );
 
-  // Toggle bộ lọc (cooldown)
   const lastToggleRef = useRef(0);
   const safeToggleFilters = useCallback(() => {
     const now = Date.now();
@@ -201,109 +192,102 @@ export default function ContestsScreen() {
   );
 
   /* ======================== UI ======================== */
+  const TOP_PADDING = headerHeight + HEADER_EXTRA_GAP + TOP_INSET;
+
   return (
-    <ImageBackground source={BG_IMAGE} style={s.bg} resizeMode="cover">
-      {/* overlay gradient để text/card nổi bật hơn */}
-      <LinearGradient
-        style={StyleSheet.absoluteFill}
-        colors={[
-          "rgba(5,10,18,0.20)",
-          "rgba(5,10,18,0.30)",
-          "rgba(5,10,18,0.20)",
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+    <View style={s.screen}>
+      <CollapsibleHeader
+        scheme={scheme}
+        translateY={translateY}
+        progress={progress}
+        headerOnLayout={headerOnLayout}
+        searchQuery={searchQuery}
+        onChangeSearch={onChangeSearch}
+        onSubmitSearch={onSubmitSearch}
+        showFilters={showFilters}
+        onToggleFilters={safeToggleFilters}
+        selectedFilter={selectedFilter}
+        onSelectFilter={onChangeFilter}
+        filterOptions={FILTERS}
+        topInset={TOP_INSET}
       />
 
-      <View style={s.container}>
-        <CollapsibleHeader
-          scheme={scheme}
-          translateY={translateY}
-          progress={progress}
-          headerOnLayout={headerOnLayout}
-          searchQuery={searchQuery}
-          onChangeSearch={onChangeSearch}
-          onSubmitSearch={onSubmitSearch}
-          showFilters={showFilters}
-          onToggleFilters={safeToggleFilters}
-          selectedFilter={selectedFilter}
-          onSelectFilter={onChangeFilter}
-          filterOptions={FILTERS}
-          topInset={TOP_INSET}
+      {isLoading ? (
+        <View style={s.stateWrap}>
+          <ActivityIndicator color={C.primary} />
+          <Text style={s.stateText}>Đang tải cuộc thi...</Text>
+        </View>
+      ) : error ? (
+        <View style={s.stateWrap}>
+          <Text style={[s.stateText, { color: C.destructive ?? "#EF4444" }]}>
+            Không tải được dữ liệu. Vui lòng thử lại.
+          </Text>
+        </View>
+      ) : contests.length === 0 ? (
+        <View style={s.stateWrap}>
+          <Text style={s.stateText}>
+            {debouncedQuery && debouncedQuery.length === 1
+              ? "Nhập ≥ 2 ký tự để tìm…"
+              : "Không có cuộc thi phù hợp."}
+          </Text>
+        </View>
+      ) : (
+        <Animated.FlatList
+          ref={listRef}
+          data={contests}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          contentContainerStyle={{
+            paddingTop: TOP_PADDING,
+            paddingBottom: 24,
+            paddingHorizontal: 6,
+          }}
+          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScrollBeginDrag={() => {
+            isDraggingRef.current = true;
+          }}
+          onMomentumScrollBegin={() => {
+            isDraggingRef.current = true;
+          }}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true }
+          )}
+          onScrollEndDrag={(e) => {
+            isDraggingRef.current = false;
+            handleRevealNearTop(e);
+          }}
+          onMomentumScrollEnd={(e) => {
+            isDraggingRef.current = false;
+            handleRevealNearTop(e);
+          }}
+          // iOS: tự kiểm soát inset để không mất UI khúc đầu
+          contentInsetAdjustmentBehavior="never"
+          automaticallyAdjustContentInsets={false as any}
+          scrollIndicatorInsets={{
+            top: TOP_PADDING,
+            bottom: 24,
+            left: 0,
+            right: 0,
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={C.mutedForeground}
+              colors={[C.primary]}
+            />
+          }
         />
+      )}
 
-        {isLoading ? (
-          <View style={s.stateWrap}>
-            <ActivityIndicator color={C.primary} />
-            <Text style={s.stateText}>Đang tải cuộc thi...</Text>
-          </View>
-        ) : error ? (
-          <View style={s.stateWrap}>
-            <Text style={[s.stateText, { color: C.destructive ?? "#EF4444" }]}>
-              Không tải được dữ liệu. Vui lòng thử lại.
-            </Text>
-          </View>
-        ) : contests.length === 0 ? (
-          <View style={s.stateWrap}>
-            <Text style={s.stateText}>
-              {debouncedQuery && debouncedQuery.length === 1
-                ? "Nhập ≥ 2 ký tự để tìm…"
-                : "Không có cuộc thi phù hợp."}
-            </Text>
-          </View>
-        ) : (
-          <Animated.FlatList
-            ref={listRef}
-            data={contests}
-            keyExtractor={keyExtractor}
-            renderItem={renderItem}
-   
-     
-            contentContainerStyle={{
-              paddingTop: headerHeight + HEADER_EXTRA_GAP,
-              paddingBottom: 24,
-              paddingHorizontal: 6,
-            }}
-            showsVerticalScrollIndicator={false}
-            scrollEventThrottle={16}
-            onScrollBeginDrag={() => {
-              isDraggingRef.current = true;
-            }}
-            onMomentumScrollBegin={() => {
-              isDraggingRef.current = true;
-            }}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-              {
-                useNativeDriver: true,
-              }
-            )}
-            onScrollEndDrag={(e) => {
-              isDraggingRef.current = false;
-              handleRevealNearTop(e);
-            }}
-            onMomentumScrollEnd={(e) => {
-              isDraggingRef.current = false;
-              handleRevealNearTop(e);
-            }}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={C.mutedForeground}
-                colors={[C.primary]}
-              />
-            }
-          />
-        )}
-
-        {isFetching && !isLoading && contests.length > 0 && (
-          <View style={s.fetchingFoot}>
-            <ActivityIndicator color={C.mutedForeground} />
-          </View>
-        )}
-      </View>
-    </ImageBackground>
+      {isFetching && !isLoading && contests.length > 0 && (
+        <View style={s.fetchingFoot}>
+          <ActivityIndicator color={C.mutedForeground} />
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -311,13 +295,11 @@ export default function ContestsScreen() {
 const styles = (scheme: "light" | "dark") => {
   const C = Colors[scheme];
   return StyleSheet.create({
-    bg: { flex: 1 }, // ImageBackground
-    container: { flex: 1, backgroundColor: "transparent" }, // để lộ BG
+    screen: { flex: 1, backgroundColor: C.background, paddingBottom: 32 },
     stateWrap: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: "transparent",
       padding: 16,
     },
     stateText: { marginTop: 10, color: C.mutedForeground, fontSize: 16 },
