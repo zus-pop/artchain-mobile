@@ -35,7 +35,7 @@ export default function TabLayout() {
         tabBarInactiveTintColor: Colors[colorScheme ?? "light"].mutedForeground,
       }}
       backBehavior="history"
-      tabBar={(props) => <WhitePillTabBar {...props} />}
+      //   tabBar={(props) => <WhitePillTabBar {...props} />}
     >
       <Tabs.Screen
         name="index"

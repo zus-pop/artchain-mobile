@@ -551,7 +551,6 @@ export default function CompetitorProfileComponent() {
           email: user.email,
           phone: user.phone || "",
         }}
-        achievements={achievements}
       />
 
       {selectedSubmission && (

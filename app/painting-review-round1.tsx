@@ -204,6 +204,9 @@ export default function PaintingReviewRound1Screen() {
   const C = Colors[scheme];
   const s = styles(Colors[scheme]);
 
+  // Required number of paintings that must pass to next round
+  const REQUIRED_PASSING_PAINTINGS = 20;
+
   /* API - Get paintings that passed round 1 */
   const {
     data: paintings,
@@ -245,7 +248,9 @@ export default function PaintingReviewRound1Screen() {
   const togglePainting = useCallback((paintingId: string) => {
     setSelectedPaintings((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(paintingId)) {
+      const isCurrentlySelected = newSet.has(paintingId);
+
+      if (isCurrentlySelected) {
         newSet.delete(paintingId);
       } else {
         newSet.add(paintingId);
@@ -510,9 +515,14 @@ export default function PaintingReviewRound1Screen() {
           {/* Summary */}
           <View style={s.summaryContainer}>
             <Text style={s.summaryText}>
-              Đã chọn: {selectedPaintings.size} / {paintings?.length || 0} tranh
-              đạt
+              {selectedPaintings.size} / {REQUIRED_PASSING_PAINTINGS} tranh đạt
             </Text>
+            {selectedPaintings.size !== REQUIRED_PASSING_PAINTINGS && (
+              <Text style={s.requirementWarning}>
+                ⚠️ Cần chọn đúng {REQUIRED_PASSING_PAINTINGS} tranh để nộp kết
+                quả
+              </Text>
+            )}
           </View>
 
           {/* List */}
@@ -544,7 +554,10 @@ export default function PaintingReviewRound1Screen() {
                     isReviewPending ? "Đang gửi..." : "Nộp kết quả xem lại"
                   }
                   onPress={() => setConfirmOpen(true)}
-                  disabled={isReviewPending}
+                  disabled={
+                    isReviewPending ||
+                    selectedPaintings.size !== REQUIRED_PASSING_PAINTINGS
+                  }
                   palette="pastel"
                   size="md"
                 />
@@ -558,9 +571,7 @@ export default function PaintingReviewRound1Screen() {
           visible={confirmOpen}
           variant="confirm"
           title="Nộp kết quả xem lại?"
-          subtitle={`Xác nhận nộp kết quả cho ${selectedPaintings.size}/${
-            paintings?.length || 0
-          } tranh đã chọn.`}
+          subtitle={`Xác nhận nộp kết quả cho ${selectedPaintings.size}/${REQUIRED_PASSING_PAINTINGS} tranh đã chọn.`}
           primaryText={isReviewPending ? "Đang gửi..." : "Nộp"}
           secondaryText="Huỷ"
           loading={isReviewPending}
@@ -648,6 +659,13 @@ const styles = (C: typeof Colors.light) =>
       fontWeight: "700",
       color: C.foreground,
       textAlign: "center",
+    },
+    requirementWarning: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: "#ef4444",
+      textAlign: "center",
+      marginTop: 4,
     },
 
     /* Loading / Error */
@@ -742,6 +760,11 @@ const styles = (C: typeof Colors.light) =>
       backgroundColor: C.primary,
       borderColor: C.primary,
     },
+    checkboxDisabled: {
+      backgroundColor: C.muted,
+      borderColor: C.muted,
+      opacity: 0.6,
+    },
     checkboxEmpty: {
       width: 8,
       height: 8,
@@ -763,6 +786,12 @@ const styles = (C: typeof Colors.light) =>
       color: "#fff",
       backgroundColor: C.primary,
       borderColor: C.primary,
+    },
+    selectionTextDisabled: {
+      color: C.mutedForeground,
+      backgroundColor: toAlpha(C.muted, 0.8),
+      borderColor: C.muted,
+      opacity: 0.6,
     },
 
     dateBadgeVip: {
@@ -846,6 +875,11 @@ const styles = (C: typeof Colors.light) =>
       backgroundColor: C.primary,
       borderColor: C.primary,
     },
+    passFailButtonDisabled: {
+      backgroundColor: C.muted,
+      borderColor: C.muted,
+      opacity: 0.6,
+    },
     passFailText: {
       fontSize: 12,
       fontWeight: "800",
@@ -853,6 +887,9 @@ const styles = (C: typeof Colors.light) =>
     },
     passFailTextActive: {
       color: "#fff",
+    },
+    passFailTextDisabled: {
+      color: C.mutedForeground,
     },
 
     emptyText: {

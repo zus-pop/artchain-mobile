@@ -31,7 +31,7 @@ export function useLoginMutation() {
     onSuccess: (result: AuthResponse) => {
       setAccessToken(result.access_token);
       queryClient.invalidateQueries({ queryKey: ["me"] });
-      router.back(); // Go back to profile
+      router.replace("/profile"); // Go back to profile
     },
     onError: (error) => {
       toast.error(error.message);

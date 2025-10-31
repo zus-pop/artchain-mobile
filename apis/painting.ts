@@ -8,7 +8,7 @@ import {
   Round1EvaluationRequest,
   Round2EvaluationRequest,
 } from "@/types";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { router } from "expo-router";
 import { toast } from "sonner-native";
@@ -34,9 +34,14 @@ export function useGetPaintings(filters: PaintingFilter) {
     params.roundName = filters.roundName;
   }
 
-  if (filters.is_passed) {
+  if (filters.is_passed !== undefined) {
     params.is_passed = filters.is_passed;
   }
+
+  if (filters.status) {
+    params.status = filters.status;
+  }
+
   return useQuery({
     queryKey: ["paintings", filters],
     queryFn: async () => {
@@ -69,8 +74,7 @@ export function useUploadPainting() {
     },
     onSuccess: () => {
       toast.success(`Upload painting successfully!`);
-      // TODO: Navigate to my submission
-      router.navigate("/(tabs)/profile");
+      router.back();
     },
     onError: (error) => {
       let message = error.message;
@@ -83,6 +87,7 @@ export function useUploadPainting() {
 }
 
 export function useEvaluationPaintingRound1() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (evaluationRequest: Round1EvaluationRequest) => {
       const response = await myAxios.post(
@@ -93,6 +98,7 @@ export function useEvaluationPaintingRound1() {
     },
     onSuccess: () => {
       toast.success("Chấm bài thành công");
+      queryClient.invalidateQueries({ queryKey: ["paintings"] });
       router.back();
     },
     onError: (error) => {
@@ -106,6 +112,7 @@ export function useEvaluationPaintingRound1() {
 }
 
 export function useReviewEvaluationRound1() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (evaluationRequest: ReviewRound1EvaluationRequest) => {
       const response = await myAxios.post(
@@ -116,6 +123,7 @@ export function useReviewEvaluationRound1() {
     },
     onSuccess: () => {
       toast.success("Chấm bài thành công");
+      queryClient.invalidateQueries({ queryKey: ["paintings"] });
       router.back();
     },
     onError: (error) => {
@@ -129,6 +137,7 @@ export function useReviewEvaluationRound1() {
 }
 
 export function useEvaluatePaintingRound2() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (evaluationRequest: Round2EvaluationRequest) => {
       const response = await myAxios.post(
@@ -139,6 +148,7 @@ export function useEvaluatePaintingRound2() {
     },
     onSuccess: () => {
       toast.success("Chấm bài thành công");
+      queryClient.invalidateQueries({ queryKey: ["paintings"] });
       router.back();
     },
     onError: (error) => {

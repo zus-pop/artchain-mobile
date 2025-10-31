@@ -16,6 +16,7 @@ export function useContest(filter: ContestFilter) {
       return response.data;
     },
     staleTime: 30 * 1000,
+    select: (data) => data.filter((d) => d.status !== "DRAFT"),
   });
 }
 

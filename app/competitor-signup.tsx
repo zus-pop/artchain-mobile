@@ -51,7 +51,7 @@ const competitorSchema = z
       .trim()
       .min(1, "Lớp là bắt buộc")
       .refine((val) => ["6", "7", "8", "9"].includes(val), {
-        message: "Lớp phải là từ 1 đến 5",
+        message: "Lớp phải là từ 6 đến 9",
       }),
     ward: z
       .string({ message: "Khu vực là bắt buộc" })
@@ -849,11 +849,14 @@ export default function CompetitorSignupScreen() {
               padding: 20,
             }}
           >
-            {[1, 2, 3, 4, 5].map((grade) => (
+            {[6, 7, 8, 9].map((grade) => (
               <TouchableOpacity
                 key={grade}
                 onPress={() => {
-                  competitorForm.setValue("grade", grade.toString());
+                  competitorForm.setValue("grade", grade.toString(), {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  });
                   setShowGradePicker(false);
                 }}
                 style={{

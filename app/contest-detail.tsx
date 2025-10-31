@@ -471,7 +471,9 @@ export default function ContestDetail() {
                         type: "COMPETITOR",
                         contestId: contest.contestId,
                         competitorId: me.userId,
-                        roundId: contest.roundId,
+                        roundId: contest.rounds.find(
+                          (r) => r.name === "ROUND_1"
+                        )?.roundId,
                       },
                     });
                     return;
@@ -482,7 +484,9 @@ export default function ContestDetail() {
                       pathname: "/children-participate",
                       params: {
                         contestId: contest.contestId,
-                        roundId: contest.roundId,
+                        roundId: contest.rounds.find(
+                          (r) => r.name === "ROUND_1"
+                        )?.roundId,
                       },
                     });
                   }
