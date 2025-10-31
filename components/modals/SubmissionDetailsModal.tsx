@@ -2,24 +2,22 @@ import { usePaintingEvaluations } from "@/apis/painting";
 import { Colors } from "@/constants/theme";
 import { Painting } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   ActivityIndicator,
   Animated,
   Dimensions,
-  Image,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
   PanResponder,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from "react-native";
-import styles from "./style";
 
 type Scheme = "light" | "dark";
 
@@ -30,11 +28,13 @@ type Props = {
   submission: Painting;
 };
 
-const { height: SCREEN_H } = Dimensions.get("window");
+const { height: SCREEN_H, width: SCREEN_W } = Dimensions.get("window");
+const SHEET_MAX_H = SCREEN_H * 0.94;
 const SNAP = { OPEN: 0, DISMISS: SCREEN_H };
 const DRAG_CLOSE_THRESHOLD = 120;
 const VELOCITY_CLOSE_THRESHOLD = 1.0;
-const FOOTER_H = 64;
+const FOOTER_H = 70;
+const HERO_H = Math.min(360, Math.max(260, SCREEN_H * 0.42));
 
 const SubmissionDetailsModal: React.FC<Props> = ({
   visible,
@@ -43,149 +43,32 @@ const SubmissionDetailsModal: React.FC<Props> = ({
   submission,
 }) => {
   const { data: evaluations = [], isLoading } = usePaintingEvaluations(
-    submission.paintingId
+    submission?.paintingId
   );
+
   const C = Colors[scheme];
-  const s = styles(C);
+  const isDark = scheme === "dark";
 
-  const local = StyleSheet.create({
-    imageContainer: {
-      alignItems: "center",
-      paddingVertical: 16,
-    },
-    submissionImage: {
-      width: "100%",
-      height: 250,
-      borderRadius: 8,
-    },
-    description: {
-      fontSize: 14,
-      lineHeight: 20,
-      marginTop: 8,
-      marginBottom: 12,
-    },
-    metaRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 8,
-    },
-    metaText: {
-      fontSize: 14,
-      marginLeft: 8,
-      fontWeight: "500",
-    },
-    statusContainer: {
-      marginTop: 12,
-    },
-    statusBadge: {
-      alignSelf: "flex-start",
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
-    },
-    statusText: {
-      fontSize: 12,
-      fontWeight: "600",
-    },
-    evaluationHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 16,
-    },
-    averageScore: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    averageScoreText: {
-      fontSize: 16,
-      fontWeight: "bold",
-      marginLeft: 4,
-    },
-    evaluationCard: {
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 12,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: C.border,
-    },
-    evaluationHeaderRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: 12,
-      gap: 20,
-    },
-    examinerInfo: {
-      flexDirection: "row",
-      alignItems: "center",
-      flex: 1,
-    },
-    examinerName: {
-      fontSize: 16,
-      fontWeight: "600",
-      marginLeft: 8,
-      marginRight: 15,
-    },
-    evaluationDate: {
-      fontSize: 12,
-      marginLeft: 8,
-      marginTop: 2,
-    },
-    scoreContainer: {
-      backgroundColor: C.primary,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 10,
-    },
-    scoreText: {
-      fontSize: 14,
-      fontWeight: "bold",
-    },
-    comment: {
-      fontSize: 14,
-      lineHeight: 20,
-      marginBottom: 12,
-    },
-    noEvaluationContainer: {
-      alignItems: "center",
-      paddingVertical: 40,
-    },
-    noEvaluationText: {
-      fontSize: 16,
-      fontWeight: "600",
-      marginTop: 16,
-      marginBottom: 8,
-      textAlign: "center",
-    },
-    noEvaluationSubtext: {
-      fontSize: 14,
-      textAlign: "center",
-    },
-    loadingContainer: {
-      alignItems: "center",
-      paddingVertical: 40,
-    },
-    loadingText: {
-      fontSize: 16,
-      fontWeight: "600",
-      marginTop: 16,
-      marginBottom: 8,
-      textAlign: "center",
-    },
-    loadingSubtext: {
-      fontSize: 14,
-      textAlign: "center",
-    },
-  });
-
-  // positions
+  // ---------- Animated states ----------
   const translateY = useRef(new Animated.Value(SNAP.DISMISS)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const dragOffset = useRef(0);
   const scrollYRef = useRef(0);
 
-  // ---------- SHEET ANIM ----------
+  // Parallax for hero image
+  const scrollYAnim = useRef(new Animated.Value(0)).current;
+  const heroScale = scrollYAnim.interpolate({
+    inputRange: [-120, 0, 120],
+    outputRange: [1.12, 1, 1],
+    extrapolate: "clamp",
+  });
+  const heroTranslateY = scrollYAnim.interpolate({
+    inputRange: [-120, 0, 120],
+    outputRange: [-20, 0, 0],
+    extrapolate: "clamp",
+  });
+
+  // ---------- Sheet open/close ----------
   const openSheet = useCallback(() => {
     translateY.setValue(SNAP.DISMISS);
     backdropOpacity.setValue(0);
@@ -193,13 +76,13 @@ const SubmissionDetailsModal: React.FC<Props> = ({
       Animated.spring(translateY, {
         toValue: SNAP.OPEN,
         useNativeDriver: true,
-        stiffness: 180,
+        stiffness: 200,
         damping: 22,
-        mass: 0.8,
+        mass: 0.9,
       }),
       Animated.timing(backdropOpacity, {
         toValue: 1,
-        duration: 220,
+        duration: 240,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -212,9 +95,9 @@ const SubmissionDetailsModal: React.FC<Props> = ({
       Animated.spring(translateY, {
         toValue: SNAP.DISMISS,
         useNativeDriver: true,
-        stiffness: 180,
+        stiffness: 200,
         damping: 22,
-        mass: 0.85,
+        mass: 0.95,
       }),
       Animated.timing(backdropOpacity, {
         toValue: 0,
@@ -223,7 +106,7 @@ const SubmissionDetailsModal: React.FC<Props> = ({
       }),
     ]).start(() => {
       dragOffset.current = SNAP.DISMISS;
-      onClose();
+      onClose?.();
     });
   }, [translateY, backdropOpacity, onClose]);
 
@@ -233,9 +116,9 @@ const SubmissionDetailsModal: React.FC<Props> = ({
       Animated.spring(translateY, {
         toValue: to,
         useNativeDriver: true,
-        stiffness: 180,
+        stiffness: 200,
         damping: 22,
-        mass: 0.8,
+        mass: 0.9,
       }).start(() => (dragOffset.current = to));
     },
     [closeSheet, translateY]
@@ -245,12 +128,13 @@ const SubmissionDetailsModal: React.FC<Props> = ({
     if (visible) requestAnimationFrame(openSheet);
   }, [visible, openSheet]);
 
+  // ---------- Gestures ----------
   const panResponder = useMemo(
     () =>
       PanResponder.create({
         onMoveShouldSetPanResponder: (_, g) => {
           const isVertical = Math.abs(g.dy) > Math.abs(g.dx);
-          const pullingDown = g.dy > 5;
+          const pullingDown = g.dy > 6;
           const canGrab =
             scrollYRef.current <= 0 || dragOffset.current > SNAP.OPEN;
           return isVertical && pullingDown && canGrab;
@@ -274,36 +158,42 @@ const SubmissionDetailsModal: React.FC<Props> = ({
     scrollYRef.current = e.nativeEvent.contentOffset.y;
   };
 
-  const getStatusColor = (status: string) => {
-    if (status === "WINNER" || status === "APPROVED") return "#ffffff"; // White text on colored background
-    if (status === "ACCEPTED" || status === "APPROVED") return "#ffffff"; // White text on colored background
-    if (status === "REJECTED" || status === "DENIED") return "#ffffff"; // White text on colored background
-    if (status === "PENDING" || status === "REVIEWING") return C.foreground; // Dark text on light background
-    if (status === "SUBMITTED") return C.foreground; // Dark text on light background
-    return C.mutedForeground;
-  };
+  // ---------- Helpers: status mapping ----------
+  const statusMap = useMemo(
+    () => ({
+      WINNER: { text: "Giải thưởng", bg: C.accent ?? "#22c55e", fg: "#fff" },
+      APPROVED: { text: "Được duyệt", bg: C.primary ?? "#3b82f6", fg: "#fff" },
+      ACCEPTED: {
+        text: "Được chấp nhận",
+        bg: C.chart2 ?? "#06b6d4",
+        fg: "#fff",
+      },
+      REJECTED: {
+        text: "Bị từ chối",
+        bg: C.destructive ?? "#ef4444",
+        fg: "#fff",
+      },
+      DENIED: { text: "Từ chối", bg: C.destructive ?? "#ef4444", fg: "#fff" },
+      REVIEWING: {
+        text: "Đang đánh giá",
+        bg: C.chart3 ?? "#f59e0b",
+        fg: "#111827",
+      },
+      PENDING: { text: "Đang xử lý", bg: C.chart3 ?? "#f59e0b", fg: "#111827" },
+      SUBMITTED: { text: "Đã nộp", bg: C.muted ?? "#e5e7eb", fg: C.foreground },
+      UNKNOWN: { text: "Không xác định", bg: C.muted, fg: C.mutedForeground },
+    }),
+    [C]
+  );
 
-  const getStatusText = (status: string) => {
-    if (status === "WINNER" || status === "APPROVED") return "Giải thưởng";
-    if (status === "ACCEPTED" || status === "APPROVED") return "Được chấp nhận";
-    if (status === "REJECTED" || status === "DENIED") return "Bị từ chối";
-    if (status === "PENDING" || status === "REVIEWING") return "Đang xử lý";
-    if (status === "SUBMITTED") return "Đã nộp";
-    return "Không xác định";
-  };
+  const statusKey =
+    (submission?.status as keyof typeof statusMap) || ("UNKNOWN" as const);
+  const STATUS = statusMap[statusKey] ?? statusMap.UNKNOWN;
 
-  const getStatusBg = (status: string) => {
-    if (status === "WINNER" || status === "APPROVED") return C.accent;
-    if (status === "ACCEPTED" || status === "APPROVED") return C.primary20;
-    if (status === "REJECTED" || status === "DENIED") return C.destructive;
-    if (status === "PENDING" || status === "REVIEWING") return C.chart3;
-    if (status === "SUBMITTED") return C.muted;
-    return C.muted;
-  };
-
+  // ---------- Derived ----------
   const averageScore = useMemo(() => {
-    if (evaluations.length === 0) return 0;
-    const total = evaluations.reduce((sum, foo) => sum + foo.score, 0);
+    if (!evaluations?.length) return 0;
+    const total = evaluations.reduce((sum, e) => sum + (e.score ?? 0), 0);
     return Math.round((total / evaluations.length) * 10) / 10;
   }, [evaluations]);
 
@@ -317,230 +207,244 @@ const SubmissionDetailsModal: React.FC<Props> = ({
       onRequestClose={closeSheet}
       statusBarTranslucent
     >
-      <View style={s.wrap}>
+      <View style={st.wrap}>
         {/* Backdrop */}
         <TouchableWithoutFeedback onPress={closeSheet}>
-          <Animated.View style={[s.backdrop, { opacity: backdropOpacity }]} />
+          <Animated.View
+            style={[
+              st.backdrop,
+              {
+                backgroundColor: isDark
+                  ? "rgba(0,0,0,0.6)"
+                  : "rgba(0,0,0,0.45)",
+                opacity: backdropOpacity,
+              },
+            ]}
+          />
         </TouchableWithoutFeedback>
 
-        {/* Bottom sheet */}
+        {/* Sheet */}
         <Animated.View
-          style={[s.sheet, { transform: [{ translateY }] }]}
+          style={[
+            st.sheet,
+            {
+              backgroundColor: C.card,
+              borderColor: C.border,
+              maxHeight: SHEET_MAX_H,
+              transform: [{ translateY }],
+            },
+          ]}
           {...panResponder.panHandlers}
         >
-          {/* Header */}
-          <View>
-            <View style={s.grabberWrap}>
-              <View style={s.grabber} />
-            </View>
-
-            <View style={s.headerRow}>
-              <Text style={s.title}>Chi tiết bài dự thi</Text>
+          {/* Grabber + glass header floating over hero */}
+          <View style={st.glassHeader}>
+            <View
+              style={[
+                st.grabber,
+                { backgroundColor: isDark ? "#4b5563" : "#cbd5e1" },
+              ]}
+            />
+            <View style={st.headerRow}>
+              <View style={st.headerLeft}>
+                <Ionicons name="color-palette-outline" size={16} color="#fff" />
+                <Text style={st.headerTitle} numberOfLines={1}>
+                  Chi tiết bài dự thi
+                </Text>
+              </View>
               <TouchableOpacity
                 onPress={closeSheet}
-                style={s.iconBtn}
                 activeOpacity={0.85}
+                style={st.iconBtn}
               >
-                <Ionicons name="close" size={22} color={C.mutedForeground} />
+                <Ionicons name="close" size={22} color="#fff" />
               </TouchableOpacity>
             </View>
-
-            <View style={s.divider} />
           </View>
 
-          {/* CONTENT */}
-          <ScrollView
+          {/* Content */}
+          <Animated.ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: FOOTER_H + 16 }}
+            contentContainerStyle={{ paddingBottom: FOOTER_H + 18 }}
             keyboardShouldPersistTaps="handled"
             bounces
             scrollEventThrottle={16}
-            onScroll={onScroll}
+            onScroll={(e) => {
+              onScroll(e);
+              scrollYAnim.setValue(e.nativeEvent.contentOffset.y);
+            }}
           >
-            {/* SUBMISSION IMAGE */}
-            <View style={local.imageContainer}>
-              <Image
+            {/* HERO image with parallax & overlay */}
+            <View style={st.heroWrap}>
+              <Animated.Image
                 source={{ uri: submission.imageUrl }}
-                style={local.submissionImage}
                 resizeMode="cover"
+                style={[
+                  st.heroImg,
+                  {
+                    transform: [
+                      { translateY: heroTranslateY },
+                      { scale: heroScale },
+                    ],
+                  },
+                ]}
               />
-            </View>
-
-            <View style={s.divider} />
-
-            {/* SUBMISSION INFO */}
-            <View style={s.sectionTight}>
-              <Text
-                style={[s.sectionTitle, { color: C.foreground, fontSize: 20 }]}
-              >
-                {submission.title}
-              </Text>
-
-              {submission.description && (
-                <Text style={[local.description, { color: C.mutedForeground }]}>
-                  {submission.description}
+              <LinearGradient
+                colors={[
+                  "rgba(0,0,0,0.0)",
+                  "rgba(0,0,0,0.0)",
+                  isDark ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0.35)",
+                ]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              {/* Hero bottom info */}
+              <View style={st.heroInfo}>
+                <Text style={st.heroTitle} numberOfLines={2}>
+                  {submission.title}
                 </Text>
-              )}
-
-              <View style={local.metaRow}>
-                <Ionicons name="trophy-outline" size={16} color={C.primary} />
-                <Text style={[local.metaText, { color: C.primary }]}>
-                  {submission.contest.title}
-                </Text>
-              </View>
-
-              <View style={local.metaRow}>
-                <Ionicons
-                  name="calendar-outline"
-                  size={16}
-                  color={C.mutedForeground}
-                />
-                <Text style={[local.metaText, { color: C.mutedForeground }]}>
-                  Nộp ngày:{" "}
-                  {new Date(submission.submissionDate).toLocaleDateString(
-                    "vi-VN"
-                  )}
-                </Text>
-              </View>
-
-              <View style={local.statusContainer}>
-                <View
-                  style={[
-                    local.statusBadge,
-                    { backgroundColor: getStatusBg(submission.status) },
-                  ]}
-                >
-                  <Text
+                <View style={st.chipsRow}>
+                  <View
                     style={[
-                      local.statusText,
-                      { color: getStatusColor(submission.status) },
+                      st.chip,
+                      {
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.12)"
+                          : "rgba(255,255,255,0.2)",
+                      },
                     ]}
                   >
-                    {getStatusText(submission.status)}
-                  </Text>
+                    <Ionicons name="trophy-outline" size={12} color="#fff" />
+                    <Text style={st.chipTxt} numberOfLines={1}>
+                      {submission.contest?.title}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      st.chip,
+                      {
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.12)"
+                          : "rgba(255,255,255,0.2)",
+                      },
+                    ]}
+                  >
+                    <Ionicons name="calendar-outline" size={12} color="#fff" />
+                    <Text style={st.chipTxt}>
+                      {new Date(submission.submissionDate).toLocaleDateString(
+                        "vi-VN"
+                      )}
+                    </Text>
+                  </View>
+                  <View
+                    style={[st.statusBadge, { backgroundColor: STATUS.bg }]}
+                  >
+                    <Text style={[st.statusTxt, { color: STATUS.fg }]}>
+                      {STATUS.text}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
 
-            {/* EVALUATIONS SECTION */}
-            {isLoading ? (
-              <>
-                <View style={s.divider} />
-                <View style={s.sectionTight}>
-                  <View style={local.loadingContainer}>
-                    <ActivityIndicator size="large" color={C.primary} />
-                    <Text style={[local.loadingText, { color: C.foreground }]}>
-                      Đang tải đánh giá...
-                    </Text>
-                    <Text
-                      style={[
-                        local.loadingSubtext,
-                        { color: C.mutedForeground },
-                      ]}
-                    >
-                      Vui lòng đợi trong giây lát
-                    </Text>
-                  </View>
-                </View>
-              </>
-            ) : evaluations && evaluations.length > 0 ? (
-              <>
-                <View style={s.divider} />
-                <View style={s.sectionTight}>
-                  <View style={local.evaluationHeader}>
-                    <Text style={[s.sectionTitle, { color: C.foreground }]}>
-                      Đánh giá từ Ban Giám khảo
-                    </Text>
-                    <View style={local.averageScore}>
-                      <Ionicons name="star" size={16} color={C.chart3} />
-                      <Text
-                        style={[local.averageScoreText, { color: C.chart3 }]}
-                      >
-                        {averageScore}/10
-                      </Text>
-                    </View>
-                  </View>
+            {/* Description */}
+            {!!submission.description && (
+              <View style={[st.section, st.sectionTight]}>
+                <Text style={[st.sectionTitle, { color: C.foreground }]}>
+                  Mô tả
+                </Text>
+                <Text style={[st.desc, { color: C.mutedForeground }]}>
+                  {String(submission.description).trim()}
+                </Text>
+              </View>
+            )}
 
-                  {evaluations.map((evaluation) => (
-                    <View key={evaluation.id} style={local.evaluationCard}>
-                      <View style={local.evaluationHeaderRow}>
-                        <View style={local.examinerInfo}>
-                          <Ionicons
-                            name="person-circle-outline"
-                            size={30}
-                            color={C.primary}
-                          />
-                          <View>
-                            <Text
-                              style={[
-                                local.examinerName,
-                                { color: C.foreground },
-                              ]}
-                            >
-                              {evaluation.examinerName}
-                            </Text>
-                            <Text
-                              style={[
-                                local.evaluationDate,
-                                { color: C.mutedForeground },
-                              ]}
-                            >
-                              {new Date(
-                                evaluation.evaluationDate
-                              ).toLocaleDateString("vi-VN")}
-                            </Text>
-                          </View>
-                        </View>
-                        <View style={local.scoreContainer}>
+            {/* Evaluations */}
+            <View style={[st.section, st.sectionTight]}>
+              <View style={st.evalHeader}>
+                <Text style={[st.sectionTitle, { color: C.foreground }]}>
+                  Đánh giá từ Ban Giám khảo
+                </Text>
+                <View style={st.avgBox}>
+                  <Ionicons name="star" size={14} color={"#f59e0b"} />
+                  <Text style={st.avgTxt}>{averageScore}/10</Text>
+                </View>
+              </View>
+
+              {isLoading ? (
+                <View style={st.skeletonWrap}>
+                  <ActivityIndicator size="small" color={C.primary} />
+                  <Text style={[st.loadingTxt, { color: C.mutedForeground }]}>
+                    Đang tải đánh giá…
+                  </Text>
+                </View>
+              ) : evaluations?.length ? (
+                evaluations.map((e) => (
+                  <View
+                    key={e.id}
+                    style={[
+                      st.evalCard,
+                      { borderColor: isDark ? "#1f2937" : "#e5e7eb" },
+                    ]}
+                  >
+                    <View style={st.evalTopRow}>
+                      <View style={st.avatarRow}>
+                        <Ionicons
+                          name="person-circle-outline"
+                          size={34}
+                          color={C.primary}
+                        />
+                        <View style={{ flex: 1 }}>
                           <Text
-                            style={[
-                              local.scoreText,
-                              { color: C.primaryForeground },
-                            ]}
+                            style={[st.evalName, { color: C.foreground }]}
+                            numberOfLines={1}
                           >
-                            {evaluation.score}/10
+                            {e.examinerName}
+                          </Text>
+                          <Text
+                            style={[st.evalDate, { color: C.mutedForeground }]}
+                          >
+                            {new Date(e.evaluationDate).toLocaleDateString(
+                              "vi-VN"
+                            )}
                           </Text>
                         </View>
                       </View>
-
-                      {evaluation.feedback && (
-                        <Text style={[local.comment, { color: C.foreground }]}>
-                          {evaluation.feedback}
-                        </Text>
-                      )}
+                      <LinearGradient
+                        colors={[C.primary, C.accent ?? "#6366f1"]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={st.scorePill}
+                      >
+                        <Text style={st.scoreTxt}>{e.score}/10</Text>
+                      </LinearGradient>
                     </View>
-                  ))}
-                </View>
-              </>
-            ) : (
-              <>
-                <View style={s.divider} />
-                <View style={s.sectionTight}>
-                  <View style={local.noEvaluationContainer}>
-                    <Ionicons name="time-outline" size={48} color={C.muted} />
-                    <Text
-                      style={[
-                        local.noEvaluationText,
-                        { color: C.mutedForeground },
-                      ]}
-                    >
-                      Chưa có đánh giá từ Ban Giám khảo
-                    </Text>
-                    <Text
-                      style={[local.noEvaluationSubtext, { color: C.muted }]}
-                    >
-                      Bài dự thi đang được xem xét và đánh giá
-                    </Text>
-                  </View>
-                </View>
-              </>
-            )}
-          </ScrollView>
 
-          {/* FOOTER STICKY */}
+                    {!!e.feedback && (
+                      <Text style={[st.evalCmt, { color: C.foreground }]}>
+                        {String(e.feedback).trim()}
+                      </Text>
+                    )}
+                  </View>
+                ))
+              ) : (
+                <View style={st.emptyEval}>
+                  <Ionicons name="time-outline" size={44} color={C.muted} />
+                  <Text style={[st.emptyTitle, { color: C.mutedForeground }]}>
+                    Chưa có đánh giá
+                  </Text>
+                  <Text style={[st.emptySub, { color: C.muted }]}>
+                    Bài dự thi đang được xem xét
+                  </Text>
+                </View>
+              )}
+            </View>
+          </Animated.ScrollView>
+
+          {/* Footer */}
           <View
             style={[
-              s.footer,
+              st.footer,
               {
                 backgroundColor: C.card,
                 borderTopColor: C.border,
@@ -548,16 +452,11 @@ const SubmissionDetailsModal: React.FC<Props> = ({
             ]}
           >
             <TouchableOpacity
-              style={[s.ghostBtn, { backgroundColor: C.primary }]}
               onPress={closeSheet}
               activeOpacity={0.9}
+              style={[st.ctaBtn, { backgroundColor: C.primary }]}
             >
-              <Text
-                style={[
-                  s.ghostTxt,
-                  { color: C.primaryForeground, fontWeight: "800" },
-                ]}
-              >
+              <Text style={[st.ctaTxt, { color: C.primaryForeground }]}>
                 Đóng
               </Text>
             </TouchableOpacity>
@@ -569,3 +468,195 @@ const SubmissionDetailsModal: React.FC<Props> = ({
 };
 
 export default SubmissionDetailsModal;
+
+/* ====================== STYLES ====================== */
+const st = StyleSheet.create({
+  wrap: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  sheet: {
+    width: "100%",
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+
+  /* Glass header floating */
+  glassHeader: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    zIndex: 10,
+    paddingTop: 10,
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+    backgroundColor: "rgba(17,24,39,0.22)",
+  },
+  grabber: {
+    alignSelf: "center",
+    width: 44,
+    height: 4,
+    borderRadius: 999,
+    opacity: 0.9,
+    marginBottom: 10,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  headerTitle: {
+    color: "#fff",
+    fontWeight: "900",
+    fontSize: 14.5,
+    letterSpacing: 0.2,
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  /* Hero */
+  heroWrap: {
+    width: "100%",
+    height: HERO_H,
+    overflow: "hidden",
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    backgroundColor: "#0b1220",
+  },
+  heroImg: {
+    width: SCREEN_W,
+    height: HERO_H + 40,
+  },
+  heroInfo: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    bottom: 12,
+  },
+  heroTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "900",
+    letterSpacing: 0.2,
+    marginBottom: 8,
+  },
+  chipsRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  chipTxt: { color: "#fff", fontSize: 12.5, fontWeight: "800" },
+  statusBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginLeft: 2,
+  },
+  statusTxt: { fontSize: 12, fontWeight: "900", letterSpacing: 0.3 },
+
+  /* Sections */
+  section: { paddingHorizontal: 14, paddingTop: 14 },
+  sectionTight: { paddingBottom: 6 },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    marginBottom: 8,
+    letterSpacing: 0.2,
+  },
+  desc: { fontSize: 14, lineHeight: 20 },
+
+  /* Evaluations */
+  evalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  avgBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(245,158,11,0.14)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  avgTxt: { color: "#f59e0b", fontWeight: "900", fontSize: 13 },
+
+  evalCard: {
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 12,
+    marginBottom: 10,
+    backgroundColor: "rgba(255,255,255,0.02)",
+  },
+  evalTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 8,
+  },
+  avatarRow: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  evalName: { fontSize: 15, fontWeight: "800" },
+  evalDate: { fontSize: 12, marginTop: 2 },
+  scorePill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    alignSelf: "flex-start",
+  },
+  scoreTxt: { color: "#fff", fontWeight: "900", fontSize: 13 },
+
+  evalCmt: { fontSize: 14, lineHeight: 20, marginTop: 2 },
+
+  /* Empty / Loading */
+  skeletonWrap: { alignItems: "center", paddingVertical: 30 },
+  loadingTxt: { marginTop: 10, fontWeight: "700" },
+  emptyEval: { alignItems: "center", paddingVertical: 36 },
+  emptyTitle: { marginTop: 10, fontSize: 15, fontWeight: "900" },
+  emptySub: { marginTop: 4, fontSize: 13.5 },
+
+  /* Footer */
+  footer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: FOOTER_H,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    padding: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ctaBtn: {
+    width: "92%",
+    height: 46,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  ctaTxt: { fontSize: 15, fontWeight: "900", letterSpacing: 0.2 },
+});

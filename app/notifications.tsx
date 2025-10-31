@@ -1,36 +1,27 @@
+import NotificationCard, {
+  NotificationItem,
+} from "@/components/cards/NotificationCard";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
+import React, { useMemo, useState } from "react";
 import {
-  Bell,
-  CircleCheck as CheckCircle,
-  Clock,
-  FileText,
-  Settings as SettingsIcon,
-  Trophy,
-} from "lucide-react-native";
-import React, { useState } from "react";
-import {
-  ScrollView,
+  SectionList,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  type: "contest" | "submission" | "result" | "system";
-  isRead: boolean;
-  date: string;
-}
-
-const notifications: Notification[] = [
+/* demo data */
+const seed: NotificationItem[] = [
   {
     id: "1",
     title: 'Kết quả cuộc thi "Vẽ Sài Gòn Xanh"',
@@ -38,7 +29,7 @@ const notifications: Notification[] = [
       'Chúc mừng! Tác phẩm "Sài Gòn Trong Mắt Tôi" của bạn đã giành giải Nhất.',
     type: "result",
     isRead: false,
-    date: "2024-12-20T10:30:00Z",
+    date: new Date().toISOString(),
   },
   {
     id: "2",
@@ -46,7 +37,7 @@ const notifications: Notification[] = [
     message: "Cuộc thi mới đã được công bố. Hạn chót tham gia: 28/02/2025.",
     type: "contest",
     isRead: false,
-    date: "2024-12-19T14:15:00Z",
+    date: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
   },
   {
     id: "3",
@@ -55,7 +46,7 @@ const notifications: Notification[] = [
       'Tác phẩm "Nghệ Thuật Đường Phố" đã được ban tổ chức chấp nhận tham gia cuộc thi.',
     type: "submission",
     isRead: true,
-    date: "2024-12-18T09:45:00Z",
+    date: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
   },
   {
     id: "4",
@@ -64,7 +55,7 @@ const notifications: Notification[] = [
       'Cuộc thi "Nghệ Thuật Đường Phố" sẽ kết thúc trong 3 ngày. Hãy nộp bài ngay!',
     type: "contest",
     isRead: true,
-    date: "2024-12-17T16:20:00Z",
+    date: new Date(Date.now() - 6 * 24 * 3600 * 1000).toISOString(),
   },
   {
     id: "5",
@@ -72,298 +63,300 @@ const notifications: Notification[] = [
     message: "Ứng dụng đã được cập nhật với tính năng bình chọn mới.",
     type: "system",
     isRead: true,
-    date: "2024-12-16T11:00:00Z",
+    date: new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString(),
   },
 ];
 
+/* nền orbs */
+function Orbs({ scheme }: { scheme: "light" | "dark" }) {
+  const orbs =
+    scheme === "dark"
+      ? [
+          ["#0EA5E922", "#6366F144"],
+          ["#22D3EE22", "#06B6D444"],
+          ["#A78BFA22", "#8B5CF644"],
+        ]
+      : [
+          ["#60A5FA33", "#7C3AED55"],
+          ["#F472B633", "#EC489955"],
+          ["#34D39933", "#10B98155"],
+        ];
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <LinearGradient
+        colors={orbs[0]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.orb, { top: -70, left: -60, width: 220, height: 220 }]}
+      />
+      <LinearGradient
+        colors={orbs[1]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={[styles.orb, { top: 120, right: -70, width: 240, height: 240 }]}
+      />
+      <LinearGradient
+        colors={orbs[2]}
+        start={{ x: 0, y: 1 }}
+        end={{ x: 1, y: 0 }}
+        style={[styles.orb, { top: 340, left: -40, width: 180, height: 180 }]}
+      />
+    </View>
+  );
+}
+
 export default function NotificationsScreen() {
-  const [notificationList, setNotificationList] = useState(notifications);
-  const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
-  const themedStyles = getThemedStyles(colorScheme);
+  const [list, setList] = useState<NotificationItem[]>(seed);
+  const scheme = (useColorScheme() ?? "light") as "light" | "dark";
+  const C = Colors[scheme];
+  const insets = useSafeAreaInsets();
 
-  const markAsRead = (id: string) => {
-    setNotificationList((prev) =>
-      prev.map((notif) =>
-        notif.id === id ? { ...notif, isRead: true } : notif
-      )
-    );
-  };
+  const unreadCount = list.filter((x) => !x.isRead).length;
 
-  const markAllAsRead = () => {
-    setNotificationList((prev) =>
-      prev.map((notif) => ({ ...notif, isRead: true }))
-    );
-  };
+  const [tab, setTab] = useState<"all" | "unread">("all");
+  const filtered = useMemo(
+    () => (tab === "unread" ? list.filter((x) => !x.isRead) : list),
+    [list, tab]
+  );
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case "contest":
-        return (
-          <Trophy size={20} color={Colors[colorScheme].accentForeground} />
-        );
-      case "submission":
-        return (
-          <FileText size={20} color={Colors[colorScheme].accentForeground} />
-        );
-      case "result":
-        return (
-          <CheckCircle size={20} color={Colors[colorScheme].accentForeground} />
-        );
-      case "system":
-        return (
-          <SettingsIcon
-            size={20}
-            color={Colors[colorScheme].accentForeground}
-          />
-        );
-      default:
-        return <Bell size={20} color={Colors[colorScheme].mutedForeground} />;
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const sections = useMemo(() => {
+    const today: NotificationItem[] = [];
+    const week: NotificationItem[] = [];
+    const earlier: NotificationItem[] = [];
     const now = new Date();
-    const diffInHours = Math.floor(
-      (now.getTime() - date.getTime()) / (1000 * 60 * 60)
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    ).getTime();
+    const startOfWeek = startOfToday - 6 * 24 * 3600 * 1000;
+
+    filtered
+      .slice()
+      .sort((a, b) => +new Date(b.date) - +new Date(a.date))
+      .forEach((n) => {
+        const t = +new Date(n.date);
+        if (t >= startOfToday) today.push(n);
+        else if (t >= startOfWeek) week.push(n);
+        else earlier.push(n);
+      });
+
+    const s: { title: string; data: NotificationItem[] }[] = [];
+    if (today.length) s.push({ title: "Hôm nay", data: today });
+    if (week.length) s.push({ title: "Tuần này", data: week });
+    if (earlier.length) s.push({ title: "Trước đó", data: earlier });
+    if (!s.length) s.push({ title: "—", data: [] });
+    return s;
+  }, [filtered]);
+
+  const markAllAsRead = () =>
+    setList((prev) => prev.map((n) => ({ ...n, isRead: true })));
+
+  const markOneAsRead = (id: string) =>
+    setList((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     );
-
-    if (diffInHours < 1) {
-      return "Vừa xong";
-    } else if (diffInHours < 24) {
-      return `${diffInHours} giờ trước`;
-    } else {
-      return date.toLocaleDateString("vi-VN");
-    }
-  };
-
-  const unreadCount = notificationList.filter((n) => !n.isRead).length;
 
   return (
-    <SafeAreaView style={themedStyles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.background }]}>
       <StatusBar
-        barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
-        backgroundColor={Colors[colorScheme].background}
+        barStyle={scheme === "dark" ? "light-content" : "dark-content"}
+        backgroundColor="transparent"
+        translucent
       />
 
-      {/* Header */}
-      <View style={themedStyles.header}>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
-          <Ionicons
+      {/* orbs */}
+      <Orbs scheme={scheme} />
+
+      {/* Header gradient mảnh + safe area */}
+      <LinearGradient
+        colors={
+          scheme === "dark" ? ["#0EA5E9", "#6366F1"] : ["#60A5FA", "#A78BFA"]
+        }
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + 6 }]}
+      >
+        <View style={styles.headerRow}>
+          <TouchableOpacity
             onPress={() => router.back()}
-            name="arrow-back"
-            size={24}
-            color={Colors[colorScheme].primary}
-          />
-          <View>
-            <Text style={themedStyles.headerTitle}>Thông báo</Text>
-            {unreadCount > 0 && (
-              <Text style={themedStyles.unreadCount}>
-                {unreadCount} thông báo chưa đọc
-              </Text>
+            activeOpacity={0.85}
+            style={styles.backBtn}
+          >
+            <Ionicons name="chevron-back" size={18} color="#fff" />
+          </TouchableOpacity>
+
+          <View style={{ alignItems: "center", flex: 1 }}>
+            <Text style={styles.headerTitle}>Thông báo</Text>
+            {unreadCount > 0 ? (
+              <Text style={styles.headerSub}>{unreadCount} chưa đọc</Text>
+            ) : (
+              <Text style={styles.headerSub}>Tất cả đã đọc</Text>
             )}
           </View>
+
+          {unreadCount > 0 ? (
+            <TouchableOpacity
+              onPress={markAllAsRead}
+              activeOpacity={0.9}
+              style={styles.readAllBtn}
+            >
+              <Ionicons name="checkmark-done" size={16} color="#111827" />
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 36 }} />
+          )}
         </View>
-        {unreadCount > 0 && (
-          <TouchableOpacity
-            style={themedStyles.markAllButton}
-            onPress={markAllAsRead}
-          >
-            <Text style={themedStyles.markAllText}>Đánh dấu đã đọc</Text>
-          </TouchableOpacity>
-        )}
-      </View>
 
-      <ScrollView
-        style={themedStyles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
-        {notificationList.map((notification) => (
-          <TouchableOpacity
-            key={notification.id}
-            style={themedStyles.notificationCard}
-            onPress={() => markAsRead(notification.id)}
-          >
-            <View style={themedStyles.notificationIcon}>
-              {getNotificationIcon(notification.type)}
-            </View>
-
-            <View style={themedStyles.notificationContent}>
-              <Text
+        {/* Tabs */}
+        <View style={styles.tabRow}>
+          {(["all", "unread"] as const).map((t) => {
+            const active = tab === t;
+            return (
+              <TouchableOpacity
+                key={t}
+                onPress={() => setTab(t)}
+                activeOpacity={0.9}
                 style={[
-                  themedStyles.notificationTitle,
-                  !notification.isRead && themedStyles.unreadTitle,
+                  styles.tabBtn,
+                  {
+                    backgroundColor: active
+                      ? "rgba(255,255,255,0.92)"
+                      : "rgba(255,255,255,0.18)",
+                    borderColor: active
+                      ? "transparent"
+                      : "rgba(255,255,255,0.3)",
+                  },
                 ]}
               >
-                {notification.title}
-              </Text>
-              <Text style={themedStyles.notificationMessage}>
-                {notification.message}
-              </Text>
-              <View style={themedStyles.notificationFooter}>
-                <Clock size={12} color={Colors[colorScheme].mutedForeground} />
-                <Text style={themedStyles.notificationDate}>
-                  {formatDate(notification.date)}
+                <Text
+                  style={[
+                    styles.tabText,
+                    { color: active ? "#111827" : "#fff" },
+                  ]}
+                >
+                  {t === "all" ? "Tất cả" : "Chưa đọc"}
                 </Text>
-                <View style={themedStyles.readStatusIcon}>
-                  {notification.isRead ? (
-                    <Ionicons
-                      name="checkmark-done"
-                      size={16}
-                      color={Colors[colorScheme].accentForeground}
-                    />
-                  ) : (
-                    <Ionicons
-                      name="ellipse"
-                      size={16}
-                      color={Colors[colorScheme].accentForeground}
-                    />
-                  )}
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </LinearGradient>
 
-        {notificationList.length === 0 && (
-          <View style={themedStyles.emptyState}>
-            <Bell size={48} color={Colors[colorScheme].muted} />
-            <Text style={themedStyles.emptyTitle}>Chưa có thông báo</Text>
-            <Text style={themedStyles.emptyMessage}>
-              Bạn sẽ nhận được thông báo về cuộc thi và tác phẩm ở đây
+      {/* List */}
+      <SectionList
+        sections={sections}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <NotificationCard
+            item={item}
+            onPress={() => markOneAsRead(item.id)}
+            onLongPress={() => markOneAsRead(item.id)}
+          />
+        )}
+        renderSectionHeader={({ section }) =>
+          section.title !== "—" ? (
+            <Text style={[styles.sectionTitle, { color: C.mutedForeground }]}>
+              {section.title}
+            </Text>
+          ) : null
+        }
+        contentContainerStyle={{ paddingBottom: insets.bottom + 12 }}
+        stickySectionHeadersEnabled={false}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Ionicons
+              name="notifications-off-outline"
+              size={48}
+              color={C.muted}
+            />
+            <Text style={[styles.emptyTitle, { color: C.muted }]}>
+              Chưa có thông báo
+            </Text>
+            <Text style={[styles.emptyMsg, { color: C.mutedForeground }]}>
+              Khi có cuộc thi mới, kết quả, hay cập nhật hệ thống, mình sẽ báo
+              ngay tại đây.
             </Text>
           </View>
-        )}
-      </ScrollView>
+        }
+        showsVerticalScrollIndicator={false}
+      />
     </SafeAreaView>
   );
 }
 
-function getThemedStyles(scheme: "light" | "dark") {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: Colors[scheme].background,
-    },
-    header: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      backgroundColor: Colors[scheme].card,
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: Colors[scheme].border,
-    },
-    headerTitle: {
-      fontSize: 28,
-      fontWeight: "bold",
-      color: Colors[scheme].cardForeground,
-    },
-    unreadCount: {
-      fontSize: 14,
-      color: Colors[scheme].destructive,
-      marginTop: 2,
-    },
-    markAllButton: {
-      backgroundColor: Colors[scheme].primary,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
-    },
-    markAllText: {
-      color: Colors[scheme].primaryForeground,
-      fontSize: 12,
-      fontWeight: "600",
-    },
-    scrollView: {
-      flex: 1,
-      paddingTop: 8,
-    },
-    notificationCard: {
-      backgroundColor: Colors[scheme].card,
-      marginHorizontal: 5,
-      marginBottom: 6,
-      borderRadius: 6,
-      padding: 16,
-      flexDirection: "row",
-      alignItems: "flex-start",
-      shadowColor: "#000",
-      shadowOffset: {
-        width: 0,
-        height: 1,
-      },
-      shadowOpacity: 0.05,
-      shadowRadius: 3,
-      elevation: 1,
-      borderWidth: 0.8,
-      borderColor: Colors[scheme].border,
-    },
-    // unreadCard removed, replaced with icon indicator
-    notificationIcon: {
-      marginRight: 12,
-      marginTop: 2,
-    },
-    notificationContent: {
-      flex: 1,
-    },
-    notificationTitle: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: Colors[scheme].foreground,
-      marginBottom: 4,
-    },
-    unreadTitle: {
-      fontWeight: "bold",
-      color: Colors[scheme].cardForeground,
-    },
-    notificationMessage: {
-      fontSize: 14,
-      color: Colors[scheme].mutedForeground,
-      lineHeight: 20,
-      marginBottom: 8,
-    },
-    notificationFooter: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    notificationDate: {
-      fontSize: 12,
-      color: Colors[scheme].mutedForeground,
-      marginLeft: 4,
-    },
-    // unreadDot removed, replaced with icon indicator
-    readStatusIcon: {
-      marginLeft: 8,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    emptyState: {
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: 60,
-      paddingHorizontal: 40,
-    },
-    emptyTitle: {
-      fontSize: 18,
-      fontWeight: "bold",
-      color: Colors[scheme].muted,
-      marginTop: 16,
-      marginBottom: 8,
-    },
-    emptyMessage: {
-      fontSize: 14,
-      color: Colors[scheme].mutedForeground,
-      textAlign: "center",
-      lineHeight: 20,
-    },
-  });
-}
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+
+  /* orbs */
+  orb: {
+    position: "absolute",
+    borderRadius: 9999,
+  },
+
+  /* header */
+  header: {
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  headerRow: { flexDirection: "row", alignItems: "center" },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.35)",
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "900",
+    letterSpacing: 0.2,
+  },
+  headerSub: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 12.5,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  readAllBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.9)",
+  },
+  tabRow: { flexDirection: "row", gap: 8, marginTop: 10, paddingHorizontal: 2 },
+  tabBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  tabText: { fontSize: 12.5, fontWeight: "900", letterSpacing: 0.3 },
+
+  sectionTitle: {
+    marginTop: 10,
+    marginBottom: 4,
+    marginHorizontal: 12,
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+
+  empty: { alignItems: "center", paddingVertical: 80, paddingHorizontal: 32 },
+  emptyTitle: { marginTop: 10, fontSize: 16, fontWeight: "900" },
+  emptyMsg: {
+    marginTop: 6,
+    fontSize: 13.5,
+    lineHeight: 20,
+    textAlign: "center",
+  },
+});

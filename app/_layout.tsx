@@ -137,6 +137,8 @@ export default function RootLayout() {
                 options={{ headerShown: false }}
               />
             </Stack>
+    
+
             <Toaster richColors />
           </ThemeProvider>
         </QueryClientProvider>
