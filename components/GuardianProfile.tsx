@@ -51,6 +51,9 @@ const pickGrad = (seed?: string): [string, string] => {
   return VIVID_POOLS[i];
 };
 
+/** Header brand color */
+const BRAND = "#dd504b";
+
 export default function GuardianProfileComponent() {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -162,23 +165,21 @@ export default function GuardianProfileComponent() {
   if (isLoading) {
     return (
       <SafeAreaView style={s.container}>
-        <LinearGradient
-          colors={pickGrad("guardian-loading")}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[s.topbarGrad, { borderBottomColor: C.border }]}
+        {/* Solid brand header (loading) */}
+        <View
+          style={[
+            s.topbar,
+            { backgroundColor: BRAND, borderBottomColor: C.border },
+          ]}
         >
           <Text style={s.headerTitle}>Hồ sơ</Text>
           <View style={{ flexDirection: "row" }}>
             <TouchableOpacity style={s.iconBtn}>
-              <Ionicons
-                name="notifications-outline"
-                size={22}
-                color={C.primaryForeground}
-              />
+              <Ionicons name="notifications-outline" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
-        </LinearGradient>
+        </View>
+
         <View style={s.loaderWrap}>
           <Ionicons name="person-circle-outline" size={80} color={C.muted} />
           <Text style={s.loaderText}>Đang tải hồ sơ...</Text>
@@ -190,14 +191,16 @@ export default function GuardianProfileComponent() {
   if (!accessToken || !user) {
     return (
       <SafeAreaView style={s.container}>
-        <LinearGradient
-          colors={pickGrad("guardian-auth")}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[s.topbarGrad, { borderBottomColor: C.border }]}
+        {/* Solid brand header (unauth) */}
+        <View
+          style={[
+            s.topbar,
+            { backgroundColor: BRAND, borderBottomColor: C.border },
+          ]}
         >
           <Text style={s.headerTitle}>Hồ sơ</Text>
-        </LinearGradient>
+        </View>
+
         <View style={s.authWrap}>
           <Ionicons name="person-circle-outline" size={80} color={C.muted} />
           <Text style={s.authTitle}>Bạn chưa đăng nhập</Text>
@@ -218,12 +221,12 @@ export default function GuardianProfileComponent() {
 
   return (
     <SafeAreaView style={s.container}>
-      {/* Top bar with gradient */}
-      <LinearGradient
-        colors={pickGrad("guardian-topbar")}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={[s.topbarGrad, { borderBottomColor: C.border }]}
+      {/* Solid brand header (main) */}
+      <View
+        style={[
+          s.topbar,
+          { backgroundColor: BRAND, borderBottomColor: C.border },
+        ]}
       >
         <Text style={s.headerTitle}>Hồ sơ phụ huynh</Text>
         <View style={{ flexDirection: "row" }}>
@@ -231,26 +234,18 @@ export default function GuardianProfileComponent() {
             onPress={() => router.push("/notifications")}
             style={s.iconBtn}
           >
-            <Ionicons
-              name="notifications-outline"
-              size={25}
-              color={C.primaryForeground}
-            />
+            <Ionicons name="notifications-outline" size={25} color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push("/setting")}
             style={s.iconBtn}
           >
-            <Ionicons
-              name="settings-outline"
-              size={25}
-              color={C.primaryForeground}
-            />
+            <Ionicons name="settings-outline" size={25} color="#fff" />
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
 
-      {/* Background blobs */}
+      {/* Background blobs (giữ nguyên) */}
       <LinearGradient
         colors={["#a78bfa22", "#60a5fa16"]}
         start={{ x: 0, y: 0 }}
@@ -318,7 +313,7 @@ export default function GuardianProfileComponent() {
           </View>
         </View>
 
-        {/* ✅ GuardianTabs mới: slider dưới, không nền bọc */}
+  
         <GuardianTabs
           C={C}
           activeTab={activeTab}
@@ -476,19 +471,19 @@ const styles = (C: ColorTokens) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: C.background },
 
-    topbarGrad: {
+    /** New solid topbar (replaces topbarGrad) */
+    topbar: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
       paddingHorizontal: 16,
-      paddingVertical: 22,
+      paddingVertical: 10,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: "transparent",
     },
     headerTitle: {
-      fontSize: 25,
+      fontSize: 20,
       fontWeight: "bold",
-      color: C.primaryForeground,
+      color: "#fff",
     },
     iconBtn: { padding: 8, marginLeft: 4 },
 

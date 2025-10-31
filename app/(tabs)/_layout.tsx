@@ -1,48 +1,49 @@
 // app/(tabs)/_layout.tsx
-import { Colors } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
 import { Tabs } from "expo-router";
-import React, { memo } from "react";
+import React, { memo, useEffect } from "react";
 import {
   Dimensions,
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   View,
 } from "react-native";
 import Animated, {
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+/* ===== Palette ===== */
+const ACCENT = "#E25752"; // cam nhạt (active)
+const INACTIVE_GRAY = "#6B7280"; // xám (inactive)
+const WHITE = "#FFFFFF"; // nền
+const BORDER = "#E5E7EB"; // viền nhạt
 const { width } = Dimensions.get("window");
-const COLS = 3;
-const ITEM_W = width / COLS;
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
-        tabBarInactiveTintColor: Colors[colorScheme ?? "light"].mutedForeground,
+        tabBarActiveTintColor: ACCENT,
+        tabBarInactiveTintColor: INACTIVE_GRAY,
       }}
       backBehavior="history"
-      tabBar={(props) => <WhitePillTabBar {...props} />}
+      tabBar={(p) => <EdgeTabBar {...p} />}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Home",
           tabBarIcon: ({ color }) => (
-            <Ionicons name="home" size={26} color={color} />
+            <Ionicons name="home" size={22} color={color} />
           ),
         }}
       />
@@ -51,7 +52,7 @@ export default function TabLayout() {
         options={{
           title: "Contests",
           tabBarIcon: ({ color }) => (
-            <Ionicons name="brush" size={26} color={color} />
+            <Ionicons name="brush" size={22} color={color} />
           ),
         }}
       />
@@ -60,7 +61,7 @@ export default function TabLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color }) => (
-            <Ionicons name="person" size={26} color={color} />
+            <Ionicons name="person" size={22} color={color} />
           ),
         }}
       />
@@ -68,215 +69,171 @@ export default function TabLayout() {
   );
 }
 
-/* ------------ White pill wraps all 3 icons ------------ */
-const WhitePillTabBar = memo(function WhitePillTabBar({
+/* ================= Compact Edge TabBar ================= */
+const EdgeTabBar = memo(function EdgeTabBar({
   state,
   descriptors,
   navigation,
 }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const active = Colors[colorScheme ?? "light"].tint;
-  const inactive = Colors[colorScheme ?? "light"].mutedForeground;
+  const count = state.routes.length;
+  const ITEM_W = width / count;
+
+  const idx = useSharedValue(state.index);
+  useEffect(() => {
+    idx.value = withSpring(state.index, {
+      damping: 18,
+      stiffness: 220,
+      mass: 0.35,
+    });
+  }, [state.index]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: idx.value * ITEM_W }],
+  }));
 
   return (
-    <View
-      style={[styles.barWrap, { paddingBottom: insets.bottom || 0 }]}
-      pointerEvents="box-none"
-    >
-      {/* Nền trắng chung (pill) */}
-      <View style={styles.pill}>
-        <View style={styles.row}>
-          {state.routes.map((route, index) => {
-            const { options } = descriptors[route.key]!;
-            const isFocused = state.index === index;
+    <View style={[styles.bar, { paddingBottom: (insets.bottom || 8) * 0.8 }]}>
+      {/* gạch chân active (mảnh hơn) */}
+      <Animated.View
+        style={[
+          styles.indicator,
+          { width: ITEM_W - 20 /* chừa 10px mỗi bên */ },
+          indicatorStyle,
+        ]}
+      />
+      <View style={styles.row}>
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key]!;
+          const focused = state.index === index;
 
-            const onPress = () => {
-              Haptics.selectionAsync();
-              const event = navigation.emit({
-                type: "tabPress",
-                target: route.key,
-                canPreventDefault: true,
-              });
-              if (!isFocused && !event.defaultPrevented)
-                navigation.navigate(route.name, route.params);
-            };
-            const onLongPress = () => {
-              navigation.emit({ type: "tabLongPress", target: route.key });
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            };
+          const onPress = () => {
+            Haptics.selectionAsync();
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!focused && !event.defaultPrevented)
+              navigation.navigate(route.name, route.params);
+          };
+          const onLongPress = () => {
+            navigation.emit({ type: "tabLongPress", target: route.key });
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          };
 
-            return (
-              <TabButton
-                key={route.key}
-                isFocused={isFocused}
-                onPress={onPress}
-                onLongPress={onLongPress}
-                renderIcon={
-                  options.tabBarIcon
-                    ? (p) => options.tabBarIcon!({ ...p, size: 26 } as any)
-                    : undefined
-                }
-                activeColor={
-                  (options.tabBarActiveTintColor as string) ?? active
-                }
-                inactiveColor={
-                  (options.tabBarInactiveTintColor as string) ?? inactive
-                }
-              />
-            );
-          })}
-        </View>
+          return (
+            <TabButton
+              key={route.key}
+              width={ITEM_W}
+              focused={focused}
+              title={(options.title as string) ?? route.name}
+              onPress={onPress}
+              onLongPress={onLongPress}
+              renderIcon={
+                options.tabBarIcon
+                  ? (p) => options.tabBarIcon!({ ...p, size: 22 } as any)
+                  : undefined
+              }
+            />
+          );
+        })}
       </View>
     </View>
   );
 });
 
-type ButtonProps = {
-  isFocused: boolean;
+type TBtnProps = {
+  width: number;
+  focused: boolean;
+  title: string;
   onPress: () => void;
   onLongPress?: () => void;
   renderIcon?: (p: { color: string; focused: boolean }) => React.ReactNode;
-  activeColor: string;
-  inactiveColor: string;
 };
 
 const TabButton = ({
-  isFocused,
+  width,
+  focused,
+  title,
   onPress,
   onLongPress,
   renderIcon,
-  activeColor,
-  inactiveColor,
-}: ButtonProps) => {
-  const bump = useAnimatedStyle(() => ({
+}: TBtnProps) => {
+  const aStyle = useAnimatedStyle(() => ({
     transform: [
       {
-        translateY: withSpring(isFocused ? -10 : 0, {
-          damping: 14,
-          stiffness: 160,
+        translateY: withSpring(focused ? -1 : 0, {
+          damping: 16,
+          stiffness: 220,
         }),
       },
       {
-        scale: withSpring(isFocused ? 1.12 : 1, {
-          damping: 14,
-          stiffness: 180,
-        }),
+        scale: withSpring(focused ? 1.04 : 1, { damping: 16, stiffness: 220 }),
       },
     ],
+    opacity: withTiming(focused ? 1 : 0.85, { duration: 140 }),
   }));
-
-  const glow = useAnimatedStyle(() => ({
-    opacity: withTiming(isFocused ? 0.65 : 0, { duration: 220 }),
-    transform: [{ scale: withTiming(isFocused ? 1 : 0.7, { duration: 220 }) }],
-  }));
-
-  const dot = useAnimatedStyle(() => ({
-    opacity: withTiming(isFocused ? 1 : 0, { duration: 220 }),
-    transform: [
-      { translateY: withTiming(isFocused ? 0 : 6, { duration: 220 }) },
-    ],
-  }));
-
-  const color = isFocused ? activeColor : inactiveColor;
 
   return (
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
-      style={({ pressed }) => [styles.item, pressed && { opacity: 0.9 }]}
-      hitSlop={8}
+      android_ripple={{ color: "rgba(0,0,0,0.05)", borderless: true }}
+      style={({ pressed }) => [
+        styles.item,
+        { width },
+        pressed && Platform.select({ ios: { opacity: 0.92 } }),
+      ]}
+      hitSlop={6}
     >
-      {/* Glow nhiều màu (nhẹ – nằm trong pill trắng) */}
-      <Animated.View style={[styles.glowWrap, glow]}>
-        <LinearGradient
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          colors={[
-            "#FF7A7A",
-            "#FFB86C",
-            "#FFE56C",
-            "#7CFF8C",
-            "#6CE8FF",
-            "#8A7CFF",
-            "#FF7AF2",
-          ]}
-          style={styles.glow}
-        />
+      <Animated.View style={aStyle}>
+        {renderIcon
+          ? renderIcon({ color: focused ? ACCENT : INACTIVE_GRAY, focused })
+          : null}
       </Animated.View>
-
-      {/* Icon trực tiếp */}
-      <Animated.View style={bump}>
-        {renderIcon ? renderIcon({ color, focused: isFocused }) : null}
-      </Animated.View>
-
-      {/* Chấm active */}
-      <Animated.View style={[styles.dot, dot]} />
+      <Text style={styles.label} numberOfLines={1}>
+        {title}
+      </Text>
     </Pressable>
   );
 };
 
-/* ---------------------------- Styles ---------------------------- */
+/* ============================= Styles ============================= */
 const styles = StyleSheet.create({
-  barWrap: {
+  bar: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "transparent",
-    paddingTop: 2,
-    paddingHorizontal: 12,
-  },
-  // Pill trắng bọc 3 icon
-  pill: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    paddingVertical: 4,
-    paddingHorizontal: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    backgroundColor: WHITE, // nền trắng
+    paddingTop: 6,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: BORDER,
   },
   row: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
   },
   item: {
-    width: ITEM_W - 24, // nhỏ hơn chút để chừa padding pill
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 6,
+    paddingVertical: 4, // nhỏ hơn
+    gap: 1,
   },
-  glowWrap: {
+  label: {
+    fontSize: 10, // nhỏ hơn
+    fontWeight: "700",
+    letterSpacing: 0.15,
+    color: INACTIVE_GRAY, // chữ xám
+  },
+  indicator: {
     position: "absolute",
-    top: -6,
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: -1,
-    ...Platform.select({ android: { elevation: 0 } }),
-  },
-  glow: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    opacity: 0.9,
-    shadowColor: "#8A7CFF",
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 0,
-  },
-  dot: {
-    marginTop: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#8A7CFF",
+    bottom: 5,
+    left: 10,
+    height: 2, // mảnh hơn
+    backgroundColor: ACCENT, // gạch chân cam nhạt
+    borderRadius: 2,
   },
 });

@@ -113,7 +113,7 @@ export default function RootLayout() {
               />
               <Stack.Screen
                 name="painting-upload"
-                options={{ title: "Bài vẽ dự thi", headerShown: true }}
+                options={{ title: "Bài vẽ dự thi", headerShown: false }}
               />
               <Stack.Screen
                 name="painting-evaluation-round1"
@@ -137,7 +137,6 @@ export default function RootLayout() {
                 options={{ headerShown: false }}
               />
             </Stack>
-    
 
             <Toaster richColors />
           </ThemeProvider>
