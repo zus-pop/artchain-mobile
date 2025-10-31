@@ -23,9 +23,9 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useWhoAmI } from "@/apis/auth";
 import { useExaminerContest } from "@/apis/contest";
 import { useAuthStore } from "@/store/auth-store";
-import type { Contest } from "@/types";
+import type { Contest, Schedule } from "@/types";
 import type { ColorTokens, KPIProps } from "@/types/tabkey";
-import { formatDateDisplay } from "@/utils/date";
+import { useSchedules } from "../apis/schedule";
 import ContestCardForTab from "./cards/ContestCardForTab";
 import ScheduleCard from "./cards/ScheduleCard";
 import EmptyTab from "./tabs/EmptyTab";
@@ -75,7 +75,7 @@ export default function ExaminerProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       reloadMe();
-    }, [])
+    }, [reloadMe])
   );
 
   // KPIs
@@ -107,36 +107,7 @@ export default function ExaminerProfileScreen() {
   );
 
   // Schedules demo
-  const schedules = useMemo(
-    () => [
-      {
-        id: "s1",
-        title: "Đánh giá vòng sơ loại - Vẽ Sài Gòn Xanh",
-        date: "2024-12-20",
-        time: "09:00 - 12:00",
-        location: "Trung tâm Văn hóa Quận 1",
-        status: "upcoming" as const,
-      },
-      {
-        id: "s2",
-        title: "Hội đồng giám khảo - Nghệ thuật đường phố",
-        date: "2024-12-22",
-        time: "14:00 - 17:00",
-        location: "Công viên Tao Đàn",
-        status: "upcoming" as const,
-      },
-      {
-        id: "s3",
-        title: "Công bố kết quả - Thiết kế poster",
-        date: "2024-12-15",
-        time: "10:00 - 11:00",
-        location: "Online",
-        status: "completed" as const,
-      },
-    ],
-    []
-  );
-
+  const { data: schedules } = useSchedules(user?.userId);
   /* ---------- Inline components using user/C ---------- */
 
   function TopBar({
@@ -378,7 +349,6 @@ export default function ExaminerProfileScreen() {
           style={[
             s.kpiCard,
             {
-              
               backgroundColor: C.card,
               shadowColor: "#000",
               borderColor: C.border,
@@ -451,22 +421,25 @@ export default function ExaminerProfileScreen() {
             )
           ) : (
             <>
-              {schedules.length > 0 ? (
+              {schedules?.data && schedules.data.length > 0 ? (
+                // Group schedules by date
                 Object.entries(
-                  schedules.reduce(
-                    (groups: Record<string, typeof schedules>, sch) => {
-                      if (!groups[sch.date]) groups[sch.date] = [];
-                      groups[sch.date].push(sch);
-                      return groups;
-                    },
-                    {}
-                  )
+                  schedules.data.reduce((groups, schedule) => {
+                    const dateKey = schedule.date.toString().split("T")[0]; // Use date string, normalize to YYYY-MM-DD format
+                    if (!groups[dateKey]) {
+                      groups[dateKey] = [];
+                    }
+                    groups[dateKey].push(schedule);
+                    return groups;
+                  }, {} as Record<string, Schedule[]>)
                 )
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([date, daySchedules]) => {
-                    const [g0, g1] = pickGrad(date);
+                  .sort(
+                    ([a], [b]) => new Date(a).getTime() - new Date(b).getTime()
+                  )
+                  .map(([dateKey, daySchedules]) => {
+                    const [g0, g1] = pickGrad(dateKey);
                     return (
-                      <View key={date} style={{ marginBottom: 24 }}>
+                      <View key={dateKey} style={{ marginBottom: 24 }}>
                         <View
                           style={{
                             flexDirection: "row",
@@ -492,7 +465,12 @@ export default function ExaminerProfileScreen() {
                               color: C.foreground,
                             }}
                           >
-                            {formatDateDisplay(date)}
+                            {new Date(dateKey).toLocaleDateString("vi-VN", {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}
                           </Text>
                           <Text
                             style={{
@@ -507,9 +485,16 @@ export default function ExaminerProfileScreen() {
 
                         <View style={{ gap: 12 }}>
                           {daySchedules
-                            .sort((a, b) => a.time.localeCompare(b.time))
-                            .map((item) => (
-                              <ScheduleCard key={item.id} item={item} C={C} />
+                            .sort(
+                              (a, b) =>
+                                a.createdAt.getTime() - b.createdAt.getTime()
+                            )
+                            .map((schedule) => (
+                              <ScheduleCard
+                                key={schedule.scheduleId}
+                                schedule={schedule}
+                                C={C}
+                              />
                             ))}
                         </View>
                       </View>

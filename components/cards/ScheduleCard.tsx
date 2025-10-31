@@ -1,3 +1,4 @@
+import type { Schedule } from "@/types";
 import type { ColorTokens } from "@/types/tabkey";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -12,18 +13,9 @@ import {
   ViewStyle,
 } from "react-native";
 
-type Schedule = {
-  id: string;
-  title: string;
-  date: string; // "YYYY-MM-DD"
-  time: string; // "09:00 - 12:00"
-  location: string;
-  status: "upcoming" | "completed" | string;
-};
-
 type Props = {
   C: ColorTokens;
-  item: Schedule;
+  schedule: Schedule;
   style?: ViewStyle;
   titleStyle?: TextStyle;
   onPress?: () => void;
@@ -63,16 +55,10 @@ function pickGradById(id: string, title: string) {
 }
 
 function getStatusMeta(status: Schedule["status"], baseGrad: [string, string]) {
-  if (status === "upcoming")
+  if (status === "ACTIVE")
     return {
-      label: "Sắp diễn ra",
-      icon: "time-outline" as const,
-      grad: baseGrad,
-    };
-  if (status === "completed")
-    return {
-      label: "Hoàn thành",
-      icon: "checkmark-done-outline" as const,
+      label: "Đang hoạt động",
+      icon: "play-circle-outline" as const,
       grad: baseGrad,
     };
   return {
@@ -83,10 +69,20 @@ function getStatusMeta(status: Schedule["status"], baseGrad: [string, string]) {
 }
 
 /* -------------------- Component -------------------- */
-function ScheduleCardRainbow({ C, item, style, titleStyle, onPress }: Props) {
-  const { day, monthShort, weekdayShort } = formatDateParts(item.date);
-  const baseGrad = pickGradById(item.id, item.title);
-  const status = getStatusMeta(item.status, baseGrad);
+function ScheduleCardRainbow({
+  C,
+  schedule,
+  style,
+  titleStyle,
+  onPress,
+}: Props) {
+  const date = new Date(schedule.date); // Convert date string to Date object
+  const baseGrad = pickGradById(String(schedule.scheduleId), schedule.task);
+  const status = getStatusMeta(schedule.status, baseGrad);
+  const timeString = date.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return (
     <Pressable
@@ -99,131 +95,56 @@ function ScheduleCardRainbow({ C, item, style, titleStyle, onPress }: Props) {
         style,
       ]}
     >
-      {/* Card container với glass effect */}
-      <View style={[styles.card]}>
-        {/* lớp kính mờ */}
-        <View
-          style={[
-            styles.glass,
-            { backgroundColor: C.muted + "22", borderColor: C.muted + "33" },
-          ]}
-        />
+      <LinearGradient
+        colors={[status.grad[0] + "20", status.grad[1] + "15"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.card}
+      >
+        <View style={styles.left}>
+          <View style={[styles.dateBox, { backgroundColor: status.grad[0] }]}>
+            <Text style={[styles.day, { color: "#FFFFFF" }]}>
+              {date.getDate()}
+            </Text>
+            <Text style={[styles.month, { color: "#FFFFFFCC" }]}>
+              {date
+                .toLocaleString("vi-VN", { month: "short" })
+                .replace(".", "")}
+            </Text>
+          </View>
+          {/* <View style={styles.timeBox}>
+            <Ionicons name="time-outline" size={14} color={status.grad[0]} />
+            <Text style={[styles.time, { color: C.foreground }]}>
+              {timeString}
+            </Text>
+          </View> */}
+        </View>
 
-        {/* blobs trang trí */}
-        <LinearGradient
-          colors={[baseGrad[0] + "55", baseGrad[1] + "33"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.blobTL}
-        />
-        <LinearGradient
-          colors={["#fca5a5" + "40", "#fde68a" + "40"]}
-          start={{ x: 1, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.blobBR}
-        />
-
-        {/* Thanh nhấn cạnh trái đa sắc */}
-        <LinearGradient
-          colors={[baseGrad[0], baseGrad[1]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.accent}
-        />
-
-        {/* Nội dung */}
-        <View style={{ padding: 16 }}>
-          <View style={styles.topRow}>
-            {/* Ô ngày pastel */}
-            <LinearGradient
-              colors={[baseGrad[0] + "2A", baseGrad[1] + "2A"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.dateBox}
+        <View style={styles.right}>
+          <Text
+            style={[styles.title, { color: C.foreground }, titleStyle]}
+            numberOfLines={2}
+          >
+            {schedule.task}
+          </Text>
+          <View style={styles.meta}>
+            <View
+              style={[
+                styles.statusBadge,
+                { backgroundColor: status.grad[0] + "25" },
+              ]}
             >
-              <Text style={[styles.weekday, { color: C.mutedForeground }]}>
-                {weekdayShort}
+              <Ionicons name={status.icon} size={12} color={status.grad[0]} />
+              <Text style={[styles.statusText, { color: status.grad[0] }]}>
+                {status.label}
               </Text>
-              <Text style={[styles.day, { color: C.foreground }]}>{day}</Text>
-              <Text style={[styles.month, { color: C.mutedForeground }]}>
-                {monthShort}
-              </Text>
-            </LinearGradient>
-
-            {/* Tiêu đề + pill trạng thái gradient */}
-            <View style={styles.titleCol}>
-              <View style={styles.headerRow}>
-                <Text
-                  style={[styles.title, { color: C.foreground }, titleStyle]}
-                  numberOfLines={2}
-                >
-                  {item.title}
-                </Text>
-                <LinearGradient
-                  colors={[status.grad[0], status.grad[1]]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.statusPill}
-                >
-                  <Ionicons
-                    name={status.icon}
-                    size={14}
-                    color="#fff"
-                    style={{ marginRight: 6 }}
-                  />
-                  <Text style={styles.statusTextWhite}>{status.label}</Text>
-                </LinearGradient>
-              </View>
-
-              {/* Chips: giờ & địa điểm (viền gradient) */}
-              <View style={styles.metaRow}>
-                <View style={styles.chipWrap}>
-                  <LinearGradient
-                    colors={[baseGrad[0], baseGrad[1]]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.chipBorder}
-                  />
-                  <View style={[styles.chip, { backgroundColor: C.card }]}>
-                    <Ionicons
-                      name="time-outline"
-                      size={15}
-                      color={C.mutedForeground}
-                    />
-                    <Text
-                      style={[styles.chipText, { color: C.mutedForeground }]}
-                    >
-                      {item.time}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.chipWrap}>
-                  <LinearGradient
-                    colors={[baseGrad[1], baseGrad[0]]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.chipBorder}
-                  />
-                  <View style={[styles.chip, { backgroundColor: C.card }]}>
-                    <Ionicons
-                      name="location-outline"
-                      size={15}
-                      color={C.mutedForeground}
-                    />
-                    <Text
-                      style={[styles.chipText, { color: C.mutedForeground }]}
-                      numberOfLines={1}
-                    >
-                      {item.location}
-                    </Text>
-                  </View>
-                </View>
-              </View>
             </View>
+            <Text style={[styles.contestId, { color: C.mutedForeground }]}>
+              Cuộc thi #{schedule.contestId}
+            </Text>
           </View>
         </View>
-      </View>
+      </LinearGradient>
     </Pressable>
   );
 }
@@ -236,16 +157,15 @@ const R = 22;
 const styles = StyleSheet.create({
   wrapper: {
     borderRadius: R,
-    shadowOpacity: 0.09,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
     overflow: Platform.select({ android: "hidden", ios: "visible" }),
   },
   card: {
     borderRadius: R,
     backgroundColor: "transparent",
     overflow: "hidden",
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 120,
   },
   glass: {
     ...StyleSheet.absoluteFillObject,
@@ -283,12 +203,12 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: "row", alignItems: "stretch" },
 
   dateBox: {
-    width: 74,
-    borderRadius: 16,
-    paddingVertical: 10,
+    width: 70,
+    height: 70,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 14,
+    marginBottom: 4,
   },
   weekday: { fontSize: 11, fontWeight: "700", opacity: 0.9 },
   day: { fontSize: 28, fontWeight: "900", lineHeight: 32, marginVertical: 2 },
@@ -302,7 +222,12 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 8,
   },
-  title: { flex: 1, fontSize: 17, fontWeight: "900", letterSpacing: 0.2 },
+  title: {
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+    lineHeight: 20,
+  },
 
   statusPill: {
     flexShrink: 0,
@@ -337,4 +262,52 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   chipText: { fontSize: 13, fontWeight: "700" },
+
+  left: {
+    padding: 16,
+    paddingRight: 12,
+    alignItems: "center",
+    minWidth: 90,
+  },
+  right: {
+    flex: 1,
+    padding: 16,
+    paddingLeft: 12,
+    justifyContent: "center",
+  },
+  timeBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    justifyContent: "center",
+  },
+  time: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginLeft: 4,
+  },
+
+  meta: {
+    marginTop: 12,
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: 6,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginLeft: 4,
+  },
+  contestId: {
+    fontSize: 12,
+    fontWeight: "500",
+    opacity: 0.8,
+  },
 });
