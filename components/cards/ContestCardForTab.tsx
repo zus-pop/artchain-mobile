@@ -20,6 +20,7 @@ type Contest = {
   endDate: string | Date;
   status: "ACTIVE" | "COMPLETED" | string;
   category?: string;
+  examinerRole?: "ROUND_1" | "REVIEW_ROUND_1" | "ROUND_2";
 };
 
 type Props = {
@@ -102,6 +103,45 @@ function categoryColors(category?: string) {
   };
 }
 
+function examinerRoleMeta(role?: Contest["examinerRole"]) {
+  if (!role) return null;
+
+  switch (role) {
+    case "ROUND_1":
+      return {
+        label: "Vai trò: Chấm vòng 1",
+        icon: "medal-outline" as const,
+        grad: ["#fbbf24", "#f59e0b"],
+        fg: "#92400e",
+        softBg: "rgba(245,158,11,0.14)",
+      };
+    case "REVIEW_ROUND_1":
+      return {
+        label: "Vai trò: Chấm lại vòng 1",
+        icon: "eye-outline" as const,
+        grad: ["#8b5cf6", "#a855f7"],
+        fg: "#581c87",
+        softBg: "rgba(139,92,246,0.14)",
+      };
+    case "ROUND_2":
+      return {
+        label: "Vai trò: Chấm vòng 2",
+        icon: "trophy-outline" as const,
+        grad: ["#ef4444", "#dc2626"],
+        fg: "#7f1d1d",
+        softBg: "rgba(239,68,68,0.14)",
+      };
+    default:
+      return {
+        label: "Vai trò: " + String(role),
+        icon: "help-circle-outline" as const,
+        grad: ["#6b7280", "#4b5563"],
+        fg: "#374151",
+        softBg: "rgba(107,114,128,0.14)",
+      };
+  }
+}
+
 /* -------------------- Component -------------------- */
 function ContestCardColorful({
   C,
@@ -115,6 +155,7 @@ function ContestCardColorful({
   const { pct, daysLeft } = calcProgress(contest.startDate, contest.endDate);
   const isActive = contest.status === "ACTIVE";
   const cat = categoryColors(contest.category);
+  const examinerMeta = examinerRoleMeta(contest.examinerRole);
 
   return (
     <Pressable
@@ -267,6 +308,26 @@ function ContestCardColorful({
                   numberOfLines={1}
                 >
                   {contest.category}
+                </Text>
+              </LinearGradient>
+            </View>
+          )}
+
+          {/* Examiner Role chip */}
+          {examinerMeta && (
+            <View style={[styles.categoryRow]}>
+              <LinearGradient
+                colors={examinerMeta.grad as [string, string]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.categoryChip}
+              >
+                <Ionicons name={examinerMeta.icon} size={14} color="#ffffff" />
+                <Text
+                  style={[styles.categoryText, { color: "#ffffff" }]}
+                  numberOfLines={1}
+                >
+                  {examinerMeta.label}
                 </Text>
               </LinearGradient>
             </View>

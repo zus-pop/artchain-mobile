@@ -116,8 +116,16 @@ export default function RootLayout() {
                 options={{ title: "Bài vẽ dự thi", headerShown: true }}
               />
               <Stack.Screen
-                name="painting-evaluation"
+                name="painting-evaluation-round1"
                 options={{ title: "Chấm bài", headerShown: false }}
+              />
+              <Stack.Screen
+                name="painting-evaluation-round2"
+                options={{ title: "Chấm bài", headerShown: false }}
+              />
+              <Stack.Screen
+                name="painting-review-round1"
+                options={{ headerShown: false }}
               />
               <Stack.Screen
                 name="contest-paintings"

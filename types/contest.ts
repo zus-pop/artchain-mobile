@@ -9,6 +9,7 @@ export interface Contest {
   status: ContestStatus;
   createdBy: string;
   roundId: string;
+  examinerRole: ExaminerRole;
 }
 
 export interface ContestFilter {
@@ -22,3 +23,5 @@ export type ContestStatus =
   | "COMPLETED"
   | "DRAFT"
   | "ALL";
+
+export type ExaminerRole = "ROUND_1" | "REVIEW_ROUND_1" | "ROUND_2";

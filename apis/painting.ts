@@ -1,10 +1,12 @@
 import myAxios from "@/constants/custom-axios";
 import {
-  EvaluationRequest,
   Painting,
   PaintingEvaluation,
   PaintingFilter,
   PaintingUploadRequest,
+  ReviewRound1EvaluationRequest,
+  Round1EvaluationRequest,
+  Round2EvaluationRequest,
 } from "@/types";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AxiosError } from "axios";
@@ -26,6 +28,14 @@ export function useGetPaintings(filters: PaintingFilter) {
 
   if (filters.contestId) {
     params.contestId = filters.contestId;
+  }
+
+  if (filters.roundName) {
+    params.roundName = filters.roundName;
+  }
+
+  if (filters.is_passed) {
+    params.is_passed = filters.is_passed;
   }
   return useQuery({
     queryKey: ["paintings", filters],
@@ -72,16 +82,62 @@ export function useUploadPainting() {
   });
 }
 
-export function useEvaluatePainting() {
+export function useEvaluationPaintingRound1() {
   return useMutation({
-    mutationFn: async (evaluationRequest: EvaluationRequest) => {
+    mutationFn: async (evaluationRequest: Round1EvaluationRequest) => {
+      const response = await myAxios.post(
+        "/paintings/evaluate/preliminary",
+        evaluationRequest
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success("Chấm bài thành công");
+      router.back();
+    },
+    onError: (error) => {
+      let message = error.message;
+      if (error instanceof AxiosError) {
+        message = error.response?.data.message;
+      }
+      toast.error(message);
+    },
+  });
+}
+
+export function useReviewEvaluationRound1() {
+  return useMutation({
+    mutationFn: async (evaluationRequest: ReviewRound1EvaluationRequest) => {
+      const response = await myAxios.post(
+        "/paintings/batch/preliminary-review",
+        evaluationRequest
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success("Chấm bài thành công");
+      router.back();
+    },
+    onError: (error) => {
+      let message = error.message;
+      if (error instanceof AxiosError) {
+        message = error.response?.data.message;
+      }
+      toast.error(message);
+    },
+  });
+}
+
+export function useEvaluatePaintingRound2() {
+  return useMutation({
+    mutationFn: async (evaluationRequest: Round2EvaluationRequest) => {
       const response = await myAxios.post(
         "/paintings/evaluate",
         evaluationRequest
       );
       return response.data;
     },
-    onSuccess: (value) => {
+    onSuccess: () => {
       toast.success("Chấm bài thành công");
       router.back();
     },

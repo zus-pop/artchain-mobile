@@ -2,7 +2,6 @@
 import BrushButton from "@/components/buttons/BrushButton";
 // import ArtworkViewer from "@/components/media/ArtworkViewer"; // <- bỏ
 import EvaluationSubmitModal from "@/components/modals/EvaluationSubmitModal"; // <-- NEW
-import ReportFlagSheet from "@/components/modals/ReportFlagSheet";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/theme";
@@ -20,6 +19,7 @@ import {
   Animated,
   ColorValue,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -30,7 +30,7 @@ import {
 import { toast } from "sonner-native";
 import { z } from "zod";
 import { useWhoAmI } from "../apis/auth";
-import { useEvaluatePainting } from "../apis/painting";
+import { useEvaluatePaintingRound2 } from "../apis/painting";
 
 import { Zoomable } from "@likashefqet/react-native-image-zoom";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -110,11 +110,7 @@ function ZoomModal({
 }
 
 /* --------- Modal wrapper để đồng nhất import React Native <=/>=0.73 --------- */
-const AnimatedModal = (props: any) =>
-  (<View>{/* placeholder for TS */}</View>) as any;
-// ^ Nếu bạn đang dùng RN chuẩn, hãy xoá wrapper trên và import trực tiếp Modal từ 'react-native'.
-// Ở đây để tránh lỗi paste. Dùng như cũ:
-// import { Modal as AnimatedModal } from "react-native";
+const AnimatedModal = (props: any) => <Modal {...props} />;
 
 /* ---------- Helpers ---------- */
 const clamp = (v: number, min: number, max: number) =>
@@ -229,7 +225,7 @@ export default function PaintingEvaluationScreen() {
 
   const scoreWatch = watch("score");
   const { data: examiner } = useWhoAmI();
-  const { mutate, isPending } = useEvaluatePainting();
+  const { mutate, isPending } = useEvaluatePaintingRound2();
 
   const [viewerOpen, setViewerOpen] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
@@ -243,18 +239,6 @@ export default function PaintingEvaluationScreen() {
     () => `draft_evaluation_${paintingId}`,
     [paintingId]
   );
-
-  // Flags
-  const FLAG_REASONS = [
-    "Không đúng chủ đề",
-    "Nghi vấn sao chép",
-    "Chứa nội dung nhạy cảm",
-    "Không phù hợp lứa tuổi",
-    "Biểu tượng/Thông điệp phản cảm",
-  ];
-  const [flagOpen, setFlagOpen] = useState(false);
-  const [selectedFlags, setSelectedFlags] = useState<string[]>([]);
-  const [flagNote, setFlagNote] = useState("");
 
   /* ---------- Restore Draft ---------- */
   useEffect(() => {
@@ -461,36 +445,6 @@ export default function PaintingEvaluationScreen() {
                     { backgroundColor: glassBg },
                   ]}
                 >
-                  {/* Overlay report */}
-                  <View style={styles(colors).overlayTopRightRow}>
-                    <PressableScale
-                      onPress={() => setFlagOpen(true)}
-                      style={styles(colors).pillBorderWrap}
-                    >
-                      <LinearGradient
-                        colors={[g0, g1]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles(colors).pillBorder}
-                      />
-                      <View
-                        style={[
-                          styles(colors).pillInner,
-                          { backgroundColor: colors.card },
-                        ]}
-                      >
-                        <Ionicons
-                          name="flag"
-                          size={16}
-                          color={colors.primary}
-                        />
-                        <ThemedText style={styles(colors).pillText}>
-                          Báo cáo
-                        </ThemedText>
-                      </View>
-                    </PressableScale>
-                  </View>
-
                   <PressableScale
                     onPress={() => setViewerOpen(true)}
                     style={{ borderRadius: 14 }}
@@ -900,31 +854,6 @@ export default function PaintingEvaluationScreen() {
           maxScale={6}
           doubleTapScale={2.5}
         />
-
-        {/* Report sheet */}
-        <ReportFlagSheet
-          visible={flagOpen}
-          onClose={() => setFlagOpen(false)}
-          reasons={FLAG_REASONS}
-          selected={selectedFlags}
-          onToggle={(r) =>
-            setSelectedFlags((p) =>
-              p.includes(r) ? p.filter((x) => x !== r) : [...p, r]
-            )
-          }
-          note={flagNote}
-          onChangeNote={setFlagNote}
-          onSubmit={() => {
-            if (selectedFlags.length === 0) {
-              toast.info("Vui lòng chọn ít nhất 1 lý do vi phạm");
-              return;
-            }
-            setFlagOpen(false);
-            toast.info("Đã ghi nhận gắn cờ (UI).");
-          }}
-        />
-
-        {/* ---------- MODALS MỚI ---------- */}
 
         {/* Confirm — đẹp, gradient, animation */}
         <EvaluationSubmitModal

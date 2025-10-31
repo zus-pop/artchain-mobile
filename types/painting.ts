@@ -30,9 +30,22 @@ export interface Painting {
 
 export interface PaintingFilter {
   contestId?: string;
+  roundName?: "ROUND_1" | "ROUND_2";
+  is_passed?: boolean | null;
 }
 
-export interface EvaluationRequest {
+export interface Round1EvaluationRequest {
+  paintingId: string;
+  examinerId: string;
+  isPassed: boolean;
+}
+export interface ReviewRound1EvaluationRequest {
+  paintings: {
+    paintingId: string;
+    isPassed: boolean;
+  }[];
+}
+export interface Round2EvaluationRequest {
   paintingId: string;
   examinerId: string;
   score: number;
