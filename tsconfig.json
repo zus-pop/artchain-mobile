@@ -11,9 +11,7 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "types/**/*.ts",
-    "expo-env.d.ts",
-    "babel.config.js",
-    ".expo/types/**/*.ts"
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
   ]
 }
