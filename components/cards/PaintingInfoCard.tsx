@@ -85,7 +85,7 @@ type Props = {
   scheme: "light" | "dark";
   title: string;
   artistName: string;
-  paintingId: string;
+  paintingTitle: string;
   imageUrl: string;
   submissionDate?: string | number | Date;
   onPress?: () => void;
@@ -99,7 +99,7 @@ const PaintingInfoCard: React.FC<Props> = ({
   scheme,
   title,
   artistName,
-  paintingId,
+  paintingTitle,
   imageUrl,
   submissionDate,
   onPress,
@@ -190,7 +190,7 @@ const PaintingInfoCard: React.FC<Props> = ({
                   {artistName}
                 </Text>
                 <Text numberOfLines={1} style={s.subtle}>
-                  #{paintingId}
+                  {paintingTitle}
                 </Text>
               </View>
 
@@ -211,7 +211,7 @@ const PaintingInfoCard: React.FC<Props> = ({
                 style={s.ctaInner}
               >
                 <Ionicons name="create-outline" size={16} color="#ffffff" />
-                <Text style={s.ctaText}>Chấm bài</Text>
+                <Text style={s.ctaText}>Xem chi tiết hình ảnh</Text>
                 <Ionicons name="arrow-forward" size={16} color="#ffffff" />
               </LinearGradient>
             </PressableScale>
