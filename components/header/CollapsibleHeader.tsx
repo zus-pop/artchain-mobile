@@ -7,7 +7,6 @@ import {
   Dimensions,
   Easing,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -15,13 +14,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const AnimatedLinear = Animated.createAnimatedComponent(LinearGradient);
 const { width: W } = Dimensions.get("window");
-export const HEADER_EXPANDED = 140;
+export const HEADER_EXPANDED = 60;
 export const HEADER_COLLAPSED = 64;
 
 const SCROLL_RANGE = HEADER_EXPANDED - HEADER_COLLAPSED;
 const AVATAR = 40;
 const CARD_W_RATIO = 0.92;
-const CARD_H = 140; // cao thẻ trắng
+const CARD_H = 40; // cao thẻ trắng
 const CARD_OVERLAP = 0.5;
 
 const Palettes = {
@@ -169,81 +168,7 @@ export default function CollapsibleHeader({
           </Animated.Text>
         </View>
       </View>
-
-      {/* Row icon khi thu gọn (giữ nguyên) */}
-      <Animated.View
-        style={[
-          styles.iconRow,
-          {
-            overflow: "hidden",
-            top: insets.top + 8, // cùng hàng với avatar
-            left: 12 + AVATAR + 8, // ngay sau avatar (chừa 8px)
-            right: 16, // đến mép phải
-            opacity: iconRowOpacity,
-            transform: [
-              { translateY: avatarCounterY },
-              { translateY: iconRowY },
-            ],
-          },
-        ]}
-      >
-        <Icon name="add-circle-outline" />
-        <Icon name="refresh-circle-outline" />
-        <Icon name="wallet-outline" />
-        <Icon name="headset-outline" />
-      </Animated.View>
-
-      {/* Card nổi (fade khi kéo) */}
-      <Animated.View
-        style={[styles.card, { top: cardTop, opacity: cardOpacity }]}
-      >
-        <View style={styles.balanceRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.balanceTitle}>FUTAPay</Text>
-            <Text style={styles.balanceValue}>0đ</Text>
-          </View>
-          <View style={styles.divider} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.balanceTitle}>TK khuyến mãi</Text>
-            <Text style={styles.balanceValue}>0đ</Text>
-          </View>
-        </View>
-        <View style={styles.actionRow}>
-          <Quick icon="add-outline" label="Nạp tiền" />
-          <Quick icon="swap-vertical-outline" label="Rút tiền" />
-          <Quick icon="card-outline" label="FUTAPay" />
-        </View>
-      </Animated.View>
     </Animated.View>
-  );
-}
-
-function Icon({ name }: { name: any }) {
-  return (
-    <View style={{ marginLeft: 18 }}>
-      <TouchableOpacity activeOpacity={0.8} style={styles.headerIconBtn}>
-        <View
-          style={{
-            alignItems: "center",
-            justifyContent: "center",
-            width: 30,
-            height: 30,
-            borderRadius: 15,
-            backgroundColor: "rgba(255,255,255,0.2)",
-          }}
-        >
-          <Ionicons name={name} size={24} color="#fff" />
-        </View>
-      </TouchableOpacity>
-    </View>
-  );
-}
-function Quick({ icon, label }: { icon: any; label: string }) {
-  return (
-    <TouchableOpacity activeOpacity={0.9} style={styles.quickBtn}>
-      <Ionicons name={icon} size={22} color="#f97316" />
-      <Text style={styles.quickTxt}>{label}</Text>
-    </TouchableOpacity>
   );
 }
 

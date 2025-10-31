@@ -292,8 +292,8 @@ type UtilityItem = {
 
 /* =================== Screen =================== */
 export default function Home() {
-  const { data } = useWhoAmI();
-  const { data: postsData } = usePosts();
+  const { data, refetch: refetchMe } = useWhoAmI();
+  const { data: postsData, refetch: refetchPosts } = usePosts();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
   const posts = postsData?.data || [];
@@ -383,7 +383,9 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
+    refetchMe();
+    refetchPosts();
+    setRefreshing(false);
   }, []);
 
   // hero/pager auto (nếu dùng)
@@ -424,8 +426,8 @@ export default function Home() {
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: HEADER_EXPANDED + 160 * (1 - 0.5) + 16,
-          paddingBottom: 80,
+          paddingTop: HEADER_EXPANDED + 100 * (1 - 0.5) + 10,
+          paddingBottom: 120,
         }}
         scrollEventThrottle={16}
         bounces
@@ -446,56 +448,6 @@ export default function Home() {
           />
         }
       >
-        {/* Utilities */}
-        <View style={themedStyles.section}>
-          <Text style={themedStyles.sectionTitle}>Tiện ích</Text>
-          <View style={themedStyles.utilitiesGrid}>
-            {artUtilities.map((u) => (
-              <TouchableOpacity
-                key={u.id}
-                activeOpacity={0.9}
-                onPress={() => u.onPress?.()}
-                style={[themedStyles.utilTile, { width: TILE_W }]}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              >
-                <View style={themedStyles.utilCircleWrap}>
-                  <View
-                    style={[
-                      themedStyles.utilCircle,
-                      { backgroundColor: `${u.color}1A` },
-                    ]}
-                  />
-                  <View
-                    style={[
-                      themedStyles.utilRing,
-                      { borderColor: `${u.color}66` },
-                    ]}
-                  />
-                  <Ionicons
-                    name={u.icon as any}
-                    size={26}
-                    color={u.color}
-                    style={{ position: "absolute" }}
-                  />
-                  {!!u.badge && (
-                    <View
-                      style={[
-                        themedStyles.utilBadge,
-                        { backgroundColor: u.color },
-                      ]}
-                    >
-                      <Text style={themedStyles.utilBadgeTxt}>{u.badge}</Text>
-                    </View>
-                  )}
-                </View>
-                <Text numberOfLines={2} style={themedStyles.utilLabel}>
-                  {u.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
         {/* Podium */}
         <View style={{ paddingTop: 20 }}>
           <PodiumTop123
