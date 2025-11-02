@@ -112,10 +112,6 @@ const styles = (C: any) => {
     actionsRow: { flexDirection: "row", gap: 10, marginTop: 8 },
 
     footer: {
-      position: "absolute",
-      left: 0,
-      right: 0,
-      bottom: 0,
       height: FOOTER_H,
       paddingHorizontal: 16,
       paddingVertical: 12,
@@ -123,12 +119,7 @@ const styles = (C: any) => {
       flexDirection: "row",
       gap: 10,
       alignItems: "center",
-      // nhẹ nhàng nổi lên
-      shadowColor: "#000",
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: -2 },
-      elevation: 3,
+      backgroundColor: C.card,
     },
     primaryBtn: {
       flex: 1,

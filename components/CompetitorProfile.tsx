@@ -28,15 +28,11 @@ import { formatDateDisplay } from "@/utils/date";
 import { useMySubmission } from "../apis/painting";
 import { Painting } from "../types";
 import AchievementCard from "./cards/competitor/AchievementCard";
-import ContestCardCompetitor, {
-  ContestItem,
-} from "./cards/competitor/ContestCardCompetitor";
 import EmptyState from "./cards/competitor/EmptyState";
 import SubmissionCard, {
   SubmissionItem,
 } from "./cards/competitor/SubmissionCard";
 import SegmentedTabsProfile from "./tabs/SegmentedTabsProfile";
-import { TabItem } from "./tabs/SegmentedTabsScrollable";
 
 /* -------------------- Color helpers -------------------- */
 const VIVID_POOLS: [string, string][] = [
@@ -80,50 +76,9 @@ export default function CompetitorProfileComponent() {
   const [selectedSubmission, setSelectedSubmission] = useState<Painting | null>(
     null
   );
-  const [activeTab, setActiveTab] = useState<
-    "contests" | "achievements" | "submissions"
-  >("contests");
-
-  // demo contests
-  const ongoingContests = useMemo(
-    () => [
-      {
-        id: "contest1",
-        title: "Vẽ Sài Gòn Xanh",
-        progress: 75,
-        status: "active",
-        deadline: "2024-12-31",
-        submitted: true,
-        submissionCount: 1,
-        totalRounds: 2,
-        currentRound: 1,
-      },
-      {
-        id: "contest2",
-        title: "Nghệ Thuật Đường Phố",
-        progress: 45,
-        status: "active",
-        deadline: "2025-01-15",
-        submitted: false,
-        submissionCount: 0,
-        totalRounds: 1,
-        currentRound: 1,
-      },
-    ],
-    []
+  const [activeTab, setActiveTab] = useState<"achievements" | "submissions">(
+    "submissions"
   );
-
-  const contestStats = useMemo(() => {
-    const activeContests = ongoingContests.length;
-    const submittedContests = ongoingContests.filter((c) => c.submitted).length;
-    const avgProgress = ongoingContests.length
-      ? Math.round(
-          ongoingContests.reduce((sum, c) => sum + c.progress, 0) /
-            ongoingContests.length
-        )
-      : 0;
-    return { activeContests, submittedContests, avgProgress };
-  }, [ongoingContests]);
 
   const achievements = useMemo(
     () =>
@@ -162,22 +117,8 @@ export default function CompetitorProfileComponent() {
         label: "Giải thưởng",
         value: String(achievements.length),
       },
-      {
-        icon: "time-outline" as const,
-        label: "Cuộc thi active",
-        value: String(contestStats.activeContests),
-      },
     ],
-    [submissions.length, achievements.length, contestStats]
-  );
-
-  const tabs: TabItem[] = useMemo(
-    () => [
-      { key: "contests", label: "Cuộc thi", icon: "time-outline" },
-      { key: "achievements", label: "Thành tích", icon: "trophy-outline" },
-      { key: "submissions", label: "Bài nộp", icon: "document-text-outline" },
-    ],
-    []
+    [submissions.length, achievements.length]
   );
 
   useFocusEffect(
@@ -350,6 +291,7 @@ export default function CompetitorProfileComponent() {
           <TouchableOpacity
             onPress={() => setOpenDetails(true)}
             activeOpacity={0.9}
+            style={{ padding: 8, margin: -8 }} // Expand touch area
           >
             <View>
               <Avatar />
@@ -418,16 +360,15 @@ export default function CompetitorProfileComponent() {
         <View style={{ marginBottom: SP.sectionGap }}>
           <SegmentedTabsProfile
             tabs={[
-              { key: "contests", label: "Cuộc thi", icon: "time-outline" },
-              {
-                key: "achievements",
-                label: "Thành tích",
-                icon: "trophy-outline",
-              },
               {
                 key: "submissions",
                 label: "Bài nộp",
                 icon: "document-text-outline",
+              },
+              {
+                key: "achievements",
+                label: "Thành tích",
+                icon: "trophy-outline",
               },
             ]}
             activeKey={activeTab}
@@ -440,58 +381,6 @@ export default function CompetitorProfileComponent() {
 
         {/* Tab Content */}
         <View style={s.tabContent}>
-          {activeTab === "contests" && (
-            <View style={[s.tabScrollContent, { gap: SP.blockGap }]}>
-              {ongoingContests.length > 0 ? (
-                <View style={{ gap: SP.blockGap, marginBottom: SP.sectionGap }}>
-                  {ongoingContests.map((c) => (
-                    <ContestCardCompetitor
-                      key={c.id}
-                      item={c as ContestItem}
-                      pickGrad={pickGrad}
-                      borderColor={C.border}
-                      mutedFg={C.mutedForeground}
-                      onPressSubmit={() => router.push("/painting-upload")}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <EmptyState
-                  C={C}
-                  icon="brush-outline"
-                  title="Chưa tham gia cuộc thi nào"
-                  action="Khám phá cuộc thi"
-                  compact
-                />
-              )}
-            </View>
-          )}
-
-          {activeTab === "achievements" && (
-            <View style={[s.tabScrollContent, { gap: SP.blockGap }]}>
-              {achievements.length > 0 ? (
-                <View style={{ gap: SP.blockGap, marginBottom: SP.sectionGap }}>
-                  {achievements.map((a) => (
-                    <AchievementCard
-                      key={a.id}
-                      item={{ id: a.id, title: a.title, place: a.place }}
-                      pickGrad={pickGrad}
-                      borderColor={C.border}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <EmptyState
-                  C={C}
-                  icon="trophy-outline"
-                  title="Chưa có thành tích nào"
-                  action="Tham gia cuộc thi"
-                  compact
-                />
-              )}
-            </View>
-          )}
-
           {activeTab === "submissions" && (
             <View style={[s.tabScrollContent, { gap: SP.blockGap }]}>
               {submissionsLoading ? (
@@ -532,6 +421,30 @@ export default function CompetitorProfileComponent() {
                   icon="document-text-outline"
                   title="Chưa có bài nộp nào"
                   action="Nộp bài dự thi"
+                  compact
+                />
+              )}
+            </View>
+          )}
+          {activeTab === "achievements" && (
+            <View style={[s.tabScrollContent, { gap: SP.blockGap }]}>
+              {achievements.length > 0 ? (
+                <View style={{ gap: SP.blockGap, marginBottom: SP.sectionGap }}>
+                  {achievements.map((a) => (
+                    <AchievementCard
+                      key={a.id}
+                      item={{ id: a.id, title: a.title, place: a.place }}
+                      pickGrad={pickGrad}
+                      borderColor={C.border}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <EmptyState
+                  C={C}
+                  icon="trophy-outline"
+                  title="Chưa có thành tích nào"
+                  action="Tham gia cuộc thi"
                   compact
                 />
               )}

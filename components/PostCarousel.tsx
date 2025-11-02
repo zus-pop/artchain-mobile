@@ -1,26 +1,20 @@
+import { Post } from "@/types/post";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
-import React, { useRef } from "react";
+import React from "react";
 import {
-  Animated,
   Dimensions,
   ImageBackground,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { Post } from "../types/post";
+import Carousel from "react-native-reanimated-carousel";
 
-/* =================== Post Carousel (thẳng hàng) =================== */
 const { width: W } = Dimensions.get("window");
-const CARD_W = Math.round(W * 0.78);
-const CARD_H = 210; // CHIỀU CAO CỐ ĐỊNH -> thẳng hàng
-const SPACING = 14;
-const SNAP_W = CARD_W + SPACING;
-const SPACER = Math.max(0, Math.round((W - CARD_W) / 2));
+const CARD_W = W;
+const CARD_H = 210;
 
 export default function PostCarousel({
   data,
@@ -31,196 +25,120 @@ export default function PostCarousel({
   onPressItem?: (post: Post) => void;
   scheme: "light" | "dark";
 }) {
-  const scrollX = useRef(new Animated.Value(0)).current;
-
-  const renderItem = ({ item, index }: { item: Post; index: number }) => {
-    const inputRange = [
-      (index - 1) * SNAP_W,
-      index * SNAP_W,
-      (index + 1) * SNAP_W,
-    ];
-    // chỉ scale nhẹ – KHÔNG translate/rotate để giữ hàng
-    const scale = scrollX.interpolate({
-      inputRange,
-      outputRange: [0.96, 1, 0.96],
-      extrapolate: "clamp",
-    });
-
-    const isResult =
-      /kết quả|result|winner|champion/i.test(item.title) ||
-      /kết quả|result|winner|champion/i.test(item.content);
-    const typeChip = isResult
-      ? { label: "Kết quả", color: "#F59E0B" }
-      : { label: "Cuộc thi", color: "#22C55E" };
-
-    return (
-      <Animated.View style={[styles.cardWrap, { transform: [{ scale }] }]}>
-        {/* viền gradient mờ */}
+  const renderItem = ({ item }: { item: Post }) => (
+    <TouchableOpacity
+      activeOpacity={0.95}
+      onPress={() => onPressItem?.(item)}
+      style={styles.touch}
+    >
+      <ImageBackground
+        source={{ uri: item.image_url }}
+        style={styles.cover}
+        imageStyle={styles.coverImg}
+      >
         <LinearGradient
-          colors={["#ffffff55", "#ffffff10"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.cardBorder}
+          colors={
+            scheme === "dark"
+              ? ["rgba(0,0,0,0.15)", "rgba(0,0,0,0.65)"]
+              : ["rgba(255,255,255,0.1)", "rgba(0,0,0,0.55)"]
+          }
+          start={{ x: 0, y: 0.2 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
         />
 
-        <TouchableOpacity
-          activeOpacity={0.95}
-          onPress={() => {
-            onPressItem?.(item);
-            router.push({
-              pathname: "/post-detail",
-              params: { post: JSON.stringify(item) },
-            });
-          }}
-          style={styles.touch}
-        >
-          <ImageBackground
-            source={{ uri: item.image_url }}
-            style={styles.cover}
-            imageStyle={styles.coverImg}
-          >
-            <LinearGradient
-              colors={
-                scheme === "dark"
-                  ? ["rgba(0,0,0,0.15)", "rgba(0,0,0,0.65)"]
-                  : ["rgba(255,255,255,0.1)", "rgba(0,0,0,0.55)"]
-              }
-              start={{ x: 0, y: 0.2 }}
-              end={{ x: 0, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
+        {/* chips */}
+        <View style={styles.chipsRow}>
+          <View style={styles.dateChip}>
+            <Ionicons name="calendar-outline" size={12} color="#fff" />
+            <Text style={styles.chipText}>
+              {new Date(item.published_at).toLocaleDateString()}
+            </Text>
+          </View>
+        </View>
 
-            {/* chips */}
-            <View style={styles.chipsRow}>
-              <View
-                style={[
-                  styles.chip,
-                  { backgroundColor: `${typeChip.color}E6` },
-                ]}
-              >
-                <Ionicons
-                  name={isResult ? "checkmark-done" : "trophy"}
-                  size={12}
-                  color="#fff"
-                />
-                <Text style={styles.chipText}>{typeChip.label}</Text>
-              </View>
-              <View style={styles.dateChip}>
-                <Ionicons name="calendar-outline" size={12} color="#fff" />
-                <Text style={styles.chipText}>
-                  {new Date(item.published_at).toLocaleDateString()}
-                </Text>
-              </View>
-            </View>
+        {/* nội dung */}
+        <View style={styles.content}>
+          <Text numberOfLines={2} style={styles.title}>
+            {item.title}
+          </Text>
+          <Text numberOfLines={2} style={styles.desc}>
+            {item.content.length > 150
+              ? item.content.substring(0, 150) + "..."
+              : item.content}
+          </Text>
 
-            {/* nội dung */}
-            <View style={styles.content}>
-              <Text numberOfLines={2} style={styles.title}>
-                {item.title}
-              </Text>
-              <Text numberOfLines={2} style={styles.desc}>
-                {item.content.length > 150
-                  ? item.content.substring(0, 150) + "..."
-                  : item.content}
-              </Text>
-
-              {item.postTags?.length > 0 && (
-                <View style={styles.tagsRow}>
-                  {item.postTags.slice(0, 3).map((postTag, i) => (
-                    <View key={i} style={styles.tag}>
-                      <Text style={styles.tagText}>{postTag.tag.tag_name}</Text>
-                    </View>
-                  ))}
-                  {item.postTags.length > 3 && (
-                    <View style={styles.tag}>
-                      <Text style={styles.tagText}>
-                        +{item.postTags.length - 3}
-                      </Text>
-                    </View>
-                  )}
+          {item.postTags?.length > 0 && (
+            <View style={styles.tagsRow}>
+              {item.postTags.slice(0, 3).map((postTag, i) => (
+                <View key={i} style={styles.tag}>
+                  <Text style={styles.tagText}>{postTag.tag.tag_name}</Text>
+                </View>
+              ))}
+              {item.postTags.length > 3 && (
+                <View style={styles.tag}>
+                  <Text style={styles.tagText}>
+                    +{item.postTags.length - 3}
+                  </Text>
                 </View>
               )}
-
-              <View style={styles.ctaRow}>
-                <View style={styles.detailBtn}>
-                  <Ionicons name="eye-outline" size={14} color="#fff" />
-                  <Text style={styles.detailTxt}>Chi tiết</Text>
-                </View>
-                <LinearGradient
-                  colors={["#FDE68A", "#F59E0B"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.nextBtn}
-                >
-                  <Ionicons name="chevron-forward" size={16} color="#111827" />
-                </LinearGradient>
-              </View>
             </View>
-          </ImageBackground>
-        </TouchableOpacity>
-      </Animated.View>
-    );
-  };
+          )}
+
+          <View style={styles.ctaRow}>
+            <View style={styles.detailBtn}>
+              <Ionicons name="eye-outline" size={14} color="#fff" />
+              <Text style={styles.detailTxt}>Chi tiết</Text>
+            </View>
+            <LinearGradient
+              colors={["#FDE68A", "#F59E0B"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.nextBtn}
+            >
+              <Ionicons name="chevron-forward" size={16} color="#111827" />
+            </LinearGradient>
+          </View>
+        </View>
+      </ImageBackground>
+    </TouchableOpacity>
+  );
 
   return (
     <View>
       {data.length > 0 ? (
         <>
-          <Animated.FlatList
-            horizontal
+          <Carousel
+            loop
+            width={CARD_W}
+            height={CARD_H}
+            autoPlay={true}
+            autoPlayInterval={3500}
             data={data}
-            keyExtractor={(it) => it.post_id.toString()}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={[
-              styles.listContent,
-              { paddingHorizontal: SPACER }, // canh giữa card đầu/cuối
-            ]}
+            scrollAnimationDuration={1000}
             renderItem={renderItem}
-            snapToInterval={SNAP_W}
-            decelerationRate={Platform.OS === "ios" ? "fast" : 0.98}
-            snapToAlignment="start"
-            bounces={false}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-              { useNativeDriver: true }
-            )}
-            scrollEventThrottle={16}
+            mode="parallax"
+            modeConfig={{
+              parallaxScrollingScale: 0.9,
+              parallaxScrollingOffset: 50,
+              parallaxAdjacentItemScale: 0.8,
+            }}
+            style={styles.carousel}
           />
 
           {/* dots */}
           <View style={styles.dotsRow}>
-            {data.map((_, i) => {
-              // vị trí tâm i: SPACER + i*SNAP_W
-              const inputRange = [
-                SPACER + (i - 1) * SNAP_W,
-                SPACER + i * SNAP_W,
-                SPACER + (i + 1) * SNAP_W,
-              ];
-              const dotScale = scrollX.interpolate({
-                inputRange,
-                outputRange: [0.6, 1.1, 0.6],
-                extrapolate: "clamp",
-              });
-              const dotOpacity = scrollX.interpolate({
-                inputRange,
-                outputRange: [0.4, 1, 0.4],
-                extrapolate: "clamp",
-              });
-              return (
-                <Animated.View
-                  key={`dot_${i}`}
-                  style={[
-                    styles.dot,
-                    {
-                      backgroundColor:
-                        scheme === "dark" ? "#ffffff" : "#111827",
-                      opacity: dotOpacity,
-                      transform: [{ scale: dotScale }],
-                    },
-                  ]}
-                />
-              );
-            })}
+            {data.map((_, i) => (
+              <View
+                key={`dot_${i}`}
+                style={[
+                  styles.dot,
+                  {
+                    backgroundColor: scheme === "dark" ? "#ffffff" : "#111827",
+                  },
+                ]}
+              />
+            ))}
           </View>
         </>
       ) : (
@@ -267,30 +185,16 @@ export default function PostCarousel({
 
 /* =================== Styles =================== */
 const styles = StyleSheet.create({
-  listContent: {
-    alignItems: "center", // thẳng hàng theo trục dọc
-    paddingVertical: 6,
+  carousel: {
+    alignItems: "center",
   },
-  cardWrap: {
-    width: CARD_W,
-    height: CARD_H, // cố định -> các card đều nhau
-    marginRight: SPACING,
-    borderRadius: 20,
+  touch: {
+    flex: 1,
+    borderRadius: 12,
     overflow: "hidden",
   },
-  cardBorder: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
-  },
-  touch: { flex: 1, borderRadius: 20, overflow: "hidden" },
   cover: { flex: 1 },
-  coverImg: { borderRadius: 20 },
+  coverImg: { borderRadius: 12 },
   chipsRow: {
     position: "absolute",
     top: 10,

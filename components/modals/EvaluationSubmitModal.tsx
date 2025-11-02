@@ -39,18 +39,14 @@ type Grad = readonly [ColorValue, ColorValue];
 
 const asGrad = (a: ColorValue, b: ColorValue): Grad => [a, b] as const;
 
-const POOLS: readonly Grad[] = [
-  asGrad("#22C55E", "#10B981"), // xanh mướt (mặc định success)
-  asGrad("#06B6D4", "#3B82F6"),
-  asGrad("#F59E0B", "#F97316"),
-  asGrad("#6366F1", "#A78BFA"),
-  asGrad("#F43F5E", "#FB7185"),
-];
-
-const pickGrad = (i = 0): Grad => POOLS[i % POOLS.length];
-
 /** ---------- Confetti nhỏ gọn ---------- */
-function Confetti({ show }: { show: boolean }) {
+function Confetti({
+  show,
+  colors,
+}: {
+  show: boolean;
+  colors: typeof Colors.light;
+}) {
   const pieces = 16;
   const arr = useMemo(() => Array.from({ length: pieces }), []);
   const animsRef = useRef([...Array(pieces)].map(() => new Animated.Value(0)));
@@ -88,7 +84,7 @@ function Confetti({ show }: { show: boolean }) {
           inputRange: [0, 1],
           outputRange: ["0deg", `${(i % 2 ? -1 : 1) * (180 + i * 12)}deg`],
         });
-        const [c0, c1] = pickGrad(i);
+        const [c0, c1] = [colors.primary, colors.primary];
         return (
           <Animated.View
             key={i}
@@ -163,13 +159,15 @@ export default function EvaluationSubmitModal({
   }, [visible, scale, fade]);
 
   const isSuccess = variant === "success";
-  const [g0, g1] = isSuccess ? POOLS[0] : asGrad("#06B6D4", "#3B82F6");
+  const [g0, g1] = isSuccess
+    ? [colors.primary, colors.primary]
+    : [colors.primary, colors.primary];
   const iconName = (
     isSuccess ? "checkmark" : "help"
   ) as keyof typeof Ionicons.glyphMap;
   const iconBg: Grad = isSuccess
-    ? asGrad("#22C55E", "#10B981")
-    : asGrad("#06B6D4", "#3B82F6");
+    ? [colors.primary, colors.primary]
+    : [colors.primary, colors.primary];
 
   return (
     <Modal
@@ -274,7 +272,7 @@ export default function EvaluationSubmitModal({
       </Animated.View>
 
       {/* Confetti khi success */}
-      <Confetti show={visible && isSuccess} />
+      <Confetti show={visible && isSuccess} colors={colors} />
     </Modal>
   );
 }

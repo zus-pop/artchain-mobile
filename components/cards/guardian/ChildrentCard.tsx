@@ -33,12 +33,7 @@ const ChildCard = ({ C, avatarBg, name, grade, schoolName }: Props) => {
       <View style={styles.header}>
         {/* Subtle avatar with thin ring */}
         <View style={styles.avatarWrap}>
-          <View
-            style={[
-              styles.avatarRing,
-              { borderColor: withOpacity(C.primary, 0.25) },
-            ]}
-          >
+          <View style={[{ borderColor: withOpacity(C.primary, 0.25) }]}>
             <View
               style={[
                 styles.avatarCore,
@@ -47,7 +42,7 @@ const ChildCard = ({ C, avatarBg, name, grade, schoolName }: Props) => {
                 },
               ]}
             >
-              <Ionicons name="person-outline" size={20} color="#fff" />
+              <Ionicons name="person-outline" size={18} color="#fff" />
             </View>
           </View>
         </View>
@@ -57,103 +52,61 @@ const ChildCard = ({ C, avatarBg, name, grade, schoolName }: Props) => {
           <Text
             style={[styles.name, { color: C.foreground }]}
             numberOfLines={1}
+            ellipsizeMode="tail"
           >
             {displayName}
           </Text>
 
           <View style={styles.metaRow}>
-            <MetaItem
-              C={C}
-              icon="school-outline"
-              text={`Lớp ${displayGrade}`}
-            />
-            <Dot C={C} />
-            <MetaItem C={C} icon="business-outline" text={displaySchool} />
+            <View style={styles.metaItem}>
+              <Ionicons
+                name="school-outline"
+                size={12}
+                color={withOpacity(C.foreground, 0.7)}
+              />
+              <Text
+                style={[
+                  styles.metaText,
+                  { color: withOpacity(C.foreground, 0.7) },
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {`Lớp ${displayGrade}`}
+              </Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Ionicons
+                name="business-outline"
+                size={12}
+                color={withOpacity(C.foreground, 0.7)}
+              />
+              <Text
+                style={[
+                  styles.metaText,
+                  { color: withOpacity(C.foreground, 0.7) },
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {displaySchool}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
 
       {/* Divider */}
-
-
-
     </View>
   );
 };
 
-function MetaItem({
-  C,
-  icon,
-  text,
-}: {
-  C: ColorTokens;
-  icon: keyof typeof Ionicons.glyphMap;
-  text: string;
-}) {
-  return (
-    <View style={styles.metaItem}>
-      <Ionicons name={icon} size={13} color={withOpacity(C.foreground, 0.7)} />
-      <Text
-        style={[styles.metaText, { color: withOpacity(C.foreground, 0.7) }]}
-        numberOfLines={1}
-      >
-        {text}
-      </Text>
-    </View>
-  );
-}
-
-function Dot({ C }: { C: ColorTokens }) {
-  return (
-    <View
-      style={[styles.dot, { backgroundColor: withOpacity(C.foreground, 0.2) }]}
-    />
-  );
-}
-
-function Stat({
-  C,
-  icon,
-  label,
-  value,
-  tint,
-}: {
-  C: ColorTokens;
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string | number;
-  tint: string;
-}) {
-  return (
-    <View style={styles.statItem}>
-      <View style={[styles.statIconWrap, { backgroundColor: tint }]}>
-        <Ionicons name={icon} size={16} color={C.primary} />
-      </View>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text
-          style={[styles.statValue, { color: C.foreground }]}
-          numberOfLines={1}
-        >
-          {value}
-        </Text>
-        <Text
-          style={[styles.statLabel, { color: withOpacity(C.foreground, 0.6) }]}
-          numberOfLines={1}
-        >
-          {label}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   card: {
     borderRadius: 12,
-    padding: 14,
-    marginBottom: 14,
-    borderWidth: StyleSheet.hairlineWidth, // ✅ chỉ hairline, giảm cảm giác “nặng”
-    shadowOpacity: 0.06, // ✅ bóng nhẹ
+    padding: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
     elevation: 1,
@@ -161,34 +114,27 @@ const styles = StyleSheet.create({
 
   header: { flexDirection: "row", alignItems: "center" },
 
-  avatarWrap: { marginRight: 12 },
-  avatarRing: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 1, // ✅ vòng mảnh
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  avatarWrap: { marginRight: 10 },
   avatarCore: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 30,
+    height: 30,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
   },
 
   name: {
-    fontSize: 16,
-    fontWeight: "800",
+    fontSize: 13,
+    fontWeight: "700",
     includeFontPadding: false,
+    lineHeight: 16,
+    marginBottom: 2,
   },
 
   metaRow: {
-    marginTop: 4,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+    marginTop: 6,
+    flexDirection: "column",
+    gap: 4,
     minWidth: 0,
   },
   metaItem: {
@@ -198,51 +144,9 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   metaText: {
-    fontSize: 12.5,
+    fontSize: 11,
     includeFontPadding: false,
-    maxWidth: 200,
-  },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: "center",
-  },
-
-  hr: {
-    height: StyleSheet.hairlineWidth,
-    marginVertical: 12,
-    borderRadius: 1,
-  },
-
-  statsRow: { flexDirection: "row", gap: 10 },
-  statItem: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderRadius: 10, // ✅ bo nhẹ vừa phải
-  },
-  statIconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  statValue: {
-    fontSize: 15,
-    fontWeight: "800",
-    includeFontPadding: false,
-    lineHeight: 18,
-  },
-  statLabel: {
-    fontSize: 12,
-    includeFontPadding: false,
-    lineHeight: 15,
-    marginTop: 2,
   },
 });
 

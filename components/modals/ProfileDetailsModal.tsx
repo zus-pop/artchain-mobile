@@ -1,24 +1,22 @@
-// components/modals/ProfileDetailsModal/index.tsx
 import { useUpdateUserById } from "@/apis/user";
 import { Colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetScrollView,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-  Animated,
   Dimensions,
-  Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  PanResponder,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { z } from "zod";
@@ -105,10 +103,7 @@ type Props = {
 };
 
 const { height: SCREEN_H } = Dimensions.get("window");
-const SNAP = { OPEN: 0, DISMISS: SCREEN_H };
-const DRAG_CLOSE_THRESHOLD = 120;
-const VELOCITY_CLOSE_THRESHOLD = 1.0;
-const FOOTER_H = 360;
+const FOOTER_H = 100;
 
 const COLORFUL = {
   blue: { bg: "rgba(37, 99, 235, 0.12)", fg: "#2563EB" },
@@ -128,11 +123,20 @@ const ProfileDetailsModal: React.FC<Props> = ({
   const C = Colors[scheme];
   const s = styles(C);
 
-  // positions
-  const translateY = useRef(new Animated.Value(SNAP.DISMISS)).current;
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const dragOffset = useRef(0);
-  const scrollYRef = useRef(0);
+  // Bottom sheet ref
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+
+  // Snap points for the bottom sheet - use percentage
+  const snapPoints = useMemo(() => ["90%"], []);
+
+  // Control modal visibility with useEffect
+  useEffect(() => {
+    if (visible) {
+      bottomSheetModalRef.current?.present();
+    } else {
+      bottomSheetModalRef.current?.dismiss();
+    }
+  }, [visible]);
 
   // ---------- FORM ----------
   const {
@@ -189,92 +193,22 @@ const ProfileDetailsModal: React.FC<Props> = ({
 
   const canSave = isValid && Object.keys(errors).length === 0;
 
-  // ---------- SHEET ANIM ----------
-  const openSheet = () => {
-    translateY.setValue(SNAP.DISMISS);
-    backdropOpacity.setValue(0);
-    Animated.parallel([
-      Animated.spring(translateY, {
-        toValue: SNAP.OPEN,
-        useNativeDriver: true,
-        stiffness: 180,
-        damping: 22,
-        mass: 0.8,
-      }),
-      Animated.timing(backdropOpacity, {
-        toValue: 1,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      dragOffset.current = SNAP.OPEN;
-    });
-  };
+  const closeSheet = useCallback(() => {
+    onClose();
+  }, [onClose]);
 
-  const closeSheet = () => {
-    Animated.parallel([
-      Animated.spring(translateY, {
-        toValue: SNAP.DISMISS,
-        useNativeDriver: true,
-        stiffness: 180,
-        damping: 22,
-        mass: 0.85,
-      }),
-      Animated.timing(backdropOpacity, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      dragOffset.current = SNAP.DISMISS;
-      onClose();
-    });
-  };
-  const { mutate, isPending } = useUpdateUserById(closeSheet);
-
-  const animateTo = (to: number) => {
-    if (to === SNAP.DISMISS) return closeSheet();
-    Animated.spring(translateY, {
-      toValue: to,
-      useNativeDriver: true,
-      stiffness: 180,
-      damping: 22,
-      mass: 0.8,
-    }).start(() => (dragOffset.current = to));
-  };
-
-  useEffect(() => {
-    if (visible) requestAnimationFrame(openSheet);
-  }, [visible]);
-
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_, g) => {
-          const isVertical = Math.abs(g.dy) > Math.abs(g.dx);
-          const pullingDown = g.dy > 5;
-          const canGrab =
-            scrollYRef.current <= 0 || dragOffset.current > SNAP.OPEN;
-          return isVertical && pullingDown && canGrab;
-        },
-        onPanResponderGrant: () => translateY.stopAnimation(),
-        onPanResponderMove: (_, g) => {
-          const next = Math.max(SNAP.OPEN, dragOffset.current + g.dy);
-          translateY.setValue(next);
-        },
-        onPanResponderRelease: (_, g) => {
-          const endY = dragOffset.current + g.dy;
-          const shouldClose =
-            g.vy > VELOCITY_CLOSE_THRESHOLD || endY > DRAG_CLOSE_THRESHOLD;
-          animateTo(shouldClose ? SNAP.DISMISS : SNAP.OPEN);
-        },
-      }),
-    []
+  const handleSheetChanges = useCallback(
+    (index: number) => {
+      if (index === -1) {
+        onClose();
+      }
+    },
+    [onClose]
   );
 
-  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    scrollYRef.current = e.nativeEvent.contentOffset.y;
-  };
+  const { mutate, isPending } = useUpdateUserById(() => {
+    onClose();
+  });
 
   // ---------- IMAGE PICKER ----------
   //   const pickAvatar = async () => {
@@ -292,8 +226,6 @@ const ProfileDetailsModal: React.FC<Props> = ({
   //     }
   //   };
 
-  if (!visible) return null;
-
   const handleSave = handleSubmit((data: UserFormData) => {
     // const iso = toISOFromDisplay(data.birthday);
     mutate({
@@ -305,30 +237,37 @@ const ProfileDetailsModal: React.FC<Props> = ({
   });
 
   return (
-    <Modal
-      visible
-      transparent
-      animationType="none"
-      onRequestClose={closeSheet}
-      statusBarTranslucent
+    <BottomSheetModal
+      ref={bottomSheetModalRef}
+      snapPoints={snapPoints}
+      onChange={handleSheetChanges}
+      backgroundStyle={{ backgroundColor: C.card }}
+      handleIndicatorStyle={{ backgroundColor: C.mutedForeground }}
+      enablePanDownToClose={true}
+      backdropComponent={(props) => (
+        <BottomSheetBackdrop
+          {...props}
+          disappearsOnIndex={-1}
+          appearsOnIndex={0}
+          pressBehavior="close"
+        />
+      )}
     >
-      <View style={s.wrap}>
-        {/* Backdrop */}
-        <TouchableWithoutFeedback onPress={closeSheet}>
-          <Animated.View style={[s.backdrop, { opacity: backdropOpacity }]} />
-        </TouchableWithoutFeedback>
-
-        {/* Bottom sheet */}
-        <Animated.View
-          style={[s.sheet, { transform: [{ translateY }] }]}
-          {...panResponder.panHandlers}
+      <BottomSheetView style={{ flex: 1, backgroundColor: C.card }}>
+        {/* CONTENT - Scrollable area with footer at bottom */}
+        <BottomSheetScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingHorizontal: 14,
+            paddingTop: 6,
+            paddingBottom: 16,
+          }}
+          keyboardShouldPersistTaps="handled"
+          bounces
         >
           {/* Header */}
-          <View>
-            <View style={s.grabberWrap}>
-              <View style={s.grabber} />
-            </View>
-
+          <View style={{ marginBottom: 16 }}>
             <View style={s.headerRow}>
               <Text style={s.title}>Cập nhật hồ sơ</Text>
               <TouchableOpacity
@@ -336,153 +275,111 @@ const ProfileDetailsModal: React.FC<Props> = ({
                 style={s.iconBtn}
                 activeOpacity={0.85}
               >
-                <Ionicons name="close" size={22} color={COLORFUL.pink.fg} />
+                <Ionicons name="close" size={22} color={C.mutedForeground} />
               </TouchableOpacity>
             </View>
 
             <View style={s.divider} />
           </View>
 
-          {/* CONTENT */}
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: FOOTER_H + 16 }}
-            keyboardShouldPersistTaps="handled"
-            bounces
-            scrollEventThrottle={16}
-            onScroll={onScroll}
-          >
-            {/* INFO / AVATAR */}
-            <View style={s.infoRow}>
-              <View style={[s.avatarRing, { shadowColor: COLORFUL.sky.fg }]}>
-                <View
-                  style={[
-                    s.avatar,
-                    { alignItems: "center", justifyContent: "center" },
-                  ]}
-                >
-                  <Ionicons
-                    name="person-outline"
-                    size={28}
-                    color={COLORFUL.sky.fg}
-                  />
-                </View>
-                <TouchableOpacity
-                  activeOpacity={0.9}
-                  style={[
-                    local.camBtn,
-                    {
-                      backgroundColor: COLORFUL.blue.fg,
-                      borderColor: C.background,
-                    },
-                  ]}
-                >
-                  <Ionicons name="camera" size={14} color={"#fff"} />
-                </TouchableOpacity>
-              </View>
-
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Controller
-                  name="fullname"
-                  control={control}
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <TextInput
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      placeholder="Họ và tên"
-                      placeholderTextColor={C.mutedForeground}
-                      style={[
-                        local.input,
-                        { color: C.foreground, borderColor: C.border },
-                        errors.fullname ? local.inputError : null,
-                      ]}
-                    />
-                  )}
+          {/* INFO / AVATAR */}
+          <View style={s.infoRow}>
+            <View style={[s.avatarRing, { shadowColor: C.mutedForeground }]}>
+              <View
+                style={[
+                  s.avatar,
+                  { alignItems: "center", justifyContent: "center" },
+                ]}
+              >
+                <Ionicons
+                  name="person-outline"
+                  size={28}
+                  color={C.mutedForeground}
                 />
               </View>
+              <TouchableOpacity
+                activeOpacity={0.9}
+                style={[
+                  local.camBtn,
+                  {
+                    backgroundColor: C.primary,
+                    borderColor: C.background,
+                  },
+                ]}
+              >
+                <Ionicons name="camera" size={14} color={C.primaryForeground} />
+              </TouchableOpacity>
             </View>
 
-            <View style={[s.divider, { marginTop: 2 }]} />
-
-            {/* FORM FIELDS */}
-            <View style={s.sectionTight}>
-              <Field
-                icon="mail-outline"
-                iconColor={COLORFUL.blue.fg}
-                chipColor={COLORFUL.blue}
-                label="Email"
-                name="email"
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Controller
+                name="fullname"
                 control={control}
-                C={C}
-                keyboardType="email-address"
-                error={errors.email?.message}
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextInput
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    placeholder="Họ và tên"
+                    placeholderTextColor={C.mutedForeground}
+                    style={[
+                      local.input,
+                      { color: C.foreground, borderColor: C.border },
+                      errors.fullname ? local.inputError : null,
+                    ]}
+                  />
+                )}
               />
-
-              <Field
-                icon="call-outline"
-                iconColor={COLORFUL.green.fg}
-                chipColor={COLORFUL.green}
-                label="Điện thoại"
-                name="phone"
-                control={control}
-                C={C}
-                keyboardType="phone-pad"
-                error={errors.phone?.message}
-              />
-
-              {/* Ngày sinh thân thiện */}
-              {/* <BirthdayField
-                value={formValues.birthday}
-                onOpen={() => setShowDP(true)}
-                error={errors.birthday?.message}
-                C={C}
-              />
-
-              <Field
-                icon="school-outline"
-                iconColor={COLORFUL.sky.fg}
-                chipColor={COLORFUL.sky}
-                label="Trường"
-                name="schoolName"
-                control={control}
-                C={C}
-                keyboardType="default"
-                error={errors.schoolName?.message}
-              />
-
-              <Field
-                icon="location-outline"
-                iconColor={COLORFUL.amber.fg}
-                chipColor={COLORFUL.amber}
-                label="Phường / Xã"
-                name="ward"
-                control={control}
-                C={C}
-                keyboardType="default"
-                error={errors.ward?.message}
-              />
-
-              <Field
-                icon="ribbon-outline"
-                iconColor={COLORFUL.pink.fg}
-                chipColor={COLORFUL.pink}
-                label="Khối / Lớp"
-                name="grade"
-                control={control}
-                C={C}
-                keyboardType="default"
-                error={errors.grade?.message}
-                last
-              /> */}
             </View>
-          </ScrollView>
+          </View>
 
-          {/* FOOTER STICKY */}
+          <View style={[s.divider, { marginTop: 2 }]} />
+
+          {/* FORM FIELDS */}
+          <View style={s.sectionTight}>
+            <Field
+              icon="mail-outline"
+              iconColor={C.primary}
+              chipColor={{ bg: C.card, fg: C.foreground }}
+              label="Email"
+              name="email"
+              control={control}
+              C={C}
+              keyboardType="email-address"
+              error={errors.email?.message}
+            />
+
+            <Field
+              icon="call-outline"
+              iconColor={C.primary}
+              chipColor={{ bg: C.card, fg: C.foreground }}
+              label="Điện thoại"
+              name="phone"
+              control={control}
+              C={C}
+              keyboardType="phone-pad"
+              error={errors.phone?.message}
+            />
+          </View>
+
+          {/* SPACER to push footer to bottom */}
+          <View style={{ flex: 1, minHeight: 20 }} />
+
+          {/* FOOTER - Always at bottom of scroll view */}
           <View
             style={[
               s.footer,
-              { backgroundColor: C.card, borderTopColor: C.border },
+              {
+                backgroundColor: C.card,
+                borderTopColor: C.border,
+                marginHorizontal: -14,
+                marginTop: 20,
+                shadowColor: "#000",
+                shadowOpacity: 0.06,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: -2 },
+                elevation: 3,
+              },
             ]}
           >
             <TouchableOpacity
@@ -499,7 +396,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
                   s.primaryTxt,
                   {
                     color: C.primaryForeground,
-                    backgroundColor: COLORFUL.blue.fg,
+                    backgroundColor: C.primary,
                   },
                 ]}
               >
@@ -512,38 +409,14 @@ const ProfileDetailsModal: React.FC<Props> = ({
               onPress={closeSheet}
               activeOpacity={0.9}
             >
-              <Text style={[s.ghostTxt, { color: COLORFUL.pink.fg }]}>Huỷ</Text>
+              <Text style={[s.ghostTxt, { color: C.mutedForeground }]}>
+                Huỷ
+              </Text>
             </TouchableOpacity>
           </View>
-        </Animated.View>
-
-        {/* DateTimePicker (Android: hiển thị pop-up; iOS: inline modal của hệ thống) */}
-        {/* {showDP && (
-          <DateTimePicker
-            mode="date"
-            value={currentBirthdayDate}
-            maximumDate={maxDate}
-            minimumDate={minDate}
-            display={Platform.OS === "ios" ? "spinner" : "default"}
-            onChange={(_, date) => {
-              // Android: khi người dùng bấm Cancel, date sẽ undefined => chỉ đóng
-              if (!date) {
-                setShowDP(false);
-                return;
-              }
-              const dd = `${date.getDate()}`.padStart(2, "0");
-              const mm = `${date.getMonth() + 1}`.padStart(2, "0");
-              const yyyy = date.getFullYear();
-              setField("birthday", `${dd}/${mm}/${yyyy}`);
-
-              // Android sẽ tự đóng, iOS cần tự đóng (tùy UX, ở đây cũng đóng)
-              if (Platform.OS === "android") setShowDP(false);
-            }}
-            onTouchCancel={() => setShowDP(false)}
-          />
-        )} */}
-      </View>
-    </Modal>
+        </BottomSheetScrollView>
+      </BottomSheetView>
+    </BottomSheetModal>
   );
 };
 

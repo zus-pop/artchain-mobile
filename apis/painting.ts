@@ -6,6 +6,7 @@ import {
   PaintingUploadRequest,
   ReviewRound1EvaluationRequest,
   Round1EvaluationRequest,
+  Round1PreliminaryEvaluationRequest,
   Round2EvaluationRequest,
 } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -34,18 +35,21 @@ export function useGetPaintings(filters: PaintingFilter) {
     params.roundName = filters.roundName;
   }
 
-  if (filters.is_passed !== undefined) {
-    params.is_passed = filters.is_passed;
-  }
-
   if (filters.status) {
     params.status = filters.status;
+  }
+
+  if (filters.examinerId) {
+    params.examinerId = filters.examinerId;
   }
 
   return useQuery({
     queryKey: ["paintings", filters],
     queryFn: async () => {
-      const response = await myAxios.get<Painting[]>("/paintings", {
+      const response = await myAxios.get<{
+        paintings: Painting[];
+        count: number;
+      }>("/paintings", {
         params,
       });
       return response.data;
@@ -86,10 +90,12 @@ export function useUploadPainting() {
   });
 }
 
-export function useEvaluationPaintingRound1() {
+export function useEvaluationPaintingRound1Preliminary() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (evaluationRequest: Round1EvaluationRequest) => {
+    mutationFn: async (
+      evaluationRequest: Round1PreliminaryEvaluationRequest
+    ) => {
       const response = await myAxios.post(
         "/paintings/evaluate/preliminary",
         evaluationRequest
@@ -111,7 +117,7 @@ export function useEvaluationPaintingRound1() {
   });
 }
 
-export function useReviewEvaluationRound1() {
+export function useReviewEvaluationRound1Drop() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (evaluationRequest: ReviewRound1EvaluationRequest) => {
@@ -136,12 +142,37 @@ export function useReviewEvaluationRound1() {
   });
 }
 
+export function useEvaluatePaintingRound1() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (evaluationRequest: Round1EvaluationRequest) => {
+      const response = await myAxios.post(
+        "/paintings/evaluate",
+        evaluationRequest
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success("Chấm bài thành công");
+      queryClient.invalidateQueries({ queryKey: ["paintings"] });
+      router.back();
+    },
+    onError: (error) => {
+      let message = error.message;
+      if (error instanceof AxiosError) {
+        message = error.response?.data.message;
+      }
+      toast.error(message);
+    },
+  });
+}
+
 export function useEvaluatePaintingRound2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (evaluationRequest: Round2EvaluationRequest) => {
       const response = await myAxios.post(
-        "/paintings/evaluate",
+        "/paintings/evaluate/round2",
         evaluationRequest
       );
       return response.data;

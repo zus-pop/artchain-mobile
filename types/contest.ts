@@ -39,4 +39,4 @@ export type ContestStatus =
   | "DRAFT"
   | "ALL";
 
-export type ExaminerRole = "ROUND_1" | "REVIEW_ROUND_1" | "ROUND_2";
+export type ExaminerRole = "ROUND_1" | "ROUND_2";

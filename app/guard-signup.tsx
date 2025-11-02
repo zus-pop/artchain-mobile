@@ -121,7 +121,7 @@ export default function GuardSignupScreen() {
               color: Colors[colorScheme].primary,
             }}
           >
-            Đăng ký Người giám sát
+            Đăng ký Người đại diện
           </Text>
         </View>
 
@@ -135,25 +135,13 @@ export default function GuardSignupScreen() {
         >
           <Text
             style={{
-              fontSize: 20,
-              fontWeight: "bold",
-              color: Colors[colorScheme].foreground,
-              marginBottom: 8,
-              textAlign: "center",
-            }}
-          >
-            Đăng ký Người giám sát
-          </Text>
-
-          <Text
-            style={{
               fontSize: 14,
               color: Colors[colorScheme].mutedForeground,
               marginBottom: 24,
               textAlign: "center",
             }}
           >
-            Điền thông tin để trở thành người giám sát
+            Điền thông tin để trở thành người đại diện
           </Text>
 
           <Controller

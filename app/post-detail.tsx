@@ -3,7 +3,6 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Post } from "@/types/post";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -17,8 +16,7 @@ import {
   View,
 } from "react-native";
 import ImageViewing from "react-native-image-viewing";
-import type { MarkdownProps } from "react-native-markdown-display";
-import Markdown from "react-native-markdown-display";
+import Markdown, { MarkdownProps } from "react-native-markdown-display";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function PostDetail() {
@@ -33,7 +31,6 @@ export default function PostDetail() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
 
-  // Ẩn/hiện StatusBar khi bật/tắt viewer => tránh hở đỉnh
   useEffect(() => {
     StatusBar.setHidden(viewerOpen, "fade");
     return () => {
@@ -71,12 +68,8 @@ export default function PostDetail() {
     } catch {}
   };
 
-  const gradientFrom = scheme === "dark" ? "#0EA5E9" : "#60A5FA";
-  const gradientTo = scheme === "dark" ? "#6366F1" : "#2563EB";
-
   const ViewerHeaderComp: React.FC<{ imageIndex: number }> = () => (
     <View style={[styles.viewerTop, { paddingTop: insets.top + 8 }]}>
-      {/* Đóng viewer (quay lại bài viết) */}
       <Pressable
         onPress={() => setViewerOpen(false)}
         style={[styles.viewerBtn, { marginLeft: 10 }]}
@@ -89,7 +82,6 @@ export default function PostDetail() {
 
   return (
     <>
-      {/* StatusBar sẽ bị ẩn khi viewerOpen = true (ở useEffect) */}
       <StatusBar
         barStyle={scheme === "dark" ? "light-content" : "dark-content"}
         translucent
@@ -103,14 +95,6 @@ export default function PostDetail() {
       >
         {/* ======= HERO ======= */}
         <View style={styles.heroWrap}>
-          <LinearGradient
-            colors={[gradientFrom, gradientTo]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroGrad}
-          />
-
-          {/* Nút Back trắng ở góc trái trên ảnh */}
           <View style={[styles.headerActions, { paddingTop: insets.top + 8 }]}>
             <Pressable
               onPress={() => router.back()}
@@ -162,127 +146,115 @@ export default function PostDetail() {
 
         {/* ======= TITLE + META ======= */}
         <View style={styles.outerPad}>
-          <View
-            style={[
-              styles.card,
-              {
-                backgroundColor: C.card,
-                shadowColor: scheme === "dark" ? "#000" : "#1e293b",
-              },
-            ]}
-          >
-            <Text style={[styles.title, { color: C.foreground }]}>
-              {post.title}
-            </Text>
+          <Text style={[styles.title, { color: C.foreground }]}>
+            {post.title}
+          </Text>
 
-            <View style={styles.metaRow}>
-              {!!published && (
-                <View
-                  style={[
-                    styles.metaPill,
-                    {
-                      backgroundColor:
-                        scheme === "dark"
-                          ? "rgba(148,163,184,0.12)"
-                          : "rgba(2,6,23,0.06)",
-                      borderColor:
-                        scheme === "dark"
-                          ? "rgba(148,163,184,0.25)"
-                          : "rgba(2,6,23,0.10)",
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="calendar-outline"
-                    size={14}
-                    color={C.mutedForeground}
-                  />
-                  <Text style={[styles.metaText, { color: C.mutedForeground }]}>
-                    {published}
-                  </Text>
-                </View>
-              )}
-
-              {!!post.creator?.fullName && (
-                <View
-                  style={[
-                    styles.metaPill,
-                    {
-                      backgroundColor:
-                        scheme === "dark"
-                          ? "rgba(148,163,184,0.12)"
-                          : "rgba(2,6,23,0.06)",
-                      borderColor:
-                        scheme === "dark"
-                          ? "rgba(148,163,184,0.25)"
-                          : "rgba(2,6,23,0.10)",
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="person-circle-outline"
-                    size={14}
-                    color={C.mutedForeground}
-                  />
-                  <Text style={[styles.metaText, { color: C.mutedForeground }]}>
-                    {post.creator.fullName}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {!!post.postTags?.length && (
-              <View style={styles.tagsRow}>
-                {post.postTags.map((pt, i) => (
-                  <View
-                    key={`${pt.tag.tag_id ?? i}`}
-                    style={[
-                      styles.tagChip,
-                      {
-                        backgroundColor:
-                          scheme === "dark"
-                            ? "rgba(59,130,246,0.18)"
-                            : "rgba(59,130,246,0.12)",
-                        borderColor:
-                          scheme === "dark"
-                            ? "rgba(59,130,246,0.35)"
-                            : "rgba(59,130,246,0.25)",
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name="pricetag-outline"
-                      size={12}
-                      color={scheme === "dark" ? "#93C5FD" : "#2563EB"}
-                    />
-                    <Text
-                      style={[
-                        styles.tagText,
-                        { color: scheme === "dark" ? "#BFDBFE" : "#1D4ED8" },
-                      ]}
-                    >
-                      {pt.tag.tag_name}
-                    </Text>
-                  </View>
-                ))}
+          <View style={styles.metaRow}>
+            {!!published && (
+              <View
+                style={[
+                  styles.metaPill,
+                  {
+                    backgroundColor:
+                      scheme === "dark"
+                        ? "rgba(148,163,184,0.12)"
+                        : "rgba(2,6,23,0.06)",
+                    borderColor:
+                      scheme === "dark"
+                        ? "rgba(148,163,184,0.25)"
+                        : "rgba(2,6,23,0.10)",
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="calendar-outline"
+                  size={14}
+                  color={C.mutedForeground}
+                />
+                <Text style={[styles.metaText, { color: C.mutedForeground }]}>
+                  {published}
+                </Text>
               </View>
             )}
 
-            <View
-              style={{
-                height: StyleSheet.hairlineWidth,
-                backgroundColor:
-                  scheme === "dark"
-                    ? "rgba(148,163,184,0.18)"
-                    : "rgba(2,6,23,0.08)",
-                marginVertical: 12,
-              }}
-            />
-
-            <Markdown style={mdStyles(scheme, C)}>
-              {post.content || ""}
-            </Markdown>
+            {!!post.creator?.fullName && (
+              <View
+                style={[
+                  styles.metaPill,
+                  {
+                    backgroundColor:
+                      scheme === "dark"
+                        ? "rgba(148,163,184,0.12)"
+                        : "rgba(2,6,23,0.06)",
+                    borderColor:
+                      scheme === "dark"
+                        ? "rgba(148,163,184,0.25)"
+                        : "rgba(2,6,23,0.10)",
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="person-circle-outline"
+                  size={14}
+                  color={C.mutedForeground}
+                />
+                <Text style={[styles.metaText, { color: C.mutedForeground }]}>
+                  {post.creator.fullName}
+                </Text>
+              </View>
+            )}
           </View>
+
+          {!!post.postTags?.length && (
+            <View style={styles.tagsRow}>
+              {post.postTags.map((pt, i) => (
+                <View
+                  key={`${pt.tag.tag_id ?? i}`}
+                  style={[
+                    styles.tagChip,
+                    {
+                      backgroundColor:
+                        scheme === "dark"
+                          ? "rgba(59,130,246,0.18)"
+                          : "rgba(59,130,246,0.12)",
+                      borderColor:
+                        scheme === "dark"
+                          ? "rgba(59,130,246,0.35)"
+                          : "rgba(59,130,246,0.25)",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="pricetag-outline"
+                    size={12}
+                    color={scheme === "dark" ? "#93C5FD" : "#2563EB"}
+                  />
+                  <Text
+                    style={[
+                      styles.tagText,
+                      { color: scheme === "dark" ? "#BFDBFE" : "#1D4ED8" },
+                    ]}
+                  >
+                    {pt.tag.tag_name}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <View
+            style={{
+              height: StyleSheet.hairlineWidth,
+              backgroundColor:
+                scheme === "dark"
+                  ? "rgba(148,163,184,0.18)"
+                  : "rgba(2,6,23,0.08)",
+              marginVertical: 12,
+            }}
+          />
+
+          <Markdown style={mdStyles(scheme, C)}>{post.content || ""}</Markdown>
         </View>
       </ScrollView>
 
@@ -297,9 +269,6 @@ export default function PostDetail() {
         presentationStyle="fullScreen"
         backgroundColor="#000"
         HeaderComponent={ViewerHeaderComp}
-        // fix hở đỉnh Android (Modal -> statusBarTranslucent)
-        // @ts-expect-error: modalProps là prop pass-through của thư viện
-        modalProps={{ statusBarTranslucent: true }}
       />
     </>
   );
@@ -335,11 +304,10 @@ const styles = StyleSheet.create({
   },
 
   heroImageWrap: {
-    marginHorizontal: 16,
     marginTop: 24,
-    borderRadius: 18,
+    borderRadius: 0, // ⬅️ FULL WIDTH, no rounded corners
     overflow: "hidden",
-    height: 240,
+    height: 300, // ⬅️ TALLER for more prominence
     justifyContent: "center",
     alignItems: "center",
   },
@@ -352,7 +320,7 @@ const styles = StyleSheet.create({
   fabRow: {
     position: "absolute",
     right: 22,
-    bottom: 10,
+    bottom: 30,
     flexDirection: "row",
     gap: 10,
   },
@@ -367,14 +335,6 @@ const styles = StyleSheet.create({
   },
 
   outerPad: { paddingHorizontal: 16, marginTop: 8 },
-  card: {
-    borderRadius: 18,
-    padding: 16,
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
-  },
 
   title: { fontSize: 24, fontWeight: "900", letterSpacing: 0.2 },
 

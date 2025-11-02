@@ -1,23 +1,22 @@
-// app/.../PaintingEvaluationScreen.tsx
+// app/painting-evaluation-round1.tsx
+import { useWhoAmI } from "@/apis/auth";
+import { useEvaluatePaintingRound2 } from "@/apis/painting";
 import BrushButton from "@/components/buttons/BrushButton";
-// import ArtworkViewer from "@/components/media/ArtworkViewer"; // <- bỏ
-import EvaluationSubmitModal from "@/components/modals/EvaluationSubmitModal"; // <-- NEW
+import EvaluationSubmitModal from "@/components/modals/EvaluationSubmitModal";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Image as ExpoImage, Image } from "expo-image";
+import { Zoomable } from "@likashefqet/react-native-image-zoom";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-  Alert,
   Animated,
-  ColorValue,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -27,32 +26,17 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { toast } from "sonner-native";
 import { z } from "zod";
-import { useWhoAmI } from "../apis/auth";
-import { useEvaluatePaintingRound2 } from "../apis/painting";
 
-import { Zoomable } from "@likashefqet/react-native-image-zoom";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+// NEW: card tách riêng
 
-/* ---------- Color helpers ---------- */
-const POOLS: [string, string][] = [
-  ["#FF6B6B", "#FFD166"],
-  ["#06B6D4", "#3B82F6"],
-  ["#22C55E", "#A3E635"],
-  ["#F472B6", "#A78BFA"],
-  ["#F59E0B", "#F97316"],
-  ["#14B8A6", "#84CC16"],
-  ["#60A5FA", "#F472B6"],
-  ["#F43F5E", "#FB7185"],
-];
-const hashStr = (s: string) => {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-};
-const pickGrad = (seed?: string): [string, string] =>
-  POOLS[hashStr(seed || Math.random().toString()) % POOLS.length];
+/* ---------- Helpers ---------- */
+const clamp = (v: number, min: number, max: number) =>
+  Math.min(Math.max(v, min), max);
+const STEP = 1;
+const roundToStep = (n: number, step = STEP) => Math.round(n / step) * step;
 
 /* ---------- Zoom modal (FULL) ---------- */
 function ZoomModal({
@@ -88,7 +72,7 @@ function ZoomModal({
           isDoubleTapEnabled
           style={{ flex: 1 }}
         >
-          <ExpoImage
+          <Image
             source={{ uri }}
             style={{ width: "100%", height: "100%" }}
             contentFit="contain"
@@ -108,58 +92,34 @@ function ZoomModal({
     </AnimatedModal>
   );
 }
-
-/* --------- Modal wrapper để đồng nhất import React Native <=/>=0.73 --------- */
 const AnimatedModal = (props: any) => <Modal {...props} />;
 
-/* ---------- Helpers ---------- */
-const clamp = (v: number, min: number, max: number) =>
-  Math.min(Math.max(v, min), max);
-const STEP = 1;
-const roundToStep = (n: number, step = STEP) => Math.round(n / step) * step;
-
-const FEEDBACK_PRESETS = [
-  "Ý tưởng tốt",
-  "Bố cục chắc",
-  "Màu sắc hài hoà",
-  "Thông điệp chưa rõ",
-  "Cần trau chuốt chi tiết",
-  "Chưa sát chủ đề",
-];
-
-const QUICK_FEEDBACK: string[] = [
-  "👍 Tác phẩm nổi bật",
-  "🎨 Phối màu ấn tượng",
-  "🧭 Bố cục cân đối",
-  "✨ Điểm nhấn rõ",
-  "🧪 Cần thử nghiệm thêm",
-  "🧹 Nên tinh gọn chi tiết",
-  "🧩 Tỉ lệ cần chỉnh",
-  "🌗 Tương phản yếu",
-];
-
 /* ---------- Schema ---------- */
-const evaluationSchema = z
-  .object({
-    score: z
-      .number({ invalid_type_error: "Điểm phải là số" })
-      .min(1, "Điểm phải ít nhất là 1")
-      .max(10, "Điểm không được vượt quá 10"),
-    feedback: z.string().min(0),
-  })
-  .superRefine((val, ctx) => {
-    if (val.score <= 6 && (!val.feedback || val.feedback.trim().length < 10)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["feedback"],
-        message: "Bắt buộc nhập nhận xét tối thiểu 10 ký tự khi điểm ≤ 6",
-      });
-    }
-  });
+const evaluationSchema = z.object({
+  creativityScore: z
+    .number({ invalid_type_error: "Điểm phải là số" })
+    .min(0, "Điểm phải ít nhất là 0")
+    .max(30, "Điểm không được vượt quá 30"),
+  compositionScore: z
+    .number({ invalid_type_error: "Điểm phải là số" })
+    .min(0, "Điểm phải ít nhất là 0")
+    .max(20, "Điểm không được vượt quá 20"),
+  colorScore: z
+    .number({ invalid_type_error: "Điểm phải là số" })
+    .min(0, "Điểm phải ít nhất là 0")
+    .max(20, "Điểm không được vượt quá 20"),
+  technicalScore: z
+    .number({ invalid_type_error: "Điểm phải là số" })
+    .min(0, "Điểm phải ít nhất là 0")
+    .max(20, "Điểm không được vượt quá 20"),
+  aestheticScore: z
+    .number({ invalid_type_error: "Điểm phải là số" })
+    .min(0, "Điểm phải ít nhất là 0")
+    .max(10, "Điểm không được vượt quá 10"),
+});
 
 type EvaluationFormData = z.infer<typeof evaluationSchema>;
 
-/* ---------- Tiny pressable ---------- */
 const PressableScale: React.FC<
   React.PropsWithChildren<{
     onPress?: () => void;
@@ -193,7 +153,7 @@ const PressableScale: React.FC<
   );
 };
 
-export default function PaintingEvaluationScreen() {
+export default function PaintingEvaluationRound2Screen() {
   const { paintingTitle, artistName, contestTitle, imageUrl, paintingId } =
     useLocalSearchParams<{
       paintingId: string;
@@ -213,176 +173,99 @@ export default function PaintingEvaluationScreen() {
   const {
     control,
     handleSubmit,
-    setValue,
-    watch,
     getValues,
-    formState: { errors, isValid, isDirty },
+    setValue,
+    formState: { isValid },
   } = useForm<EvaluationFormData>({
     resolver: zodResolver(evaluationSchema),
-    defaultValues: { score: 5, feedback: "" },
+    defaultValues: {
+      creativityScore: 15,
+      compositionScore: 10,
+      colorScore: 10,
+      technicalScore: 10,
+      aestheticScore: 5,
+    },
     mode: "all",
   });
 
-  const scoreWatch = watch("score");
   const { data: examiner } = useWhoAmI();
   const { mutate, isPending } = useEvaluatePaintingRound2();
 
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [showPresets, setShowPresets] = useState(false);
-
-  // NEW: modal states
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
 
-  // Autosave
-  const draftKey = useMemo(
-    () => `draft_evaluation_${paintingId}`,
-    [paintingId]
-  );
+  const handleBack = () => router.back();
 
-  /* ---------- Restore Draft ---------- */
-  useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(draftKey);
-        if (raw) {
-          const parsed = JSON.parse(raw) as Partial<EvaluationFormData>;
-          if (typeof parsed.score === "number") {
-            setValue("score", clamp(roundToStep(parsed.score), 1, 10), {
-              shouldValidate: true,
-            });
-          }
-          if (typeof parsed.feedback === "string") {
-            setValue("feedback", parsed.feedback, { shouldValidate: true });
-          }
-          toast.info("Đã khôi phục bản nháp");
-        }
-      } catch {}
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftKey]);
-
-  /* ---------- Autosave ---------- */
-  useEffect(() => {
-    const id = setInterval(async () => {
-      if (!isDirty) return;
-      try {
-        await AsyncStorage.setItem(
-          draftKey,
-          JSON.stringify({
-            score: getValues("score"),
-            feedback: getValues("feedback"),
-          })
-        );
-      } catch {}
-    }, 2000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftKey]);
-
-  const clearDraft = async () => {
-    await AsyncStorage.removeItem(draftKey);
-    toast.info("Đã xoá bản nháp cục bộ");
-  };
-
-  const handleBack = () => {
-    if (isDirty) {
-      Alert.alert(
-        "Bạn có muốn thoát?",
-        "Bản nháp đã được lưu tự động, nhưng các thay đổi chưa gửi. Tiếp tục quay lại?",
-        [
-          { text: "Ở lại", style: "cancel" },
-          {
-            text: "Quay lại",
-            style: "destructive",
-            onPress: () => router.back(),
-          },
-        ]
-      );
-      return;
-    }
-    router.back();
-  };
-
-  /* ---------- Submit flow ---------- */
   const onConfirmSubmit = (data: EvaluationFormData) => {
-    if (!examiner) {
-      toast.info("Không có thông tin giám khảo");
-      return;
-    }
-    if (examiner.role !== "EXAMINER") {
-      toast.info("Người dùng đăng nhập không phải giám khảo chấm thi");
-      return;
-    }
+    if (!examiner) return toast.info("Không có thông tin giám khảo");
+    if (examiner.role !== "EXAMINER")
+      return toast.info("Người dùng đăng nhập không phải giám khảo chấm thi");
     mutate(
       {
         examinerId: examiner.userId,
         paintingId: paintingId,
-        score: data.score,
-        feedback: data.feedback?.trim(),
+        creativityScore: data.creativityScore,
+        compositionScore: data.compositionScore,
+        colorScore: data.colorScore,
+        technicalScore: data.technicalScore,
+        aestheticScore: data.aestheticScore,
       },
       {
-        onSuccess: async () => {
-          await AsyncStorage.removeItem(draftKey);
+        onSuccess: () => {
           setConfirmOpen(false);
+          setSuccessOpen(true);
         },
       }
     );
   };
-
   const onSubmit = () => setConfirmOpen(true);
 
-  /* ---------- Score Stepper ---------- */
-  const bumpScore = (delta: number) => {
-    const cur = Number(getValues("score") ?? 0);
-    const next = clamp(roundToStep(cur + delta), 1, 10);
-    setValue("score", next, { shouldValidate: true, shouldDirty: true });
-  };
-
-  /* ---------- Preset & Quick feedback ---------- */
-  const appendPreset = (txt: string) => {
-    const cur = getValues("feedback") ?? "";
-    const joiner = cur.trim().length ? "; " : "";
-    setValue("feedback", `${cur.trim()}${joiner}${txt}`.trim(), {
+  /* ---------- Score Steppers ---------- */
+  const bumpCreativityScore = (delta: number) => {
+    const cur = Number(getValues("creativityScore") ?? 15);
+    const next = clamp(roundToStep(cur + delta), 0, 30);
+    setValue("creativityScore", next, {
       shouldValidate: true,
       shouldDirty: true,
     });
   };
 
-  /* ---------- BG gradient ---------- */
-  const gradientColors = (
-    scheme === "dark"
-      ? ["#1b1b2f", "#162447", "#1f4068", "#53354a"]
-      : ["#a1c4fd", "#c2e9fb", "#fbc2eb", "#a6c0fe"]
-  ) as [ColorValue, ColorValue, ...ColorValue[]];
+  const bumpCompositionScore = (delta: number) => {
+    const cur = Number(getValues("compositionScore") ?? 10);
+    const next = clamp(roundToStep(cur + delta), 0, 20);
+    setValue("compositionScore", next, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
 
-  /* ---------- Seeds cho gradient theo tranh ---------- */
-  const [g0, g1] = pickGrad(String(paintingId) + paintingTitle);
+  const bumpColorScore = (delta: number) => {
+    const cur = Number(getValues("colorScore") ?? 10);
+    const next = clamp(roundToStep(cur + delta), 0, 20);
+    setValue("colorScore", next, { shouldValidate: true, shouldDirty: true });
+  };
+
+  const bumpTechnicalScore = (delta: number) => {
+    const cur = Number(getValues("technicalScore") ?? 10);
+    const next = clamp(roundToStep(cur + delta), 0, 20);
+    setValue("technicalScore", next, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
+
+  const bumpAestheticScore = (delta: number) => {
+    const cur = Number(getValues("aestheticScore") ?? 5);
+    const next = clamp(roundToStep(cur + delta), 0, 10);
+    setValue("aestheticScore", next, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
 
   return (
     <View style={{ flex: 1 }}>
-      {/* NỀN gradient — full màn hình */}
-      <LinearGradient
-        colors={gradientColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      {/* Orbs tròn trang trí */}
-      <LinearGradient
-        colors={[g0 + "33", g1 + "22"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={orb.orbTL}
-      />
-      <LinearGradient
-        colors={["#fda4af33", "#fde68a33"]}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={orb.orbBR}
-      />
-
       <ThemedView
         style={[styles(colors).container, { backgroundColor: "transparent" }]}
       >
@@ -391,7 +274,7 @@ export default function PaintingEvaluationScreen() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
         >
-          {/* Header kính + nút tròn */}
+          {/* Header */}
           <View
             style={[styles(colors).header, { backgroundColor: glassBgStrong }]}
           >
@@ -401,26 +284,13 @@ export default function PaintingEvaluationScreen() {
             >
               <Ionicons name="chevron-back" size={18} color={colors.primary} />
             </PressableScale>
-
             <ThemedText style={styles(colors).headerTitle}>
-              Đánh giá Tranh
+              Đánh giá Vòng 2
             </ThemedText>
-
-            <View style={styles(colors).headerRight}>
-              <PressableScale
-                onPress={clearDraft}
-                style={styles(colors).circleBtn}
-              >
-                <Ionicons
-                  name="trash-outline"
-                  size={16}
-                  color={colors.mutedForeground}
-                />
-              </PressableScale>
-            </View>
+            <View style={styles(colors).headerRight} />
           </View>
 
-          {/* Nội dung */}
+          {/* Content */}
           <ScrollView
             contentContainerStyle={[
               styles(colors).scrollContent,
@@ -429,26 +299,11 @@ export default function PaintingEvaluationScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* 1) Ảnh + meta + details */}
             <View style={styles(colors).section}>
-              {/* Khung ảnh viền gradient */}
+              {/* Image and details section */}
               <View style={styles(colors).frameWrap}>
-                <LinearGradient
-                  colors={[g0, g1]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles(colors).frameBorder}
-                />
-                <View
-                  style={[
-                    styles(colors).paintingCard,
-                    { backgroundColor: glassBg },
-                  ]}
-                >
-                  <PressableScale
-                    onPress={() => setViewerOpen(true)}
-                    style={{ borderRadius: 14 }}
-                  >
+                <View style={styles(colors).paintingCard}>
+                  {imageUrl ? (
                     <Image
                       source={{ uri: String(imageUrl) }}
                       style={styles(colors).paintingImage}
@@ -456,7 +311,18 @@ export default function PaintingEvaluationScreen() {
                       contentFit="cover"
                       transition={150}
                     />
-                  </PressableScale>
+                  ) : (
+                    <View style={styles(colors).noImageContainer}>
+                      <Ionicons
+                        name="image-outline"
+                        size={48}
+                        color={colors.mutedForeground}
+                      />
+                      <ThemedText style={styles(colors).noImageText}>
+                        Không có hình ảnh
+                      </ThemedText>
+                    </View>
+                  )}
 
                   {/* Chi tiết tác phẩm */}
                   <View style={styles(colors).detailsCard}>
@@ -515,39 +381,11 @@ export default function PaintingEvaluationScreen() {
                     </View>
                   </View>
 
-                  {/* Meta pills */}
-                  <View style={styles(colors).paintingMetaRow}>
-                    <View style={styles(colors).pillBorderWrap}>
-                      <LinearGradient
-                        colors={[g0, g1]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles(colors).pillBorder}
-                      />
-                      <View
-                        style={[
-                          styles(colors).pillInner,
-                          { backgroundColor: colors.card },
-                        ]}
-                      >
-                        <Ionicons
-                          name="color-palette-outline"
-                          size={14}
-                          color={colors.mutedForeground}
-                        />
-                        <ThemedText style={styles(colors).metaText}>
-                          {paintingTitle}
-                        </ThemedText>
-                      </View>
-                    </View>
-                  </View>
-
                   <View style={styles(colors).microDivider} />
                 </View>
               </View>
             </View>
 
-            {/* 2) Điểm số */}
             <View
               style={[
                 styles(colors).card,
@@ -556,279 +394,420 @@ export default function PaintingEvaluationScreen() {
               ]}
             >
               <ThemedText type="subtitle" style={styles(colors).sectionTitle}>
-                Điểm số
+                Kết quả đánh giá
               </ThemedText>
 
-              <View style={styles(colors).scoreRow}>
-                <PressableScale
-                  onPress={() => bumpScore(-STEP)}
-                  style={styles(colors).circleBtnLg}
-                >
-                  <Ionicons name="remove" size={20} color={colors.primary} />
-                </PressableScale>
+              <View style={styles(colors).scoreInputs}>
+                {/* Creativity Score */}
+                <View style={styles(colors).scoreInputRow}>
+                  <ThemedText style={styles(colors).scoreLabel}>
+                    Sáng tạo
+                  </ThemedText>
+                  <View style={styles(colors).scoreRow}>
+                    <PressableScale
+                      onPress={() => bumpCreativityScore(-STEP)}
+                      style={styles(colors).circleBtnLg}
+                    >
+                      <Ionicons
+                        name="remove"
+                        size={20}
+                        color={colors.primary}
+                      />
+                    </PressableScale>
 
-                <View style={styles(colors).pillBorderWrapWide}>
-                  <LinearGradient
-                    colors={[g0, g1]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles(colors).pillBorderWide}
-                  />
-                  <View
-                    style={[
-                      styles(colors).scorePill,
-                      { backgroundColor: colors.card },
-                    ]}
-                  >
-                    <Ionicons name="star" size={18} color={colors.primary} />
-                    <Controller
-                      control={control}
-                      name="score"
-                      render={({ field: { onChange, value } }) => (
-                        <TextInput
-                          placeholder="—"
-                          value={
-                            value === undefined ? "" : Number(value).toString()
-                          }
-                          onChangeText={(text) => {
-                            const t = text.replace(",", ".").trim();
-                            if (t === "") {
-                              onChange(undefined as any);
-                              return;
-                            }
-                            const n = Number(t);
-                            const safe = Number.isFinite(n)
-                              ? clamp(roundToStep(n), 1, 10)
-                              : 1;
-                            onChange(safe);
-                          }}
-                          keyboardType="numeric"
-                          style={styles(colors).scoreInput}
-                          placeholderTextColor={colors.mutedForeground}
+                    <View style={styles(colors).pillBorderWrapWide}>
+                      <LinearGradient
+                        colors={[colors.border, colors.border]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles(colors).pillBorderWide}
+                      />
+                      <View
+                        style={[
+                          styles(colors).scorePill,
+                          { backgroundColor: colors.card },
+                        ]}
+                      >
+                        <Ionicons
+                          name="color-palette"
+                          size={18}
+                          color={colors.primary}
                         />
-                      )}
-                    />
-                    <ThemedText style={styles(colors).scoreSuffix}>
-                      /10
-                    </ThemedText>
+                        <Controller
+                          control={control}
+                          name="creativityScore"
+                          render={({ field: { onChange, value } }) => (
+                            <TextInput
+                              placeholder="—"
+                              value={
+                                value === undefined
+                                  ? ""
+                                  : Number(value).toString()
+                              }
+                              onChangeText={(text) => {
+                                const t = text.replace(",", ".").trim();
+                                if (t === "") {
+                                  onChange(undefined as any);
+                                  return;
+                                }
+                                const n = Number(t);
+                                const safe = Number.isFinite(n)
+                                  ? clamp(roundToStep(n), 0, 30)
+                                  : 15;
+                                onChange(safe);
+                              }}
+                              keyboardType="numeric"
+                              style={styles(colors).scoreInput}
+                              placeholderTextColor={colors.mutedForeground}
+                            />
+                          )}
+                        />
+                        <ThemedText style={styles(colors).scoreSuffix}>
+                          /30
+                        </ThemedText>
+                      </View>
+                    </View>
+
+                    <PressableScale
+                      onPress={() => bumpCreativityScore(STEP)}
+                      style={styles(colors).circleBtnLg}
+                    >
+                      <Ionicons name="add" size={20} color={colors.primary} />
+                    </PressableScale>
+                  </View>
+                  <Controller
+                    control={control}
+                    name="creativityScore"
+                    render={({ fieldState: { error } }) =>
+                      error ? (
+                        <ThemedText style={styles(colors).errorText}>
+                          {error.message}
+                        </ThemedText>
+                      ) : (
+                        <></>
+                      )
+                    }
+                  />
+                </View>
+
+                {/* Composition Score */}
+                <View style={styles(colors).scoreInputRow}>
+                  <ThemedText style={styles(colors).scoreLabel}>
+                    Bố cục
+                  </ThemedText>
+                  <View style={styles(colors).scoreRow}>
+                    <PressableScale
+                      onPress={() => bumpCompositionScore(-STEP)}
+                      style={styles(colors).circleBtnLg}
+                    >
+                      <Ionicons
+                        name="remove"
+                        size={20}
+                        color={colors.primary}
+                      />
+                    </PressableScale>
+
+                    <View style={styles(colors).pillBorderWrapWide}>
+                      <LinearGradient
+                        colors={[colors.border, colors.border]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles(colors).pillBorderWide}
+                      />
+                      <View
+                        style={[
+                          styles(colors).scorePill,
+                          { backgroundColor: colors.card },
+                        ]}
+                      >
+                        <Ionicons
+                          name="grid"
+                          size={18}
+                          color={colors.primary}
+                        />
+                        <Controller
+                          control={control}
+                          name="compositionScore"
+                          render={({ field: { onChange, value } }) => (
+                            <TextInput
+                              placeholder="—"
+                              value={
+                                value === undefined
+                                  ? ""
+                                  : Number(value).toString()
+                              }
+                              onChangeText={(text) => {
+                                const t = text.replace(",", ".").trim();
+                                if (t === "") {
+                                  onChange(undefined as any);
+                                  return;
+                                }
+                                const n = Number(t);
+                                const safe = Number.isFinite(n)
+                                  ? clamp(roundToStep(n), 0, 20)
+                                  : 10;
+                                onChange(safe);
+                              }}
+                              keyboardType="numeric"
+                              style={styles(colors).scoreInput}
+                              placeholderTextColor={colors.mutedForeground}
+                            />
+                          )}
+                        />
+                        <ThemedText style={styles(colors).scoreSuffix}>
+                          /20
+                        </ThemedText>
+                      </View>
+                    </View>
+
+                    <PressableScale
+                      onPress={() => bumpCompositionScore(STEP)}
+                      style={styles(colors).circleBtnLg}
+                    >
+                      <Ionicons name="add" size={20} color={colors.primary} />
+                    </PressableScale>
                   </View>
                 </View>
 
-                <PressableScale
-                  onPress={() => bumpScore(STEP)}
-                  style={styles(colors).circleBtnLg}
-                >
-                  <Ionicons name="add" size={20} color={colors.primary} />
-                </PressableScale>
-              </View>
-
-              {typeof scoreWatch === "number" && scoreWatch <= 6 && (
-                <ThemedText style={styles(colors).hintText}>
-                  Gợi ý: với điểm ≤ 6 cần nhận xét tối thiểu 10 ký tự.
-                </ThemedText>
-              )}
-              {errors.score && (
-                <ThemedText style={styles(colors).errorText}>
-                  {errors.score.message}
-                </ThemedText>
-              )}
-            </View>
-
-            {/* 3) QUICK FEEDBACK */}
-            <View
-              style={[
-                styles(colors).card,
-                styles(colors).section,
-                { backgroundColor: glassBg },
-              ]}
-            >
-              <ThemedText type="subtitle" style={styles(colors).sectionTitle}>
-                Feedback nhanh
-              </ThemedText>
-
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingRight: 6 }}
-                style={{ marginBottom: 8 }}
-              >
-                <View style={{ flexDirection: "row", gap: 8 }}>
-                  {QUICK_FEEDBACK.map((q, i) => {
-                    const [c0, c1] = pickGrad(q + i);
-                    return (
-                      <PressableScale
-                        key={q}
-                        onPress={() => appendPreset(q)}
-                        style={styles(colors).chipWrap}
-                      >
-                        <LinearGradient
-                          colors={[c0, c1]}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
-                          style={styles(colors).chipBorder}
-                        />
-                        <View
-                          style={[
-                            styles(colors).chipInner,
-                            { backgroundColor: colors.card },
-                          ]}
-                        >
-                          <ThemedText style={styles(colors).chipText}>
-                            {q}
-                          </ThemedText>
-                        </View>
-                      </PressableScale>
-                    );
-                  })}
-                </View>
-              </ScrollView>
-
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-              >
-                {["❤️", "👏", "🔥", "🤔", "🛠️"].map((emo, i) => {
-                  const [e0, e1] = pickGrad("emo" + i);
-                  return (
+                {/* Color Score */}
+                <View style={styles(colors).scoreInputRow}>
+                  <ThemedText style={styles(colors).scoreLabel}>
+                    Màu sắc
+                  </ThemedText>
+                  <View style={styles(colors).scoreRow}>
                     <PressableScale
-                      key={emo}
-                      onPress={() => appendPreset(emo)}
-                      style={{ borderRadius: 999, overflow: "hidden" }}
+                      onPress={() => bumpColorScore(-STEP)}
+                      style={styles(colors).circleBtnLg}
                     >
+                      <Ionicons
+                        name="remove"
+                        size={20}
+                        color={colors.primary}
+                      />
+                    </PressableScale>
+
+                    <View style={styles(colors).pillBorderWrapWide}>
                       <LinearGradient
-                        colors={[e0, e1]}
+                        colors={[colors.border, colors.border]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
-                        style={{
-                          paddingHorizontal: 12,
-                          paddingVertical: 8,
-                          borderRadius: 999,
-                        }}
+                        style={styles(colors).pillBorderWide}
+                      />
+                      <View
+                        style={[
+                          styles(colors).scorePill,
+                          { backgroundColor: colors.card },
+                        ]}
                       >
-                        <ThemedText
-                          style={{ color: "#fff", fontWeight: "800" }}
-                        >
-                          {emo}
-                        </ThemedText>
-                      </LinearGradient>
-                    </PressableScale>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* 4) Đánh giá chi tiết + presets */}
-            <View
-              style={[
-                styles(colors).card,
-                styles(colors).section,
-                { backgroundColor: glassBg },
-              ]}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 12,
-                }}
-              >
-                <ThemedText
-                  type="subtitle"
-                  style={[styles(colors).sectionTitle, { marginBottom: 0 }]}
-                >
-                  Đánh giá chi tiết
-                </ThemedText>
-                <PressableScale
-                  onPress={() => setShowPresets((v) => !v)}
-                  style={styles(colors).circleBtn}
-                >
-                  <Ionicons
-                    name={showPresets ? "close" : "add"}
-                    size={16}
-                    color={colors.primary}
-                  />
-                </PressableScale>
-              </View>
-
-              {showPresets && (
-                <View style={[styles(colors).chipsWrap, { marginBottom: 10 }]}>
-                  {FEEDBACK_PRESETS.map((p, idx) => {
-                    const [c0, c1] = pickGrad(p + idx);
-                    return (
-                      <PressableScale
-                        key={p}
-                        onPress={() => appendPreset(p)}
-                        style={styles(colors).chipWrap}
-                      >
-                        <LinearGradient
-                          colors={[c0, c1]}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
-                          style={styles(colors).chipBorder}
+                        <Ionicons
+                          name="color-fill"
+                          size={18}
+                          color={colors.primary}
                         />
-                        <View
-                          style={[
-                            styles(colors).chipInner,
-                            { backgroundColor: colors.card },
-                          ]}
-                        >
-                          <Ionicons
-                            name="add"
-                            size={14}
-                            color={colors.primary}
-                          />
-                          <ThemedText style={styles(colors).chipText}>
-                            {p}
-                          </ThemedText>
-                        </View>
-                      </PressableScale>
-                    );
-                  })}
-                </View>
-              )}
+                        <Controller
+                          control={control}
+                          name="colorScore"
+                          render={({ field: { onChange, value } }) => (
+                            <TextInput
+                              placeholder="—"
+                              value={
+                                value === undefined
+                                  ? ""
+                                  : Number(value).toString()
+                              }
+                              onChangeText={(text) => {
+                                const t = text.replace(",", ".").trim();
+                                if (t === "") {
+                                  onChange(undefined as any);
+                                  return;
+                                }
+                                const n = Number(t);
+                                const safe = Number.isFinite(n)
+                                  ? clamp(roundToStep(n), 0, 20)
+                                  : 10;
+                                onChange(safe);
+                              }}
+                              keyboardType="numeric"
+                              style={styles(colors).scoreInput}
+                              placeholderTextColor={colors.mutedForeground}
+                            />
+                          )}
+                        />
+                        <ThemedText style={styles(colors).scoreSuffix}>
+                          /20
+                        </ThemedText>
+                      </View>
+                    </View>
 
-              <View
-                style={[
-                  styles(colors).textareaContainer,
-                  errors.feedback && styles(colors).inputError,
-                ]}
-              >
-                <Ionicons
-                  name="chatbubble-outline"
-                  size={20}
-                  color={colors.primary}
-                  style={{ marginTop: 16, marginRight: 10 }}
-                />
-                <Controller
-                  control={control}
-                  name="feedback"
-                  render={({ field: { onChange, value } }) => (
-                    <TextInput
-                      placeholder="Cung cấp đánh giá chi tiết về bức tranh này..."
-                      value={value}
-                      onChangeText={(t) => {
-                        onChange(t);
-                      }}
-                      multiline
-                      numberOfLines={6}
-                      style={[
-                        styles(colors).textarea,
-                        { color: colors.foreground },
-                      ]}
-                      placeholderTextColor={colors.mutedForeground}
-                      textAlignVertical="top"
-                    />
-                  )}
-                />
+                    <PressableScale
+                      onPress={() => bumpColorScore(STEP)}
+                      style={styles(colors).circleBtnLg}
+                    >
+                      <Ionicons name="add" size={20} color={colors.primary} />
+                    </PressableScale>
+                  </View>
+                </View>
+
+                {/* Technical Score */}
+                <View style={styles(colors).scoreInputRow}>
+                  <ThemedText style={styles(colors).scoreLabel}>
+                    Kỹ thuật
+                  </ThemedText>
+                  <View style={styles(colors).scoreRow}>
+                    <PressableScale
+                      onPress={() => bumpTechnicalScore(-STEP)}
+                      style={styles(colors).circleBtnLg}
+                    >
+                      <Ionicons
+                        name="remove"
+                        size={20}
+                        color={colors.primary}
+                      />
+                    </PressableScale>
+
+                    <View style={styles(colors).pillBorderWrapWide}>
+                      <LinearGradient
+                        colors={[colors.border, colors.border]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles(colors).pillBorderWide}
+                      />
+                      <View
+                        style={[
+                          styles(colors).scorePill,
+                          { backgroundColor: colors.card },
+                        ]}
+                      >
+                        <Ionicons
+                          name="brush"
+                          size={18}
+                          color={colors.primary}
+                        />
+                        <Controller
+                          control={control}
+                          name="technicalScore"
+                          render={({ field: { onChange, value } }) => (
+                            <TextInput
+                              placeholder="—"
+                              value={
+                                value === undefined
+                                  ? ""
+                                  : Number(value).toString()
+                              }
+                              onChangeText={(text) => {
+                                const t = text.replace(",", ".").trim();
+                                if (t === "") {
+                                  onChange(undefined as any);
+                                  return;
+                                }
+                                const n = Number(t);
+                                const safe = Number.isFinite(n)
+                                  ? clamp(roundToStep(n), 0, 20)
+                                  : 10;
+                                onChange(safe);
+                              }}
+                              keyboardType="numeric"
+                              style={styles(colors).scoreInput}
+                              placeholderTextColor={colors.mutedForeground}
+                            />
+                          )}
+                        />
+                        <ThemedText style={styles(colors).scoreSuffix}>
+                          /20
+                        </ThemedText>
+                      </View>
+                    </View>
+
+                    <PressableScale
+                      onPress={() => bumpTechnicalScore(STEP)}
+                      style={styles(colors).circleBtnLg}
+                    >
+                      <Ionicons name="add" size={20} color={colors.primary} />
+                    </PressableScale>
+                  </View>
+                </View>
+
+                {/* Aesthetic Score */}
+                <View style={styles(colors).scoreInputRow}>
+                  <ThemedText style={styles(colors).scoreLabel}>
+                    Thẩm mỹ
+                  </ThemedText>
+                  <View style={styles(colors).scoreRow}>
+                    <PressableScale
+                      onPress={() => bumpAestheticScore(-STEP)}
+                      style={styles(colors).circleBtnLg}
+                    >
+                      <Ionicons
+                        name="remove"
+                        size={20}
+                        color={colors.primary}
+                      />
+                    </PressableScale>
+
+                    <View style={styles(colors).pillBorderWrapWide}>
+                      <LinearGradient
+                        colors={[colors.border, colors.border]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles(colors).pillBorderWide}
+                      />
+                      <View
+                        style={[
+                          styles(colors).scorePill,
+                          { backgroundColor: colors.card },
+                        ]}
+                      >
+                        <Ionicons
+                          name="sparkles"
+                          size={18}
+                          color={colors.primary}
+                        />
+                        <Controller
+                          control={control}
+                          name="aestheticScore"
+                          render={({ field: { onChange, value } }) => (
+                            <TextInput
+                              placeholder="—"
+                              value={
+                                value === undefined
+                                  ? ""
+                                  : Number(value).toString()
+                              }
+                              onChangeText={(text) => {
+                                const t = text.replace(",", ".").trim();
+                                if (t === "") {
+                                  onChange(undefined as any);
+                                  return;
+                                }
+                                const n = Number(t);
+                                const safe = Number.isFinite(n)
+                                  ? clamp(roundToStep(n), 0, 10)
+                                  : 5;
+                                onChange(safe);
+                              }}
+                              keyboardType="numeric"
+                              style={styles(colors).scoreInput}
+                              placeholderTextColor={colors.mutedForeground}
+                            />
+                          )}
+                        />
+                        <ThemedText style={styles(colors).scoreSuffix}>
+                          /10
+                        </ThemedText>
+                      </View>
+                    </View>
+
+                    <PressableScale
+                      onPress={() => bumpAestheticScore(STEP)}
+                      style={styles(colors).circleBtnLg}
+                    >
+                      <Ionicons name="add" size={20} color={colors.primary} />
+                    </PressableScale>
+                  </View>
+                </View>
               </View>
-              {errors.feedback && (
-                <ThemedText style={styles(colors).errorText}>
-                  {errors.feedback.message}
-                </ThemedText>
-              )}
             </View>
 
-            {/* 5) Submit */}
             <View
               style={{ alignItems: "center", marginTop: 6, marginBottom: 36 }}
             >
@@ -845,7 +824,7 @@ export default function PaintingEvaluationScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {/* Viewer */}
+        {/* Modals */}
         <ZoomModal
           visible={viewerOpen}
           onClose={() => setViewerOpen(false)}
@@ -854,27 +833,18 @@ export default function PaintingEvaluationScreen() {
           maxScale={6}
           doubleTapScale={2.5}
         />
-
-        {/* Confirm — đẹp, gradient, animation */}
         <EvaluationSubmitModal
           visible={confirmOpen}
           variant="confirm"
           title="Gửi đánh giá?"
-          subtitle={`Xác nhận nộp điểm và nhận xét cho bài “${paintingTitle}”.`}
+          subtitle={`Xác nhận nộp kết quả đánh giá cho bài "${paintingTitle}".`}
           primaryText={isPending ? "Đang gửi..." : "Gửi"}
           secondaryText="Huỷ"
           loading={isPending}
           onSecondary={() => setConfirmOpen(false)}
-          onPrimary={() =>
-            onConfirmSubmit({
-              score: getValues("score")!,
-              feedback: getValues("feedback") || "",
-            })
-          }
+          onPrimary={() => onConfirmSubmit(getValues())}
           onDismiss={() => setConfirmOpen(false)}
         />
-
-        {/* Success — confetti + gradient */}
         <EvaluationSubmitModal
           visible={successOpen}
           variant="success"
@@ -895,12 +865,9 @@ export default function PaintingEvaluationScreen() {
   );
 }
 
-/* ---------- Styles ---------- */
 const styles = (colors: typeof Colors.light) =>
   StyleSheet.create({
     container: { flex: 1 },
-
-    /* Header */
     header: {
       flexDirection: "row",
       alignItems: "center",
@@ -920,8 +887,6 @@ const styles = (colors: typeof Colors.light) =>
       letterSpacing: 0.4,
     },
     headerRight: { width: 48, alignItems: "flex-end" },
-
-    /* Circles */
     circleBtn: {
       width: 36,
       height: 36,
@@ -948,25 +913,19 @@ const styles = (colors: typeof Colors.light) =>
       elevation: 2,
     },
 
-    /* Layout */
     scrollContent: { flexGrow: 1, paddingHorizontal: 18, paddingTop: 12 },
     section: { marginBottom: 16 },
 
     /* Frame + image */
     frameWrap: { position: "relative", borderRadius: 16 },
-    frameBorder: {
-      position: "absolute",
-      inset: 0,
-      borderRadius: 16,
-      opacity: 0.85,
-    },
     paintingCard: {
       borderRadius: 16,
       overflow: "hidden",
-      borderWidth: 1,
+      borderWidth: 0.8,
       borderColor: "rgba(148, 163, 184, 0.35)",
       position: "relative",
       paddingBottom: 8,
+      backgroundColor: colors.card,
     },
     paintingImage: {
       width: "100%",
@@ -974,15 +933,26 @@ const styles = (colors: typeof Colors.light) =>
       borderTopLeftRadius: 16,
       borderTopRightRadius: 16,
     },
+    noImageContainer: {
+      width: "100%",
+      height: 280,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.muted,
+    },
+    noImageText: {
+      marginTop: 12,
+      fontSize: 16,
+      color: colors.mutedForeground,
+      fontWeight: "600",
+    },
 
     /* Details đẹp */
     detailsCard: {
       marginTop: 10,
       marginHorizontal: 12,
       borderRadius: 14,
-      borderWidth: 1,
       borderColor: colors.border,
-      backgroundColor: colors.card,
       padding: 10,
       gap: 10,
     },
@@ -997,12 +967,12 @@ const styles = (colors: typeof Colors.light) =>
       borderRadius: 14,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "#6366F1",
-      shadowColor: "#6366F1",
+      backgroundColor: colors.primary,
+      shadowColor: colors.primary,
       shadowOpacity: 0.25,
       shadowRadius: 6,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: 2,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 1,
     },
     detailLabel: {
       fontSize: 11,
@@ -1011,49 +981,6 @@ const styles = (colors: typeof Colors.light) =>
     },
     detailValue: { fontSize: 14, color: colors.foreground, fontWeight: "800" },
 
-    overlayTopRightRow: {
-      position: "absolute",
-      top: 12,
-      right: 12,
-      zIndex: 2,
-      gap: 8,
-      alignItems: "center",
-    },
-
-    /* Pill border fake */
-    pillBorderWrap: { position: "relative", borderRadius: 999 },
-    pillBorder: {
-      position: "absolute",
-      left: 0,
-      top: 0,
-      right: 0,
-      bottom: 0,
-      borderRadius: 999,
-    },
-    pillInner: {
-      position: "relative",
-      margin: 1.5,
-      borderRadius: 999,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-    },
-    pillText: { fontSize: 12, fontWeight: "800", color: colors.primary },
-
-    paintingMetaRow: {
-      flexDirection: "row",
-      gap: 8,
-      paddingHorizontal: 12,
-      paddingTop: 8,
-      flexWrap: "wrap",
-    },
-    metaText: {
-      fontSize: 12,
-      color: colors.mutedForeground,
-      fontWeight: "700",
-    },
     microDivider: {
       height: StyleSheet.hairlineWidth,
       backgroundColor: "rgba(2, 6, 23, 0.08)",
@@ -1061,7 +988,7 @@ const styles = (colors: typeof Colors.light) =>
       marginTop: 8,
     },
 
-    /* Card shell */
+    // (đã loại bỏ các style card cũ: frameWrap/frameBorder/paintingCard/... vì đã move vào component)
     card: {
       borderRadius: 18,
       borderWidth: 1,
@@ -1077,7 +1004,34 @@ const styles = (colors: typeof Colors.light) =>
       letterSpacing: 0.3,
     },
 
-    /* Score */
+    passFailRow: { flexDirection: "row", gap: 16, marginBottom: 12 },
+    passFailBtn: {
+      flex: 1,
+      borderRadius: 16,
+      paddingVertical: 20,
+      paddingHorizontal: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      borderWidth: 2,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+    },
+    passFailBtnActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    passFailText: { fontSize: 16, fontWeight: "900", color: colors.foreground },
+    passFailTextActive: { color: "#fff" },
+
+    scoreInputs: { gap: 16 },
+    scoreInputRow: { marginBottom: 8 },
+    scoreLabel: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.foreground,
+      marginBottom: 6,
+    },
     scoreRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -1107,8 +1061,8 @@ const styles = (colors: typeof Colors.light) =>
       shadowColor: "#000",
       shadowOpacity: 0.08,
       shadowRadius: 8,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 2,
+      shadowOffset: { width: 0, height: 1 },
+      elevation: 1,
       backgroundColor: colors.card,
     },
     scoreInput: {
@@ -1124,83 +1078,9 @@ const styles = (colors: typeof Colors.light) =>
       fontWeight: "800",
       color: colors.mutedForeground,
     },
-    hintText: { marginTop: 8, color: colors.mutedForeground, fontSize: 13 },
-    inputError: { borderColor: colors.destructive },
     errorText: {
+      fontSize: 12,
       color: colors.destructive,
-      fontSize: 14,
-      marginTop: 8,
-      fontWeight: "700",
-      marginLeft: 4,
-      letterSpacing: 0.1,
-    },
-
-    /* Preset chips (viền gradient) */
-    chipsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-    chipWrap: { position: "relative", borderRadius: 999 },
-    chipBorder: {
-      position: "absolute",
-      left: 0,
-      top: 0,
-      right: 0,
-      bottom: 0,
-      borderRadius: 999,
-    },
-    chipInner: {
-      position: "relative",
-      margin: 1.5,
-      borderRadius: 999,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      backgroundColor: colors.card,
-    },
-    chipText: { fontSize: 13, color: colors.primary, fontWeight: "800" },
-
-    /* Textarea */
-    textareaContainer: {
-      borderWidth: 2,
-      borderColor: colors.border,
-      borderRadius: 16,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      flexDirection: "row",
-      alignItems: "flex-start",
-      minHeight: 160,
-      backgroundColor: colors.card,
-    },
-    textarea: {
-      flex: 1,
-      fontSize: 16,
-      fontWeight: "500",
-      minHeight: 140,
-      textAlignVertical: "top",
-      lineHeight: 24,
-      letterSpacing: 0.2,
+      marginTop: 4,
     },
   });
-
-const orb = StyleSheet.create({
-  orbTL: {
-    position: "absolute",
-    top: 0,
-    right: -60,
-    width: 280,
-    height: 280,
-    borderRadius: 160,
-    transform: [{ rotate: "25deg" }],
-    opacity: 0.9,
-  },
-  orbBR: {
-    position: "absolute",
-    bottom: -20,
-    left: -60,
-    width: 300,
-    height: 300,
-    borderRadius: 180,
-    transform: [{ rotate: "-15deg" }],
-    opacity: 0.7,
-  },
-});

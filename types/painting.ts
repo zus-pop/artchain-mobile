@@ -27,6 +27,13 @@ export interface Painting {
   createdAt: Date;
   updatedAt: Date;
   isPassed: boolean | null;
+  user: {
+    userId: string;
+    username: string;
+    email: string;
+    fullName: string;
+    phone: string | null;
+  };
 }
 
 export interface PaintingFilter {
@@ -34,9 +41,10 @@ export interface PaintingFilter {
   roundName?: "ROUND_1" | "ROUND_2";
   is_passed?: boolean | null;
   status?: "PENDING" | "ACCEPTED" | "REJECTED";
+  examinerId?: string;
 }
 
-export interface Round1EvaluationRequest {
+export interface Round1PreliminaryEvaluationRequest {
   paintingId: string;
   examinerId: string;
   isPassed: boolean;
@@ -47,11 +55,21 @@ export interface ReviewRound1EvaluationRequest {
     isPassed: boolean;
   }[];
 }
-export interface Round2EvaluationRequest {
+export interface Round1EvaluationRequest {
   paintingId: string;
   examinerId: string;
   score: number;
   feedback: string;
+}
+
+export interface Round2EvaluationRequest {
+  paintingId: string;
+  examinerId: string;
+  creativityScore: number;
+  compositionScore: number;
+  colorScore: number;
+  technicalScore: number;
+  aestheticScore: number;
 }
 
 export interface PaintingEvaluation {

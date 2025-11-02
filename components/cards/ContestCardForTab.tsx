@@ -12,16 +12,7 @@ import {
   View,
   ViewStyle,
 } from "react-native";
-
-type Contest = {
-  contestId: string;
-  title: string;
-  startDate: string | Date;
-  endDate: string | Date;
-  status: "ACTIVE" | "COMPLETED" | string;
-  category?: string;
-  examinerRole?: "ROUND_1" | "REVIEW_ROUND_1" | "ROUND_2";
-};
+import { Contest } from "../../types";
 
 type Props = {
   C: ColorTokens;
@@ -45,64 +36,60 @@ function calcProgress(start: string | Date, end: string | Date) {
   return { pct, daysLeft };
 }
 
-function statusMeta(status: Contest["status"]) {
-  if (status === "ACTIVE")
-    return {
-      label: "Đang diễn ra",
-      icon: "play-outline" as const,
-      grad: ["#34d399", "#22d3ee"],
-      fg: "#065f46",
-      softBg: "rgba(52,211,153,0.12)",
-    };
-  if (status === "COMPLETED")
-    return {
-      label: "Hoàn thành",
-      icon: "checkmark-done-outline" as const,
-      grad: ["#60a5fa", "#a78bfa"],
-      fg: "#1e3a8a",
-      softBg: "rgba(96,165,250,0.14)",
-    };
-  return {
-    label: String(status || "Khác"),
-    icon: "sparkles-outline" as const,
-    grad: ["#f472b6", "#f59e0b"],
-    fg: "#7c2d12",
-    softBg: "rgba(245,158,11,0.14)",
-  };
+function statusMeta(status: Contest["status"], C: ColorTokens) {
+  switch (status) {
+    case "ACTIVE":
+      return {
+        label: "Đang diễn ra",
+        icon: "play-outline" as const,
+        grad: [C.primary, C.chart1],
+        fg: C.primaryForeground,
+        softBg: C.primary + "22",
+      };
+    case "UPCOMING":
+      return {
+        label: "Sắp diễn ra",
+        icon: "time-outline" as const,
+        grad: [C.chart1, C.primary],
+        fg: C.primaryForeground,
+        softBg: C.chart1 + "22",
+      };
+    case "ENDED":
+      return {
+        label: "Đã kết thúc",
+        icon: "stop-circle-outline" as const,
+        grad: [C.muted, C.border],
+        fg: C.foreground,
+        softBg: C.muted + "22",
+      };
+    case "COMPLETED":
+      return {
+        label: "Hoàn thành",
+        icon: "checkmark-done-outline" as const,
+        grad: [C.primary, C.chart1],
+        fg: C.primaryForeground,
+        softBg: C.primary + "22",
+      };
+    case "DRAFT":
+      return {
+        label: "Bản nháp",
+        icon: "document-outline" as const,
+        grad: [C.muted, C.border],
+        fg: C.mutedForeground,
+        softBg: C.muted + "22",
+      };
+    default:
+      return {
+        label: String(status || "Khác"),
+        icon: "sparkles-outline" as const,
+        grad: [C.muted, C.border],
+        fg: C.foreground,
+        softBg: C.muted + "22",
+      };
+  }
 }
 
-const pastelPool = [
-  ["#FFE1E1", "#FFD1F7"],
-  ["#E1F6FF", "#E1FFE7"],
-  ["#FFF3D6", "#FFE7C2"],
-  ["#EDE7FF", "#D7F0FF"],
-  ["#FFE0F1", "#FFEAD1"],
-];
-
-function hashStr(s: string) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
-function categoryColors(category?: string) {
-  if (!category)
-    return {
-      bg: "rgba(148,163,184,0.18)",
-      fg: "#334155",
-      icon: "color-palette-outline" as const,
-    };
-  const idx = hashStr(category) % pastelPool.length;
-  const pair = pastelPool[idx];
-  return {
-    bg: pair[0],
-    fg: "#334155",
-    icon: "color-palette-outline" as const,
-    grad: pair as [string, string],
-  };
-}
-
-function examinerRoleMeta(role?: Contest["examinerRole"]) {
+function examinerRoleMeta(C: ColorTokens, role?: Contest["examinerRole"]) {
   if (!role) return null;
 
   switch (role) {
@@ -110,33 +97,25 @@ function examinerRoleMeta(role?: Contest["examinerRole"]) {
       return {
         label: "Vai trò: Chấm vòng 1",
         icon: "medal-outline" as const,
-        grad: ["#fbbf24", "#f59e0b"],
-        fg: "#92400e",
-        softBg: "rgba(245,158,11,0.14)",
-      };
-    case "REVIEW_ROUND_1":
-      return {
-        label: "Vai trò: Chấm lại vòng 1",
-        icon: "eye-outline" as const,
-        grad: ["#8b5cf6", "#a855f7"],
-        fg: "#581c87",
-        softBg: "rgba(139,92,246,0.14)",
+        grad: [C.primary, C.chart1],
+        fg: C.primaryForeground,
+        softBg: C.primary + "22",
       };
     case "ROUND_2":
       return {
         label: "Vai trò: Chấm vòng 2",
         icon: "trophy-outline" as const,
-        grad: ["#ef4444", "#dc2626"],
-        fg: "#7f1d1d",
-        softBg: "rgba(239,68,68,0.14)",
+        grad: [C.destructive, C.primary],
+        fg: C.primaryForeground,
+        softBg: C.destructive + "22",
       };
     default:
       return {
         label: "Vai trò: " + String(role),
         icon: "help-circle-outline" as const,
-        grad: ["#6b7280", "#4b5563"],
-        fg: "#374151",
-        softBg: "rgba(107,114,128,0.14)",
+        grad: [C.muted, C.border],
+        fg: C.foreground,
+        softBg: C.muted + "22",
       };
   }
 }
@@ -150,11 +129,8 @@ function ContestCardColorful({
   style,
   titleStyle,
 }: Props) {
-  const st = statusMeta(contest.status);
-  const { pct, daysLeft } = calcProgress(contest.startDate, contest.endDate);
-  const isActive = contest.status === "ACTIVE";
-  const cat = categoryColors(contest.category);
-  const examinerMeta = examinerRoleMeta(contest.examinerRole);
+  const st = statusMeta(contest.status, C);
+  const examinerMeta = examinerRoleMeta(C, contest.examinerRole);
 
   // Anti-spam: khoá nút trong lúc xử lý
   const [isEvaluating, setIsEvaluating] = useState(false);
@@ -203,18 +179,10 @@ function ContestCardColorful({
           style={styles.blobTL}
         />
         <LinearGradient
-          colors={["#fca5a5" + "40", "#fde68a" + "40"]}
+          colors={[C.muted + "40", C.border + "40"]}
           start={{ x: 1, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={styles.blobBR}
-        />
-
-        {/* Thanh nhấn cạnh trái nhiều màu */}
-        <LinearGradient
-          colors={[st.grad[0], st.grad[1]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.accent}
         />
 
         {/* Nội dung */}
@@ -268,91 +236,33 @@ function ContestCardColorful({
             </View>
           </View>
 
-          {/* Progress (gradient nhiều màu) */}
-          {isActive && (
-            <View style={{ marginTop: 12 }}>
-              <View
-                style={[
-                  styles.progressTrack,
-                  { backgroundColor: C.muted + "55" },
-                ]}
-              >
-                <LinearGradient
-                  colors={[
-                    "#34d399",
-                    "#22d3ee",
-                    "#60a5fa",
-                    "#a78bfa",
-                    "#f472b6",
-                  ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[styles.progressBar, { width: `${pct}%` }]}
-                />
-              </View>
-              <View style={styles.progressMeta}>
-                <Text
-                  style={[styles.progressText, { color: C.mutedForeground }]}
-                >
-                  Tiến độ: {pct}%
-                </Text>
-                <Text
-                  style={[styles.progressText, { color: C.mutedForeground }]}
-                >
-                  {daysLeft! > 0 ? `Còn ${daysLeft} ngày` : "Đến hạn"}
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {/* Category chip (pastel dynamic) */}
-          {!!contest.category && (
-            <View style={[styles.categoryRow]}>
-              <LinearGradient
-                colors={cat.grad ?? [cat.bg, cat.bg]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.categoryChip}
-              >
-                <Ionicons name={cat.icon} size={14} color={cat.fg} />
-                <Text
-                  style={[styles.categoryText, { color: cat.fg }]}
-                  numberOfLines={1}
-                >
-                  {contest.category}
-                </Text>
-              </LinearGradient>
-            </View>
-          )}
-
-          {/* Examiner Role chip */}
-          {examinerMeta && (
-            <View style={[styles.categoryRow]}>
+          {/* Role and Actions in same row */}
+          <View style={styles.roleAndActionsRow}>
+            {/* Examiner Role chip */}
+            {examinerMeta && (
               <LinearGradient
                 colors={examinerMeta.grad as [string, string]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.categoryChip}
+                style={styles.roleChip}
               >
                 <Ionicons name={examinerMeta.icon} size={14} color="#ffffff" />
                 <Text
-                  style={[styles.categoryText, { color: "#ffffff" }]}
+                  style={[styles.roleText, { color: "#ffffff" }]}
                   numberOfLines={1}
                 >
                   {examinerMeta.label}
                 </Text>
               </LinearGradient>
-            </View>
-          )}
+            )}
 
-          {/* Actions */}
-          <View style={styles.actions}>
+            {/* Evaluate Button */}
             <Pressable
               onPress={handleEvaluate}
               disabled={isEvaluating}
               android_ripple={{ color: "#ffffff22" }}
               style={({ pressed }) => [
-                styles.primaryBtn,
+                styles.evaluateBtn,
                 {
                   backgroundColor: "transparent",
                   opacity: isEvaluating ? 0.6 : pressed ? 0.96 : 1,
@@ -364,15 +274,15 @@ function ContestCardColorful({
                 colors={[st.grad[0], st.grad[1]]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.primaryBtnFill}
+                style={styles.evaluateBtnFill}
               >
                 <Ionicons
                   name={isEvaluating ? "time" : "star-outline"}
                   size={16}
                   color="#fff"
                 />
-                <Text style={styles.primaryBtnText}>
-                  {isEvaluating ? "Đang xử lý..." : "Đánh giá tác phẩm"}
+                <Text style={styles.evaluateBtnText}>
+                  {isEvaluating ? "Đang xử lý..." : "Đánh giá"}
                 </Text>
               </LinearGradient>
             </Pressable>
@@ -504,6 +414,47 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   categoryText: { fontSize: 12, fontWeight: "800" },
+
+  roleAndActionsRow: {
+    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  roleChip: {
+    flex: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  roleText: { fontSize: 12, fontWeight: "800" },
+
+  evaluateBtn: {
+    borderRadius: 999,
+    shadowOpacity: 0.12,
+    shadowRadius: 9,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2,
+    overflow: "hidden",
+  },
+  evaluateBtnFill: {
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  evaluateBtnText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: 0.2,
+  },
 
   actions: { marginTop: 16 },
   primaryBtn: {

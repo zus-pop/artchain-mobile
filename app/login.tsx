@@ -102,9 +102,9 @@ export default function LoginScreen() {
         <ScrollView
           contentContainerStyle={{
             flexGrow: 1,
-            justifyContent: "center",
+            justifyContent: "flex-start",
             alignItems: "center",
-            padding: 24,
+            paddingHorizontal: 24,
           }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -112,11 +112,11 @@ export default function LoginScreen() {
           <View>
             <Image
               source={require("../assets/logo/Logo.png")}
-              style={{ width: 300, height: 120, marginBottom: 16 }}
+              style={{ width: 300, height: 300 }}
               resizeMode="contain"
             />
           </View>
-          <Text
+          {/* <Text
             style={{
               fontSize: 28,
               fontWeight: "bold",
@@ -125,7 +125,7 @@ export default function LoginScreen() {
             }}
           >
             ARTCHAIN
-          </Text>
+          </Text> */}
 
           <Controller
             control={control}
