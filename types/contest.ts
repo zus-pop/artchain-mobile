@@ -4,6 +4,8 @@ export interface Contest {
   bannerUrl?: string;
   description: string;
   numOfAward: number;
+  round2Quantity: number;
+  ruleUrl: string;
   startDate: string;
   endDate: string;
   status: ContestStatus;

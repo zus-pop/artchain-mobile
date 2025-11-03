@@ -77,8 +77,14 @@ export interface PaintingEvaluation {
   paintingId: string;
   examinerId: string;
   examinerName: string;
-  score: number;
+  scoreRound1: number | null;
+  scoreRound2: number | null;
   feedback: string;
+  creativityScore: number | null;
+  compositionScore: number | null;
+  colorScore: number | null;
+  technicalScore: number | null;
+  aestheticScore: number | null;
   evaluationDate: Date;
   status: string;
   createdAt: Date;

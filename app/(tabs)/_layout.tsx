@@ -41,7 +41,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "Trang chủ",
           tabBarIcon: ({ color }) => (
             <Ionicons name="home" size={22} color={color} />
           ),
@@ -50,7 +50,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="contests"
         options={{
-          title: "Contests",
+          title: "Cuộc thi",
           tabBarIcon: ({ color }) => (
             <Ionicons name="brush" size={22} color={color} />
           ),
@@ -59,7 +59,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: "Hồ sơ",
           tabBarIcon: ({ color }) => (
             <Ionicons name="person" size={22} color={color} />
           ),
