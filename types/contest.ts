@@ -4,6 +4,8 @@ export interface Contest {
   bannerUrl?: string;
   description: string;
   numOfAward: number;
+  round2Quantity: number;
+  ruleUrl: string;
   startDate: string;
   endDate: string;
   status: ContestStatus;
@@ -39,4 +41,4 @@ export type ContestStatus =
   | "DRAFT"
   | "ALL";
 
-export type ExaminerRole = "ROUND_1" | "REVIEW_ROUND_1" | "ROUND_2";
+export type ExaminerRole = "ROUND_1" | "ROUND_2";

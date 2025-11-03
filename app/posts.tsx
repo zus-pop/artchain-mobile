@@ -19,24 +19,15 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-/* ---------- Rainbow tokens ---------- */
-const RAINBOW = [
-  ["#60A5FA", "#7C3AED"],
-  ["#22D3EE", "#06B6D4"],
-  ["#34D399", "#10B981"],
-  ["#FBBF24", "#F59E0B"],
-  ["#F472B6", "#EC4899"],
-  ["#F87171", "#EF4444"],
-  ["#A78BFA", "#8B5CF6"],
-] as const;
-const pickGrad = (i: number) => RAINBOW[i % RAINBOW.length];
-
 type FilterType = "all" | "tag";
 
 export default function PostsScreen() {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const C = Colors[scheme];
   const insets = useSafeAreaInsets();
+
+  /* ---------- Theme-based gradients ---------- */
+  const getPrimaryGradient = () => [C.primary, C.primary50] as const;
 
   // ------- STATES -------
   const [searchInput, setSearchInput] = useState("");
@@ -97,12 +88,17 @@ export default function PostsScreen() {
   const renderPostItem = ({ item }: { item: any }) => (
     <PostCard
       item={item}
-      thumbSize={120}
+      thumbSize={80} // ⬅️ SMALLER for 2-column grid
       showDivider={false}
       onPress={(post) =>
         router.push({
           pathname: "/post-detail",
-          params: { post: JSON.stringify(post) },
+          params: {
+            post: JSON.stringify({
+              ...post,
+              image_url: encodeURIComponent(post.image_url),
+            }),
+          },
         })
       }
     />
@@ -111,7 +107,7 @@ export default function PostsScreen() {
   const Loading = () => (
     <View style={styles.loadingContainer}>
       <LinearGradient
-        colors={pickGrad(0)}
+        colors={getPrimaryGradient()}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.loadingBadge}
@@ -125,7 +121,7 @@ export default function PostsScreen() {
   const Empty = () => (
     <View style={styles.emptyContainer}>
       <LinearGradient
-        colors={pickGrad(4)}
+        colors={getPrimaryGradient()}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.emptyBadge}
@@ -163,39 +159,28 @@ export default function PostsScreen() {
   // ------- UI -------
   return (
     <View style={[styles.container, { backgroundColor: C.background }]}>
-      {/* ẨN HEADER HỆ THỐNG */}
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar barStyle="light-content" />
-
-      {/* BACK BUTTON trắng (trên cùng, trái) */}
-      <View
-        style={[styles.backWrap, { top: insets.top + 8 }]}
-        pointerEvents="box-none"
-      >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel="Quay lại"
-          style={styles.backBtn}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="chevron-back" size={20} color="#fff" />
-          <Text style={styles.backTxt}>Back</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Hero gradient header mềm mượt, nghệ thuật */}
       <LinearGradient
-        colors={
-          scheme === "dark" ? ["#0EA5E9", "#6366F1"] : ["#60A5FA", "#A78BFA"]
-        }
+        colors={getPrimaryGradient()}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.hero, { paddingTop: insets.top + 52 }]} // chừa chỗ back
+        style={[styles.hero, { paddingTop: insets.top + 16 }]}
       >
-        <Text style={styles.heroTitle}>Khám phá bài viết</Text>
-        <Text style={styles.heroSub}>Cảm hứng mỗi ngày từ cộng đồng</Text>
+        <View style={styles.backWrap} pointerEvents="box-none">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Quay lại"
+            style={styles.backBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="chevron-back" size={20} color="#fff" />
+            <Text style={styles.backTxt}>Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.heroTitle}>Khám phá các bài viết</Text>
+        </View>
 
         {/* Search pill */}
         <View style={styles.searchWrap}>
@@ -207,6 +192,7 @@ export default function PostsScreen() {
               placeholder="Tìm kiếm bài viết..."
               placeholderTextColor="rgba(255,255,255,0.75)"
               style={styles.searchInput}
+              cursorColor={"white"}
               returnKeyType="search"
             />
             {searchInput ? (
@@ -227,7 +213,7 @@ export default function PostsScreen() {
           <View style={styles.tabRow}>
             {(["all", "tag"] as FilterType[]).map((ft, idx) => {
               const active = selectedFilter === ft;
-              const colors = pickGrad(idx + 1);
+              const colors = getPrimaryGradient();
               return (
                 <TouchableOpacity
                   key={ft}
@@ -268,9 +254,9 @@ export default function PostsScreen() {
               data={allTags}
               keyExtractor={(t) => t}
               contentContainerStyle={styles.tagRow}
-              renderItem={({ item, index }) => {
+              renderItem={({ item }) => {
                 const active = selectedTag === item;
-                const grad = pickGrad(index + 2);
+                const grad = getPrimaryGradient();
                 return (
                   <TouchableOpacity
                     activeOpacity={0.9}
@@ -315,14 +301,14 @@ export default function PostsScreen() {
       {/* Result summary bar */}
       <View style={styles.summaryRow}>
         <LinearGradient
-          colors={pickGrad(6)}
+          colors={getPrimaryGradient()}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.summaryPill}
         >
           <Text style={styles.summaryText}>
             {posts.length} bài viết
-            {searchQuery ? ` • “${searchQuery}”` : ""}
+            {searchQuery ? ` • "${searchQuery}"` : ""}
             {selectedTag ? ` • #${selectedTag}` : ""}
           </Text>
         </LinearGradient>
@@ -344,6 +330,7 @@ export default function PostsScreen() {
         data={posts}
         keyExtractor={(item) => item.post_id.toString()}
         renderItem={renderPostItem}
+        numColumns={2} // ⬅️ 2-COLUMN GRID
         ListEmptyComponent={isLoading ? <Loading /> : <Empty />}
         contentContainerStyle={[
           styles.listContainer,
@@ -354,7 +341,7 @@ export default function PostsScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor="#fff"
-            colors={["#fff"]}
+            colors={[C.primary]}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -366,22 +353,19 @@ export default function PostsScreen() {
 /* ====================== STYLES ====================== */
 const styles = StyleSheet.create({
   container: { flex: 1 },
-
-  /* Back button (ẩn header hệ thống, tự render) */
   backWrap: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    zIndex: 20,
-    alignItems: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
   },
   backBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     backgroundColor: "rgba(255,255,255,0.16)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.35)",
@@ -392,33 +376,34 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     letterSpacing: 0.3,
   },
-
   /* Hero */
   hero: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 12,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
   heroTitle: {
     color: "#fff",
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "900",
     letterSpacing: 0.2,
+    textAlign: "center",
+    flex: 1,
   },
   heroSub: {
     color: "rgba(255,255,255,0.9)",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
-    marginTop: 4,
-    marginBottom: 12,
+    marginTop: 2,
+    marginBottom: 8,
   },
 
   /* Search pill */
   searchWrap: {
     backgroundColor: "rgba(255,255,255,0.08)",
     borderRadius: 16,
-    padding: 12,
+    padding: 10,
   },
   searchBar: {
     flexDirection: "row",
@@ -438,7 +423,7 @@ const styles = StyleSheet.create({
   },
 
   /* Tabs */
-  tabRow: { flexDirection: "row", gap: 10, marginTop: 10 },
+  tabRow: { flexDirection: "row", gap: 10, marginTop: 8 },
   tabBtnOuter: { borderRadius: 999 },
   tabBtn: {
     paddingHorizontal: 16,
@@ -457,7 +442,7 @@ const styles = StyleSheet.create({
   },
 
   /* Tag chips */
-  tagRow: { paddingTop: 10, paddingBottom: 4 },
+  tagRow: { paddingTop: 8, paddingBottom: 4 },
   tagChipOuter: { marginRight: 8, borderRadius: 999 },
   tagChip: {
     flexDirection: "row",
@@ -496,7 +481,7 @@ const styles = StyleSheet.create({
   summaryResetText: { color: "#64748B", fontSize: 12.5, fontWeight: "900" },
 
   /* List */
-  listContainer: { paddingHorizontal: 16, paddingTop: 8 },
+  listContainer: { padding: 8 }, // ⬅️ SMALLER padding for grid
 
   /* Loading */
   loadingContainer: {

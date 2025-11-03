@@ -36,7 +36,7 @@ export default function SubmissionCard({
 
   const statusText =
     item.status === "ACCEPTED"
-      ? "Đã duyệt"
+      ? "Đã chấp nhận"
       : item.status === "PENDING"
       ? "Chờ duyệt"
       : "Từ chối";

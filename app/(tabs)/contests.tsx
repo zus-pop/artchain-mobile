@@ -19,7 +19,7 @@ import CollapsibleHeader, {
 } from "@/components/header/contest/CollapsibleHeader";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Contest } from "../../types";
+import { Contest } from "@/types";
 
 /* ======================== Types & helpers ======================== */
 type ContestStatus = "ALL" | "ACTIVE" | "UPCOMING" | "COMPLETED" | "ENDED";
@@ -80,7 +80,6 @@ export default function ContestsScreen() {
   const listRef = useRef<Animated.FlatList<Contest>>(null);
 
   const isDraggingRef = useRef(false);
-  // Dự phòng chiều cao header để iOS không “ăn” mất UI lúc đầu
   const ESTIMATED_HEADER = 96;
   const [headerHeight, setHeaderHeight] = useState(ESTIMATED_HEADER);
   const HEADER_EXTRA_GAP = 12;
@@ -262,7 +261,6 @@ export default function ContestsScreen() {
             isDraggingRef.current = false;
             handleRevealNearTop(e);
           }}
-          // iOS: tự kiểm soát inset để không mất UI khúc đầu
           contentInsetAdjustmentBehavior="never"
           automaticallyAdjustContentInsets={false as any}
           scrollIndicatorInsets={{
@@ -277,6 +275,7 @@ export default function ContestsScreen() {
               onRefresh={onRefresh}
               tintColor={C.mutedForeground}
               colors={[C.primary]}
+              progressViewOffset={TOP_PADDING}
             />
           }
         />

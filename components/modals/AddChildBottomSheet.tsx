@@ -4,19 +4,28 @@ import { Colors, withOpacity } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { RegisterRequest } from "@/types/auth";
 import { Ionicons } from "@expo/vector-icons";
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetScrollView,
+  useBottomSheetModal,
+} from "@gorhom/bottom-sheet";
 import { zodResolver } from "@hookform/resolvers/zod";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-  Animated,
-  Dimensions,
-  Easing,
   FlatList,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -40,8 +49,6 @@ type CompetitorFormData = Pick<
 >;
 
 export type AddChildBottomSheetProps = {
-  visible: boolean;
-  onClose: () => void;
   onSubmit: (
     data: CompetitorFormData | (CompetitorFormData & { localId: string })
   ) => void;
@@ -72,9 +79,12 @@ const childSchema = z.object({
     .string({ message: "Lớp là bắt buộc" })
     .trim()
     .min(1, "Lớp là bắt buộc")
-    .refine((val) => ["6", "7", "8", "9"].includes(val), {
-      message: "Lớp phải là từ 6 đến 9",
-    }),
+    .refine(
+      (val) => ["1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(val),
+      {
+        message: "Lớp phải là từ 1 đến 9",
+      }
+    ),
   ward: z
     .string({ message: "Khu vực là bắt buộc" })
     .trim()
@@ -97,37 +107,67 @@ type ChildForm = z.infer<typeof childSchema>;
 
 /* =========================== UI Tokens =========================== */
 const GRAD = {
-  header: ["#7C3AED", "#5BBAFF"] as const,
-  chip: ["#EEF2FF", "#ECFEFF"] as const,
-  accent: ["#34D399", "#06B6D4"] as const,
+  header: ["hsl(15 85% 55%)", "hsl(25 90% 60%)"] as const, // primary to chart2
+  chip: ["hsl(15 60% 95%)", "hsl(15 50% 92%)"] as const, // accent colors
+  accent: ["hsl(15 85% 55%)", "hsl(5 80% 55%)"] as const, // primary to chart4
 };
 
 /* =========================== Component =========================== */
-export default function AddChildBottomSheet({
-  visible,
-  onClose,
-  onSubmit,
-  editingChild,
-}: AddChildBottomSheetProps) {
-  const scheme = useColorScheme() ?? "light";
-  const C = Colors[scheme];
+export type AddChildBottomSheetRef = {
+  present: () => void;
+  dismiss: () => void;
+};
 
-  const [showWardPicker, setShowWardPicker] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showGradePicker, setShowGradePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+export default forwardRef<AddChildBottomSheetRef, AddChildBottomSheetProps>(
+  function AddChildBottomSheet({ onSubmit, editingChild }, ref) {
+    const scheme = useColorScheme() ?? "light";
+    const C = Colors[scheme];
+    const { dismiss } = useBottomSheetModal();
 
-  const {
-    data: wards = [],
-    isLoading: wardsLoading,
-    refetch: refetchWards,
-  } = useWards();
+    const [showWardPicker, setShowWardPicker] = useState(false);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showGradePicker, setShowGradePicker] = useState(false);
+    const [selectedDate, setSelectedDate] = useState(new Date());
 
-  const form = useForm<ChildForm>({
-    mode: "all",
-    resolver: zodResolver(childSchema),
-    defaultValues: editingChild
-      ? {
+    const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+
+    useImperativeHandle(ref, () => ({
+      present: () => {
+        bottomSheetModalRef.current?.present();
+      },
+      dismiss: () => {
+        bottomSheetModalRef.current?.dismiss();
+      },
+    }));
+
+    const {
+      data: wards = [],
+      isLoading: wardsLoading,
+      refetch: refetchWards,
+    } = useWards();
+
+    const form = useForm<ChildForm>({
+      mode: "all",
+      resolver: zodResolver(childSchema),
+      defaultValues: editingChild
+        ? {
+            fullName: editingChild.fullName,
+            email: editingChild.email,
+            username: editingChild.username,
+            password: editingChild.password,
+            schoolName: editingChild.schoolName,
+            grade: editingChild.grade,
+            ward: editingChild.ward,
+            birthday: editingChild.birthday,
+            phone: editingChild.phone,
+          }
+        : undefined,
+    });
+
+    // Reset theo editingChild
+    useEffect(() => {
+      if (editingChild) {
+        form.reset({
           fullName: editingChild.fullName,
           email: editingChild.email,
           username: editingChild.username,
@@ -137,508 +177,451 @@ export default function AddChildBottomSheet({
           ward: editingChild.ward,
           birthday: editingChild.birthday,
           phone: editingChild.phone,
-        }
-      : undefined,
-  });
+        });
+      } else {
+        form.reset();
+      }
+    }, [editingChild, form]);
 
-  // Reset theo editingChild
-  useEffect(() => {
-    if (editingChild) {
-      form.reset({
-        fullName: editingChild.fullName,
-        email: editingChild.email,
-        username: editingChild.username,
-        password: editingChild.password,
-        schoolName: editingChild.schoolName,
-        grade: editingChild.grade,
-        ward: editingChild.ward,
-        birthday: editingChild.birthday,
-        phone: editingChild.phone,
-      });
-    } else {
+    const handleSheetDismiss = useCallback(() => {
+      dismiss();
+    }, [dismiss]);
+
+    const handlePrimarySubmit = (data: ChildForm) => {
+      if (editingChild) onSubmit({ ...data, localId: editingChild.localId });
+      else onSubmit(data);
       form.reset();
-    }
-  }, [editingChild, form]);
+      dismiss();
+    };
 
-  /* ===== Smooth Animations: backdrop (opacity) + sheet (translateY) ===== */
-  const screenH = Dimensions.get("window").height;
-  const sheetH = Math.round(screenH * 0.86);
+    const {
+      control,
+      setValue,
+      formState: { isValid, errors },
+    } = form;
 
-  const anim = useRef(new Animated.Value(0)).current; // 0=hidden, 1=shown
-  const backdropOpacity = anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 0.72],
-  });
-  const sheetTranslateY = anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [sheetH, 0],
-  });
+    // Snap points for the bottom sheet
+    const snapPoints = useMemo(() => ["90%"], []);
 
-  const openAnim = () =>
-    Animated.parallel([
-      Animated.timing(anim, {
-        toValue: 1,
-        duration: 260,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
+    // Render backdrop
+    const renderBackdrop = useCallback(
+      (props: any) => (
+        <BottomSheetBackdrop
+          {...props}
+          disappearsOnIndex={-1}
+          appearsOnIndex={0}
+          opacity={0.72}
+        />
+      ),
+      []
+    );
 
-  const closeAnim = (cb?: () => void) =>
-    Animated.parallel([
-      Animated.timing(anim, {
-        toValue: 0,
-        duration: 220,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start(() => cb?.());
+    // Header đẹp, cố định
+    const Header = useMemo(
+      () => (
+        <View style={[styles.headerSticky, { backgroundColor: C.card }]}>
+          <View style={styles.handleRow}>
+            <View style={[styles.handle, { backgroundColor: C.muted }]} />
+            <TouchableOpacity onPress={() => dismiss()} style={styles.closeBtn}>
+              <Ionicons name="close" size={22} color={C.mutedForeground} />
+            </TouchableOpacity>
+          </View>
 
-  useEffect(() => {
-    if (visible) openAnim();
-    // khi ẩn sẽ để Modal tự đóng nhờ caller đổi "visible"
-  }, [visible]);
-
-  const handleRequestClose = () => {
-    closeAnim(onClose);
-  };
-
-  const handlePrimarySubmit = (data: ChildForm) => {
-    if (editingChild) onSubmit({ ...data, localId: editingChild.localId });
-    else onSubmit(data);
-    form.reset();
-    closeAnim(onClose);
-  };
-
-  const {
-    control,
-    setValue,
-    formState: { isValid, errors },
-  } = form;
-
-  // Header đẹp, cố định
-  const Header = useMemo(
-    () => (
-      <View style={[styles.headerSticky, { backgroundColor: C.card }]}>
-        <View style={styles.handleRow}>
-          <View style={[styles.handle, { backgroundColor: C.muted }]} />
-          <TouchableOpacity
-            onPress={handleRequestClose}
-            style={styles.closeBtn}
-          >
-            <Ionicons name="close" size={22} color={C.mutedForeground} />
-          </TouchableOpacity>
+          <View style={styles.headerTitleWrap}>
+            <LinearGradient
+              colors={GRAD.header}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.headerPill}
+            >
+              <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+              <Text style={styles.headerPillText}>
+                {editingChild ? "Chỉnh sửa thông tin" : "Thêm con em"}
+              </Text>
+            </LinearGradient>
+          </View>
         </View>
+      ),
+      [C, editingChild, dismiss]
+    );
 
-        <View style={styles.headerTitleWrap}>
-          <LinearGradient
-            colors={GRAD.header}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.headerPill}
-          >
-            <Ionicons name="sparkles" size={16} color="#FFFFFF" />
-            <Text style={styles.headerPillText}>
-              {editingChild ? "Chỉnh sửa thông tin" : "Thêm con em"}
-            </Text>
-          </LinearGradient>
-        </View>
-      </View>
-    ),
-    [C, editingChild]
-  );
-
-  /* =========================== JSX =========================== */
-  return (
-    <Modal
-      visible={visible}
-      animationType="none"
-      transparent
-      statusBarTranslucent
-      onRequestClose={handleRequestClose}
-    >
-      {/* Backdrop xám mờ */}
-      <Animated.View
-        style={[
-          StyleSheet.absoluteFill,
-          { backgroundColor: "#111827" }, // gray-900
-          { opacity: backdropOpacity },
-        ]}
-      />
-      <TouchableOpacity
-        activeOpacity={1}
-        onPress={handleRequestClose}
-        style={StyleSheet.absoluteFill}
-      />
-
-      {/* SHEET trượt mượt */}
-      <KeyboardAvoidingView
-        behavior={Platform.select({ ios: "padding", android: undefined })}
-        style={styles.flex1}
-        pointerEvents="box-none"
+    /* =========================== JSX =========================== */
+    return (
+      <BottomSheetModal
+        ref={bottomSheetModalRef}
+        index={0}
+        snapPoints={snapPoints}
+        onDismiss={handleSheetDismiss}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: C.card }}
+        handleIndicatorStyle={{ backgroundColor: C.muted }}
+        enablePanDownToClose
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
       >
-        <Animated.View
-          style={[
-            styles.sheet,
-            {
-              height: sheetH,
-              backgroundColor: C.card,
-              transform: [{ translateY: sheetTranslateY }],
-            },
-          ]}
+        {/* Header fixed (zIndex) */}
+        {Header}
+
+        {/* Nội dung scroll, tránh chạm header */}
+        <BottomSheetScrollView
+          contentContainerStyle={styles.contentPad}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* Header fixed (zIndex) */}
-          {Header}
-
-          {/* Nội dung scroll, tránh chạm header */}
-          <ScrollView
-            contentContainerStyle={styles.contentPad}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {/* FULL NAME */}
-            <Controller
-              control={control}
-              name="fullName"
-              render={({ field }) => (
-                <Field
-                  label="Họ và tên"
-                  placeholder="Nhập họ tên đầy đủ"
-                  value={field.value}
-                  onChangeText={field.onChange}
-                  onBlur={field.onBlur}
-                  error={errors.fullName?.message}
-                  C={C}
-                  leftIcon="person-outline"
-                />
-              )}
-            />
-
-            {/* EMAIL */}
-            <Controller
-              control={control}
-              name="email"
-              render={({ field }) => (
-                <Field
-                  label="Email"
-                  placeholder="name@example.com"
-                  value={field.value}
-                  onChangeText={field.onChange}
-                  onBlur={field.onBlur}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  error={errors.email?.message}
-                  C={C}
-                  leftIcon="mail-outline"
-                />
-              )}
-            />
-
-            {/* USERNAME */}
-            <Controller
-              control={control}
-              name="username"
-              render={({ field }) => (
-                <Field
-                  label="Tên đăng nhập"
-                  placeholder="ten_dang_nhap"
-                  value={field.value}
-                  onChangeText={field.onChange}
-                  onBlur={field.onBlur}
-                  autoCapitalize="none"
-                  error={errors.username?.message}
-                  C={C}
-                  leftIcon="at-outline"
-                />
-              )}
-            />
-
-            {/* PASSWORD */}
-            <Controller
-              control={control}
-              name="password"
-              render={({ field }) => (
-                <Field
-                  label="Mật khẩu"
-                  placeholder="••••••••"
-                  value={field.value}
-                  onChangeText={field.onChange}
-                  onBlur={field.onBlur}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  error={errors.password?.message}
-                  C={C}
-                  leftIcon="lock-closed-outline"
-                />
-              )}
-            />
-
-            {/* SCHOOL */}
-            <Controller
-              control={control}
-              name="schoolName"
-              render={({ field }) => (
-                <Field
-                  label="Trường học"
-                  placeholder="VD: Tiểu học Nguyễn Du"
-                  value={field.value}
-                  onChangeText={field.onChange}
-                  onBlur={field.onBlur}
-                  error={errors.schoolName?.message}
-                  C={C}
-                  leftIcon="school-outline"
-                />
-              )}
-            />
-
-            {/* GRADE + WARD */}
-            <View style={styles.rowGap8}>
-              <Controller
-                control={control}
-                name="grade"
-                render={({ field }) => (
-                  <PickerField
-                    label="Lớp"
-                    value={field.value ? `Lớp ${field.value}` : ""}
-                    placeholder="Chọn lớp"
-                    onPress={() => setShowGradePicker(true)}
-                    error={errors.grade?.message}
-                    C={C}
-                    leftIcon="library-outline"
-                  />
-                )}
+          {/* FULL NAME */}
+          <Controller
+            control={control}
+            name="fullName"
+            render={({ field }) => (
+              <Field
+                label="Họ và tên"
+                placeholder="Nhập họ tên đầy đủ"
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                error={errors.fullName?.message}
+                C={C}
+                leftIcon="person-outline"
               />
-              <Controller
-                control={control}
-                name="ward"
-                render={({ field }) => (
-                  <PickerField
-                    label="Khu vực"
-                    value={field.value}
-                    placeholder="Chọn khu vực"
-                    onPress={() => {
-                      refetchWards();
-                      setShowWardPicker(true);
-                    }}
-                    error={errors.ward?.message}
-                    C={C}
-                    leftIcon="location-outline"
-                  />
-                )}
-              />
-            </View>
+            )}
+          />
 
-            {/* BIRTHDAY */}
+          {/* EMAIL */}
+          <Controller
+            control={control}
+            name="email"
+            render={({ field }) => (
+              <Field
+                label="Email"
+                placeholder="name@example.com"
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                error={errors.email?.message}
+                C={C}
+                leftIcon="mail-outline"
+              />
+            )}
+          />
+
+          {/* USERNAME */}
+          <Controller
+            control={control}
+            name="username"
+            render={({ field }) => (
+              <Field
+                label="Tên đăng nhập"
+                placeholder="ten_dang_nhap"
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                autoCapitalize="none"
+                error={errors.username?.message}
+                C={C}
+                leftIcon="at-outline"
+              />
+            )}
+          />
+
+          {/* PASSWORD */}
+          <Controller
+            control={control}
+            name="password"
+            render={({ field }) => (
+              <Field
+                label="Mật khẩu"
+                placeholder="••••••••"
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                secureTextEntry
+                autoCapitalize="none"
+                error={errors.password?.message}
+                C={C}
+                leftIcon="lock-closed-outline"
+              />
+            )}
+          />
+
+          {/* SCHOOL */}
+          <Controller
+            control={control}
+            name="schoolName"
+            render={({ field }) => (
+              <Field
+                label="Trường học"
+                placeholder="VD: Tiểu học Nguyễn Du"
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                error={errors.schoolName?.message}
+                C={C}
+                leftIcon="school-outline"
+              />
+            )}
+          />
+
+          {/* GRADE + WARD */}
+          <View style={styles.rowGap8}>
             <Controller
               control={control}
-              name="birthday"
+              name="grade"
               render={({ field }) => (
                 <PickerField
-                  label="Ngày sinh"
-                  value={field.value}
-                  placeholder="Chọn ngày sinh"
-                  onPress={() => {
-                    setSelectedDate(new Date());
-                    setShowDatePicker(true);
-                  }}
-                  error={errors.birthday?.message}
+                  label="Lớp"
+                  value={field.value ? `Lớp ${field.value}` : ""}
+                  placeholder="Chọn lớp"
+                  onPress={() => setShowGradePicker(true)}
+                  error={errors.grade?.message}
                   C={C}
-                  leftIcon="calendar-outline"
+                  leftIcon="library-outline"
                 />
               )}
             />
-
-            {/* PHONE */}
             <Controller
               control={control}
-              name="phone"
+              name="ward"
               render={({ field }) => (
-                <Field
-                  label="Số điện thoại (tùy chọn)"
-                  placeholder="VD: 09xxxxxxxx"
+                <PickerField
+                  label="Khu vực"
                   value={field.value}
-                  onChangeText={field.onChange}
-                  onBlur={field.onBlur}
-                  keyboardType="phone-pad"
-                  error={errors.phone?.message}
+                  placeholder="Chọn khu vực"
+                  onPress={() => {
+                    refetchWards();
+                    setShowWardPicker(true);
+                  }}
+                  error={errors.ward?.message}
                   C={C}
-                  leftIcon="call-outline"
+                  leftIcon="location-outline"
                 />
               )}
             />
+          </View>
 
-            {/* Submit */}
-            <TouchableOpacity
-              onPress={form.handleSubmit(handlePrimarySubmit)}
-              disabled={!isValid}
+          {/* BIRTHDAY */}
+          <Controller
+            control={control}
+            name="birthday"
+            render={({ field }) => (
+              <PickerField
+                label="Ngày sinh"
+                value={field.value}
+                placeholder="Chọn ngày sinh"
+                onPress={() => {
+                  const currentDate = field.value
+                    ? new Date(field.value)
+                    : new Date();
+                  setSelectedDate(currentDate);
+                  setShowDatePicker(true);
+                }}
+                error={errors.birthday?.message}
+                C={C}
+                leftIcon="calendar-outline"
+              />
+            )}
+          />
+
+          {/* PHONE */}
+          <Controller
+            control={control}
+            name="phone"
+            render={({ field }) => (
+              <Field
+                label="Số điện thoại (tùy chọn)"
+                placeholder="VD: 09xxxxxxxx"
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                keyboardType="phone-pad"
+                error={errors.phone?.message}
+                C={C}
+                leftIcon="call-outline"
+              />
+            )}
+          />
+
+          {/* Submit */}
+          <TouchableOpacity
+            onPress={form.handleSubmit(handlePrimarySubmit)}
+            disabled={!isValid}
+            style={[
+              styles.submitBtn,
+              {
+                backgroundColor: isValid
+                  ? C.primary
+                  : withOpacity(C.muted, 0.6),
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={GRAD.accent}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
               style={[
-                styles.submitBtn,
+                styles.submitGrad,
                 {
-                  backgroundColor: isValid
-                    ? C.primary
-                    : withOpacity(C.muted, 0.6),
+                  opacity: isValid ? 1 : 0.65,
+                  borderColor: withOpacity("#fff", 0.25),
                 },
               ]}
             >
-              <LinearGradient
-                colors={GRAD.accent}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[
-                  styles.submitGrad,
-                  {
-                    opacity: isValid ? 1 : 0.65,
-                    borderColor: withOpacity("#fff", 0.25),
-                  },
-                ]}
-              >
-                <Ionicons
-                  name="checkmark-circle-outline"
-                  size={18}
-                  color={C.primaryForeground}
-                />
-                <Text
-                  style={[styles.submitTxt, { color: C.primaryForeground }]}
-                >
-                  {editingChild ? "Lưu thay đổi" : "Thêm vào danh sách"}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <Text style={[styles.helper, { color: C.mutedForeground }]}>
-              Dữ liệu của bạn được bảo mật theo điều khoản của ArtChain.
-            </Text>
-          </ScrollView>
-        </Animated.View>
-      </KeyboardAvoidingView>
-
-      {/* ==== Ward Picker ==== */}
-      <Modal
-        visible={showWardPicker}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowWardPicker(false)}
-      >
-        <View style={[styles.flex1, { backgroundColor: C.background }]}>
-          <HeaderBar
-            C={C}
-            title="Chọn khu vực"
-            onClose={() => setShowWardPicker(false)}
-          />
-          {wardsLoading ? (
-            <View style={styles.centerAll}>
-              <Text style={{ color: C.mutedForeground }}>
-                Đang tải danh sách khu vực...
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={18}
+                color={C.primaryForeground}
+              />
+              <Text style={[styles.submitTxt, { color: C.primaryForeground }]}>
+                {editingChild ? "Lưu thay đổi" : "Thêm vào danh sách"}
               </Text>
-            </View>
-          ) : (
-            <FlatList
-              data={wards}
-              keyExtractor={(item) => item.code}
-              ItemSeparatorComponent={() => (
-                <View style={{ height: 1, backgroundColor: C.border }} />
-              )}
-              renderItem={({ item }) => (
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <Text style={[styles.helper, { color: C.mutedForeground }]}>
+            Dữ liệu của bạn được bảo mật theo điều khoản của ArtChain.
+          </Text>
+        </BottomSheetScrollView>
+
+        {/* ==== Ward Picker ==== */}
+        <Modal
+          visible={showWardPicker}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowWardPicker(false)}
+        >
+          <View style={[styles.flex1, { backgroundColor: C.background }]}>
+            <HeaderBar
+              C={C}
+              title="Chọn khu vực"
+              onClose={() => setShowWardPicker(false)}
+            />
+            {wardsLoading ? (
+              <View style={styles.centerAll}>
+                <Text style={{ color: C.mutedForeground }}>
+                  Đang tải danh sách khu vực...
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={wards}
+                keyExtractor={(item) => item.code}
+                ItemSeparatorComponent={() => (
+                  <View style={{ height: 1, backgroundColor: C.border }} />
+                )}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setValue("ward", item.name, { shouldValidate: true });
+                      setShowWardPicker(false);
+                    }}
+                    style={styles.rowItem}
+                  >
+                    <Ionicons
+                      name="navigate-outline"
+                      size={16}
+                      color={C.mutedForeground}
+                    />
+                    <Text
+                      style={{
+                        marginLeft: 8,
+                        fontSize: 16,
+                        color: C.foreground,
+                      }}
+                    >
+                      {item.name}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={
+                  <View style={[styles.centerAll, { padding: 32 }]}>
+                    <Text style={{ color: C.mutedForeground }}>
+                      Không có dữ liệu khu vực
+                    </Text>
+                  </View>
+                }
+              />
+            )}
+          </View>
+        </Modal>
+
+        {/* ==== Grade Picker ==== */}
+        <Modal
+          visible={showGradePicker}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowGradePicker(false)}
+        >
+          <View style={[styles.flex1, { backgroundColor: C.background }]}>
+            <HeaderBar
+              C={C}
+              title="Chọn lớp"
+              onClose={() => setShowGradePicker(false)}
+            />
+            <View style={{ flex: 1, padding: 16 }}>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((grade) => (
                 <TouchableOpacity
+                  key={grade}
                   onPress={() => {
-                    setValue("ward", item.name, { shouldValidate: true });
-                    setShowWardPicker(false);
+                    setValue("grade", grade.toString(), {
+                      shouldValidate: true,
+                    });
+                    setShowGradePicker(false);
                   }}
-                  style={styles.rowItem}
+                  style={[
+                    styles.rowItem,
+                    {
+                      backgroundColor: C.card,
+                      borderRadius: 10,
+                      marginBottom: 10,
+                      borderWidth: 1,
+                      borderColor: C.border,
+                    },
+                  ]}
                 >
                   <Ionicons
-                    name="navigate-outline"
-                    size={16}
+                    name="school-outline"
+                    size={18}
                     color={C.mutedForeground}
                   />
                   <Text
-                    style={{ marginLeft: 8, fontSize: 16, color: C.foreground }}
+                    style={{
+                      marginLeft: 10,
+                      color: C.foreground,
+                      fontSize: 16,
+                    }}
                   >
-                    {item.name}
+                    Lớp {grade}
                   </Text>
                 </TouchableOpacity>
-              )}
-              ListEmptyComponent={
-                <View style={[styles.centerAll, { padding: 32 }]}>
-                  <Text style={{ color: C.mutedForeground }}>
-                    Không có dữ liệu khu vực
-                  </Text>
-                </View>
-              }
-            />
-          )}
-        </View>
-      </Modal>
-
-      {/* ==== Grade Picker ==== */}
-      <Modal
-        visible={showGradePicker}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowGradePicker(false)}
-      >
-        <View style={[styles.flex1, { backgroundColor: C.background }]}>
-          <HeaderBar
-            C={C}
-            title="Chọn lớp"
-            onClose={() => setShowGradePicker(false)}
-          />
-          <View style={{ flex: 1, padding: 16 }}>
-            {[6, 7, 8, 9].map((grade) => (
-              <TouchableOpacity
-                key={grade}
-                onPress={() => {
-                  setValue("grade", grade.toString(), { shouldValidate: true });
-                  setShowGradePicker(false);
-                }}
-                style={[
-                  styles.rowItem,
-                  {
-                    backgroundColor: C.card,
-                    borderRadius: 10,
-                    marginBottom: 10,
-                    borderWidth: 1,
-                    borderColor: C.border,
-                  },
-                ]}
-              >
-                <Ionicons
-                  name="school-outline"
-                  size={18}
-                  color={C.mutedForeground}
-                />
-                <Text
-                  style={{ marginLeft: 10, color: C.foreground, fontSize: 16 }}
-                >
-                  Lớp {grade}
-                </Text>
-              </TouchableOpacity>
-            ))}
+              ))}
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-      {/* ==== Date Picker (custom simple) ==== */}
-      <DatePickerModal
-        C={C}
-        visible={showDatePicker}
-        selectedDate={selectedDate}
-        onChangeDate={setSelectedDate}
-        onCancel={() => setShowDatePicker(false)}
-        onDone={() => {
-          const formatted = `${selectedDate.getFullYear()}-${String(
-            selectedDate.getMonth() + 1
-          ).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(
-            2,
-            "0"
-          )}`;
-          setValue("birthday", formatted, { shouldValidate: true });
-          setShowDatePicker(false);
-        }}
-      />
-    </Modal>
-  );
-}
+        {/* ==== Date Picker ==== */}
+        {showDatePicker && (
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display="default"
+            onChange={(event, date) => {
+              setShowDatePicker(false);
+              if (date) {
+                const formatted = `${date.getFullYear()}-${String(
+                  date.getMonth() + 1
+                ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                setValue("birthday", formatted, { shouldValidate: true });
+              }
+            }}
+            maximumDate={new Date()}
+            minimumDate={new Date(1900, 0, 1)}
+          />
+        )}
+      </BottomSheetModal>
+    );
+  }
+);
 
 /* =========================== Subcomponents =========================== */
 
@@ -793,234 +776,6 @@ function PickerField({
   );
 }
 
-/* --- Date Picker Modal (keep pretty) --- */
-function DatePickerModal({
-  C,
-  visible,
-  selectedDate,
-  onChangeDate,
-  onCancel,
-  onDone,
-}: {
-  C: any;
-  visible: boolean;
-  selectedDate: Date;
-  onChangeDate: (d: Date) => void;
-  onCancel: () => void;
-  onDone: () => void;
-}) {
-  const YEARS_WINDOW = 50;
-  const yearScrollRef = useRef<ScrollView>(null);
-
-  useEffect(() => {
-    if (visible && yearScrollRef.current) {
-      const currentYear = new Date().getFullYear();
-      const startYear = currentYear - 40;
-      const currentYearIndex = currentYear - startYear;
-      const scrollPosition = Math.max(0, (currentYearIndex - 5) * 60);
-      setTimeout(() => {
-        yearScrollRef.current?.scrollTo({ x: scrollPosition, animated: false });
-      }, 80);
-    }
-  }, [visible]);
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onCancel}
-    >
-      <View style={[styles.flex1, { backgroundColor: C.background }]}>
-        <View
-          style={[
-            styles.headerBar,
-            { backgroundColor: C.card, borderBottomColor: C.border },
-          ]}
-        >
-          <TouchableOpacity onPress={onCancel} style={styles.headerIcon}>
-            <Ionicons name="close" size={22} color={C.primary} />
-          </TouchableOpacity>
-          <Text style={[styles.headerText, { color: C.foreground }]}>
-            Chọn ngày sinh
-          </Text>
-          <TouchableOpacity onPress={onDone} style={styles.headerIcon}>
-            <Text
-              style={{ color: C.primary, fontWeight: "bold", fontSize: 16 }}
-            >
-              Xong
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[styles.centerAll, { padding: 18 }]}>
-          <View
-            style={{
-              width: "100%",
-              maxWidth: 360,
-              backgroundColor: C.card,
-              borderRadius: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: C.border,
-            }}
-          >
-            <LinearGradient
-              colors={GRAD.chip}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{
-                borderRadius: 10,
-                paddingVertical: 10,
-                marginBottom: 14,
-              }}
-            >
-              <Text
-                style={{
-                  textAlign: "center",
-                  fontSize: 16,
-                  fontWeight: "700",
-                  color: C.foreground,
-                }}
-              >
-                {selectedDate.toLocaleDateString("vi-VN", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </Text>
-            </LinearGradient>
-
-            {/* Year */}
-            <Text style={[styles.sectionTitle, { color: C.foreground }]}>
-              Năm
-            </Text>
-            <ScrollView
-              ref={yearScrollRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 8 }}
-              style={{ marginBottom: 12 }}
-            >
-              {Array.from({ length: YEARS_WINDOW }, (_, i) => {
-                const year = new Date().getFullYear() - 40 + i;
-                const sel = selectedDate.getFullYear() === year;
-                return (
-                  <TouchableOpacity
-                    key={year}
-                    onPress={() => {
-                      const nd = new Date(selectedDate);
-                      nd.setFullYear(year);
-                      onChangeDate(nd);
-                    }}
-                    style={[
-                      styles.yearChip,
-                      {
-                        backgroundColor: sel ? C.primary : C.muted,
-                        borderColor: sel
-                          ? withOpacity("#fff", 0.35)
-                          : "transparent",
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={{
-                        color: sel ? C.primaryForeground : C.foreground,
-                        fontWeight: sel ? "800" : "500",
-                      }}
-                    >
-                      {year}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-
-            {/* Month */}
-            <Text style={[styles.sectionTitle, { color: C.foreground }]}>
-              Tháng
-            </Text>
-            <View style={styles.monthWrap}>
-              {Array.from({ length: 12 }, (_, i) => {
-                const month = i + 1;
-                const sel = selectedDate.getMonth() === i;
-                return (
-                  <TouchableOpacity
-                    key={month}
-                    onPress={() => {
-                      const nd = new Date(selectedDate);
-                      nd.setMonth(i);
-                      onChangeDate(nd);
-                    }}
-                    style={[
-                      styles.monthCell,
-                      { backgroundColor: sel ? C.primary : C.muted },
-                    ]}
-                  >
-                    <Text
-                      style={{
-                        color: sel ? C.primaryForeground : C.foreground,
-                        fontWeight: sel ? "800" : "500",
-                      }}
-                    >
-                      {month}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Day */}
-            <Text style={[styles.sectionTitle, { color: C.foreground }]}>
-              Ngày
-            </Text>
-            <View style={styles.daysWrap}>
-              {Array.from(
-                {
-                  length: new Date(
-                    selectedDate.getFullYear(),
-                    selectedDate.getMonth() + 1,
-                    0
-                  ).getDate(),
-                },
-                (_, i) => {
-                  const day = i + 1;
-                  const sel = selectedDate.getDate() === day;
-                  return (
-                    <TouchableOpacity
-                      key={day}
-                      onPress={() => {
-                        const nd = new Date(selectedDate);
-                        nd.setDate(day);
-                        onChangeDate(nd);
-                      }}
-                      style={[
-                        styles.dayCell,
-                        { backgroundColor: sel ? C.primary : C.muted },
-                      ]}
-                    >
-                      <Text
-                        style={{
-                          color: sel ? C.primaryForeground : C.foreground,
-                          fontWeight: sel ? "800" : "500",
-                          fontSize: 12,
-                        }}
-                      >
-                        {day}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                }
-              )}
-            </View>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 /* =========================== Styles =========================== */
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
@@ -1152,35 +907,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   rowGap8: { flexDirection: "row", gap: 8 },
-
-  sectionTitle: { fontWeight: "800", marginBottom: 8 },
-
-  yearChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginHorizontal: 4,
-    borderWidth: 1,
-    minWidth: 56,
-    alignItems: "center",
-  },
-  monthWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginBottom: 12,
-  },
-  monthCell: {
-    width: "22%",
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  daysWrap: { flexDirection: "row", flexWrap: "wrap", gap: 4 },
-  dayCell: {
-    width: "12%",
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: "center",
-  },
 });

@@ -139,10 +139,10 @@ const themedStyles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.5)",
   },
   activeIndicator: {
-    backgroundColor: Colors[colorScheme].primaryForeground,
+    backgroundColor: Colors[colorScheme].background,
   },
   section: {
-    backgroundColor: Colors[colorScheme].card,
+    backgroundColor: Colors[colorScheme].background,
     marginVertical: 8,
     marginHorizontal: 4,
     borderRadius: 6,
@@ -275,7 +275,6 @@ const themedStyles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: Colors[colorScheme].muted,
   },
   seeAllText: {
     marginRight: 4,
@@ -353,6 +352,9 @@ const themedStyles = StyleSheet.create({
     color: "#fff",
     letterSpacing: 0.2,
   },
+
+  // Grid container for post lists
+  listContainer: { padding: 8 },
 });
 
 export default themedStyles;

@@ -384,7 +384,6 @@ export default function ProfileDetailScreen() {
           email: userUI.email,
           phone: userUI.phone || "",
         }}
-        achievements={achievements}
       />
     </View>
   );

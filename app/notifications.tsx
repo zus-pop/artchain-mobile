@@ -1,12 +1,12 @@
 import NotificationCard, {
   NotificationItem,
 } from "@/components/cards/NotificationCard";
-import { Colors } from "@/constants/theme";
+import { Colors, withOpacity } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   SectionList,
   StatusBar,
@@ -69,17 +69,24 @@ const seed: NotificationItem[] = [
 
 /* nền orbs */
 function Orbs({ scheme }: { scheme: "light" | "dark" }) {
+  const C = Colors[scheme];
   const orbs =
     scheme === "dark"
       ? [
-          ["#0EA5E922", "#6366F144"],
-          ["#22D3EE22", "#06B6D444"],
-          ["#A78BFA22", "#8B5CF644"],
+          [
+            withOpacity(C.primary, 0.13),
+            withOpacity(C.secondary, 0.27),
+          ] as const,
+          [withOpacity(C.accent, 0.13), withOpacity(C.muted, 0.27)] as const,
+          [withOpacity(C.border, 0.13), withOpacity(C.card, 0.27)] as const,
         ]
       : [
-          ["#60A5FA33", "#7C3AED55"],
-          ["#F472B633", "#EC489955"],
-          ["#34D39933", "#10B98155"],
+          [
+            withOpacity(C.primary, 0.2),
+            withOpacity(C.secondary, 0.33),
+          ] as const,
+          [withOpacity(C.accent, 0.2), withOpacity(C.muted, 0.33)] as const,
+          [withOpacity(C.border, 0.2), withOpacity(C.card, 0.33)] as const,
         ];
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -171,7 +178,7 @@ export default function NotificationsScreen() {
       {/* Header gradient mảnh + safe area */}
       <LinearGradient
         colors={
-          scheme === "dark" ? ["#0EA5E9", "#6366F1"] : ["#60A5FA", "#A78BFA"]
+          scheme === "dark" ? [C.primary, C.secondary] : [C.primary, C.accent]
         }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -181,17 +188,39 @@ export default function NotificationsScreen() {
           <TouchableOpacity
             onPress={() => router.back()}
             activeOpacity={0.85}
-            style={styles.backBtn}
+            style={[
+              styles.backBtn,
+              {
+                backgroundColor: withOpacity(C.primaryForeground, 0.22),
+                borderColor: withOpacity(C.primaryForeground, 0.35),
+              },
+            ]}
           >
-            <Ionicons name="chevron-back" size={18} color="#fff" />
+            <Ionicons name="chevron-back" size={18} color={C.mutedForeground} />
           </TouchableOpacity>
 
           <View style={{ alignItems: "center", flex: 1 }}>
-            <Text style={styles.headerTitle}>Thông báo</Text>
+            <Text style={[styles.headerTitle, { color: C.primaryForeground }]}>
+              Thông báo
+            </Text>
             {unreadCount > 0 ? (
-              <Text style={styles.headerSub}>{unreadCount} chưa đọc</Text>
+              <Text
+                style={[
+                  styles.headerSub,
+                  { color: withOpacity(C.primaryForeground, 0.9) },
+                ]}
+              >
+                {unreadCount} chưa đọc
+              </Text>
             ) : (
-              <Text style={styles.headerSub}>Tất cả đã đọc</Text>
+              <Text
+                style={[
+                  styles.headerSub,
+                  { color: withOpacity(C.primaryForeground, 0.9) },
+                ]}
+              >
+                Tất cả đã đọc
+              </Text>
             )}
           </View>
 
@@ -199,9 +228,12 @@ export default function NotificationsScreen() {
             <TouchableOpacity
               onPress={markAllAsRead}
               activeOpacity={0.9}
-              style={styles.readAllBtn}
+              style={[
+                styles.readAllBtn,
+                { backgroundColor: withOpacity(C.primaryForeground, 0.9) },
+              ]}
             >
-              <Ionicons name="checkmark-done" size={16} color="#111827" />
+              <Ionicons name="checkmark-done" size={16} color={C.primary} />
             </TouchableOpacity>
           ) : (
             <View style={{ width: 36 }} />
@@ -221,18 +253,18 @@ export default function NotificationsScreen() {
                   styles.tabBtn,
                   {
                     backgroundColor: active
-                      ? "rgba(255,255,255,0.92)"
-                      : "rgba(255,255,255,0.18)",
+                      ? withOpacity(C.primaryForeground, 0.9)
+                      : withOpacity(C.primaryForeground, 0.18),
                     borderColor: active
                       ? "transparent"
-                      : "rgba(255,255,255,0.3)",
+                      : withOpacity(C.primaryForeground, 0.3),
                   },
                 ]}
               >
                 <Text
                   style={[
                     styles.tabText,
-                    { color: active ? "#111827" : "#fff" },
+                    { color: active ? C.primary : C.mutedForeground },
                   ]}
                 >
                   {t === "all" ? "Tất cả" : "Chưa đọc"}
@@ -308,18 +340,14 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.22)",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.35)",
   },
   headerTitle: {
-    color: "#fff",
     fontSize: 18,
     fontWeight: "900",
     letterSpacing: 0.2,
   },
   headerSub: {
-    color: "rgba(255,255,255,0.9)",
     fontSize: 12.5,
     fontWeight: "700",
     marginTop: 2,
@@ -330,7 +358,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.9)",
   },
   tabRow: { flexDirection: "row", gap: 8, marginTop: 10, paddingHorizontal: 2 },
   tabBtn: {

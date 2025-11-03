@@ -2,7 +2,6 @@
 import PillButton from "@/components/buttons/PillButton";
 import AchievementCard from "@/components/cards/guardian/AchievementCard";
 import ChildCard from "@/components/cards/guardian/ChildrentCard";
-import ContestCard from "@/components/cards/guardian/ContestCard";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
 
 // ⚡ dùng GuardianTabs phiên bản mới (slider dưới, không bọc nền)
@@ -15,6 +14,7 @@ import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -26,7 +26,6 @@ import { useWhoAmI } from "@/apis/auth";
 import { useGuardianChildren } from "@/apis/guardian";
 import { useAuthStore } from "@/store/auth-store";
 import type { ColorTokens, KPIProps } from "@/types/tabkey";
-import { formatDateDisplay } from "@/utils/date";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -61,37 +60,12 @@ export default function GuardianProfileComponent() {
   const C = Colors[scheme];
   const s = styles(C);
 
-  const { data: children } = useGuardianChildren(user?.userId);
+  const { data: children, refetch: refetchChildren } = useGuardianChildren(
+    user?.userId
+  );
   const [openDetails, setOpenDetails] = useState(false);
   const [activeTab, setActiveTab] = useState<GuardianTabKey>("children");
-
-  const ongoingContests = useMemo(
-    () => [
-      {
-        id: "contest1",
-        title: "Vẽ Sài Gòn Xanh",
-        progress: 75,
-        status: "active",
-        deadline: "2024-12-31",
-        submitted: true,
-        submissionCount: 1,
-        totalRounds: 2,
-        currentRound: 1,
-      },
-      {
-        id: "contest2",
-        title: "Nghệ Thuật Đường Phố",
-        progress: 45,
-        status: "active",
-        deadline: "2025-01-15",
-        submitted: false,
-        submissionCount: 0,
-        totalRounds: 1,
-        currentRound: 1,
-      },
-    ],
-    []
-  );
+  const [refreshing, setRefreshing] = useState(false);
 
   const achievements = useMemo(
     () => [
@@ -132,6 +106,13 @@ export default function GuardianProfileComponent() {
       reloadMe();
     }, [reloadMe])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await reloadMe();
+    await refetchChildren();
+    setRefreshing(false);
+  }, [reloadMe, refetchChildren]);
 
   const Avatar = () => {
     const seed = user?.email || user?.fullName || "guardian";
@@ -267,12 +248,20 @@ export default function GuardianProfileComponent() {
           { useNativeDriver: true }
         )}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            colors={[C.primary]}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+          />
+        }
       >
         {/* Header compact */}
         <View style={s.headerWrap}>
           <TouchableOpacity
             onPress={() => setOpenDetails(true)}
             activeOpacity={0.9}
+            style={{ padding: 8, margin: -8 }} // Expand touch area
           >
             <View>
               <Avatar />
@@ -306,14 +295,13 @@ export default function GuardianProfileComponent() {
           <View style={{ flex: 1 }}>
             <KPI
               icon="people-outline"
-              label="Con tham gia"
+              label="Con em"
               value={String(children?.length || 0)}
               C={C}
             />
           </View>
         </View>
 
-  
         <GuardianTabs
           C={C}
           activeTab={activeTab}
@@ -326,18 +314,22 @@ export default function GuardianProfileComponent() {
           {activeTab === "children" && (
             <View style={s.tabScrollContent}>
               {children && children.length > 0 ? (
-                <View style={{ gap: 12 }}>
+                <View style={s.childrenGrid}>
                   {children.map((child, index) => {
                     const avatar = getChildAvatar(index);
                     return (
-                      <ChildCard
+                      <View
                         key={child.userId || child.username || `child-${index}`}
-                        C={C}
-                        avatarBg={avatar.bg}
-                        name={child.fullName}
-                        grade={child.grade ?? undefined}
-                        schoolName={child.schoolName ?? undefined}
-                      />
+                        style={s.childGridItem}
+                      >
+                        <ChildCard
+                          C={C}
+                          avatarBg={avatar.bg}
+                          name={child.fullName}
+                          grade={child.grade ?? undefined}
+                          schoolName={child.schoolName ?? undefined}
+                        />
+                      </View>
                     );
                   })}
                 </View>
@@ -349,43 +341,6 @@ export default function GuardianProfileComponent() {
                     Thêm thông tin con em để theo dõi thành tích và tham gia
                     cuộc thi
                   </Text>
-                </View>
-              )}
-
-              {/* Add child button */}
-              <TouchableOpacity
-                style={s.addChildButton}
-                onPress={() => router.push("/add-child")}
-              >
-                <Ionicons name="add" size={20} color={C.primaryForeground} />
-                <Text style={s.addChildButtonText}>Thêm con em</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {activeTab === "contests" && (
-            <View style={s.tabScrollContent}>
-              {ongoingContests.length > 0 ? (
-                <View style={{ gap: 12 }}>
-                  {ongoingContests.map((contest) => (
-                    <ContestCard
-                      key={contest.id}
-                      C={C}
-                      title={contest.title}
-                      deadlineText={formatDateDisplay(contest.deadline)}
-                      roundText={`Vòng ${contest.currentRound}/${contest.totalRounds}`}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <View style={s.emptyTab}>
-                  <Ionicons name="time-outline" size={64} color={C.muted} />
-                  <Text style={s.emptyTabText}>
-                    Con em chưa tham gia cuộc thi nào
-                  </Text>
-                  <TouchableOpacity style={s.exploreButton}>
-                    <Text style={s.exploreButtonText}>Khám phá cuộc thi</Text>
-                  </TouchableOpacity>
                 </View>
               )}
             </View>
@@ -434,6 +389,24 @@ export default function GuardianProfileComponent() {
           phone: user.phone || "",
         }}
       />
+
+      {/* Floating Add Child Button */}
+      {activeTab === "children" && (
+        <TouchableOpacity
+          style={s.fabButton}
+          onPress={() => router.push("/add-child")}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={[C.primary, "#f87171"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.fabGradient}
+          >
+            <Ionicons name="add" size={28} color={C.primaryForeground} />
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 }
@@ -528,6 +501,18 @@ const styles = (C: ColorTokens) =>
     tabContent: { flex: 1, minHeight: 400 },
     tabScrollContent: { paddingHorizontal: 16, paddingBottom: 20 },
 
+    // Children grid layout
+    childrenGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      marginHorizontal: -6,
+    },
+    childGridItem: {
+      width: "50%",
+      paddingHorizontal: 6,
+      marginBottom: 12,
+    },
+
     emptyTab: {
       alignItems: "center",
       justifyContent: "center",
@@ -545,22 +530,6 @@ const styles = (C: ColorTokens) =>
       color: C.muted,
       marginBottom: 24,
       textAlign: "center",
-    },
-
-    addChildButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: C.primary,
-      borderRadius: 20,
-      paddingHorizontal: 24,
-      paddingVertical: 12,
-      gap: 8,
-      marginTop: 10,
-    },
-    addChildButtonText: {
-      color: C.primaryForeground,
-      fontSize: 14,
-      fontWeight: "600",
     },
 
     exploreButton: {
@@ -617,6 +586,28 @@ const styles = (C: ColorTokens) =>
       color: C.primaryForeground,
       fontWeight: "bold",
       fontSize: 16,
+    },
+
+    // Floating Action Button
+    fabButton: {
+      position: "absolute",
+      bottom: 90,
+      right: 20,
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      shadowColor: "#000",
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 8,
+    },
+    fabGradient: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      alignItems: "center",
+      justifyContent: "center",
     },
   });
 

@@ -4,8 +4,9 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   FlatList,
@@ -50,9 +51,12 @@ const competitorSchema = z
       .string({ message: "Lớp là bắt buộc" })
       .trim()
       .min(1, "Lớp là bắt buộc")
-      .refine((val) => ["6", "7", "8", "9"].includes(val), {
-        message: "Lớp phải là từ 6 đến 9",
-      }),
+      .refine(
+        (val) => ["1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(val),
+        {
+          message: "Lớp phải là từ 1 đến 9",
+        }
+      ),
     ward: z
       .string({ message: "Khu vực là bắt buộc" })
       .trim()
@@ -77,28 +81,12 @@ export default function CompetitorSignupScreen() {
   const [showWardPicker, setShowWardPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showGradePicker, setShowGradePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const yearScrollRef = useRef<ScrollView>(null);
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const { mutate, isPending } = useSignInMutation();
   const { data: wards = [], isLoading: wardsLoading } = useWards();
-
-  // Scroll to current year when date picker opens
-  useEffect(() => {
-    if (showDatePicker && yearScrollRef.current) {
-      const currentYear = new Date().getFullYear();
-      const startYear = currentYear - 40; // Show 40 years back
-      const currentYearIndex = currentYear - startYear;
-      // Scroll to position showing current year in the middle
-      const scrollPosition = Math.max(0, (currentYearIndex - 5) * 60); // Approximate button width
-      setTimeout(() => {
-        yearScrollRef.current?.scrollTo({ x: scrollPosition, animated: false });
-      }, 100);
-    }
-  }, [showDatePicker]);
 
   // Competitor form
   const competitorForm = useForm<CompetitorForm>({
@@ -178,18 +166,6 @@ export default function CompetitorSignupScreen() {
             padding: 24,
           }}
         >
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "bold",
-              color: Colors[colorScheme].foreground,
-              marginBottom: 8,
-              textAlign: "center",
-            }}
-          >
-            Đăng ký Người tham gia
-          </Text>
-
           <Text
             style={{
               fontSize: 14,
@@ -475,42 +451,61 @@ export default function CompetitorSignupScreen() {
             control={control}
             name="birthday"
             render={({ field }) => (
-              <TouchableOpacity
-                onPress={() => {
-                  setSelectedDate(new Date());
-                  setShowDatePicker(true);
-                }}
-                style={{
-                  width: "100%",
-                  borderWidth: 1,
-                  borderColor: errors.birthday
-                    ? Colors[colorScheme].destructive
-                    : Colors[colorScheme].border,
-                  backgroundColor: Colors[colorScheme].input,
-                  borderRadius: 12,
-                  marginBottom: 14,
-                  padding: 12,
-                  justifyContent: "center",
-                }}
-              >
-                <Text
+              <>
+                <TouchableOpacity
+                  onPress={() => setShowDatePicker(true)}
                   style={{
-                    color: field.value
-                      ? Colors[colorScheme].foreground
-                      : Colors[colorScheme].mutedForeground,
-                    fontSize: 16,
+                    width: "100%",
+                    borderWidth: 1,
+                    borderColor: errors.birthday
+                      ? Colors[colorScheme].destructive
+                      : Colors[colorScheme].border,
+                    backgroundColor: Colors[colorScheme].input,
+                    borderRadius: 12,
+                    marginBottom: 14,
+                    padding: 12,
+                    justifyContent: "center",
                   }}
                 >
-                  {field.value || "Chọn ngày sinh"}
-                </Text>
-                <View style={{ position: "absolute", right: 12 }}>
-                  <Ionicons
-                    name="calendar-outline"
-                    size={16}
-                    color={Colors[colorScheme].mutedForeground}
+                  <Text
+                    style={{
+                      color: field.value
+                        ? Colors[colorScheme].foreground
+                        : Colors[colorScheme].mutedForeground,
+                      fontSize: 16,
+                    }}
+                  >
+                    {field.value || "Chọn ngày sinh"}
+                  </Text>
+                  <View style={{ position: "absolute", right: 12 }}>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={16}
+                      color={Colors[colorScheme].mutedForeground}
+                    />
+                  </View>
+                </TouchableOpacity>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={field.value ? new Date(field.value) : new Date()}
+                    mode="date"
+                    display="default"
+                    onChange={(event, selectedDate) => {
+                      setShowDatePicker(false);
+                      if (selectedDate) {
+                        const formattedDate = `${selectedDate.getFullYear()}-${String(
+                          selectedDate.getMonth() + 1
+                        ).padStart(2, "0")}-${String(
+                          selectedDate.getDate()
+                        ).padStart(2, "0")}`;
+                        field.onChange(formattedDate);
+                      }
+                    }}
+                    maximumDate={new Date()}
+                    minimumDate={new Date(1900, 0, 1)}
                   />
-                </View>
-              </TouchableOpacity>
+                )}
+              </>
             )}
           />
           {errors.birthday && (
@@ -849,7 +844,7 @@ export default function CompetitorSignupScreen() {
               padding: 20,
             }}
           >
-            {[6, 7, 8, 9].map((grade) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((grade) => (
               <TouchableOpacity
                 key={grade}
                 onPress={() => {
@@ -878,289 +873,6 @@ export default function CompetitorSignupScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
-        </View>
-      </Modal>
-
-      {/* Date Picker Modal */}
-      <Modal
-        visible={showDatePicker}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowDatePicker(false)}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: Colors[colorScheme].background,
-          }}
-        >
-          {/* Header */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: Colors[colorScheme].card,
-              paddingHorizontal: 16,
-              paddingTop: 50,
-              paddingBottom: 16,
-              borderBottomWidth: 1,
-              borderBottomColor: Colors[colorScheme].border,
-            }}
-          >
-            <TouchableOpacity
-              onPress={() => setShowDatePicker(false)}
-              style={{ padding: 8, marginRight: 8 }}
-            >
-              <Ionicons
-                name="close"
-                size={24}
-                color={Colors[colorScheme].primary}
-              />
-            </TouchableOpacity>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "bold",
-                color: Colors[colorScheme].foreground,
-                flex: 1,
-              }}
-            >
-              Chọn ngày sinh
-            </Text>
-            <TouchableOpacity
-              onPress={() => {
-                const formattedDate = `${selectedDate.getFullYear()}-${String(
-                  selectedDate.getMonth() + 1
-                ).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(
-                  2,
-                  "0"
-                )}`;
-                competitorForm.setValue("birthday", formattedDate);
-                setShowDatePicker(false);
-              }}
-              style={{ padding: 8 }}
-            >
-              <Text
-                style={{
-                  color: Colors[colorScheme].primary,
-                  fontWeight: "bold",
-                  fontSize: 16,
-                }}
-              >
-                Xong
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Date Picker Content */}
-          <View
-            style={{
-              flex: 1,
-              justifyContent: "center",
-              alignItems: "center",
-              padding: 20,
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: Colors[colorScheme].card,
-                borderRadius: 12,
-                padding: 20,
-                width: "100%",
-                maxWidth: 300,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: "bold",
-                  color: Colors[colorScheme].foreground,
-                  textAlign: "center",
-                  marginBottom: 20,
-                }}
-              >
-                {selectedDate.toLocaleDateString("vi-VN", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </Text>
-
-              {/* Year Picker */}
-              <View style={{ marginBottom: 16 }}>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: "600",
-                    color: Colors[colorScheme].foreground,
-                    marginBottom: 8,
-                  }}
-                >
-                  Năm
-                </Text>
-                <ScrollView
-                  ref={yearScrollRef}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingHorizontal: 10 }}
-                >
-                  {Array.from({ length: 50 }, (_, i) => {
-                    const year = new Date().getFullYear() - 40 + i;
-                    const isSelected = selectedDate.getFullYear() === year;
-                    return (
-                      <TouchableOpacity
-                        key={year}
-                        onPress={() => {
-                          const newDate = new Date(selectedDate);
-                          newDate.setFullYear(year);
-                          setSelectedDate(newDate);
-                        }}
-                        style={{
-                          paddingHorizontal: 12,
-                          paddingVertical: 6,
-                          marginHorizontal: 2,
-                          borderRadius: 6,
-                          backgroundColor: isSelected
-                            ? Colors[colorScheme].primary
-                            : Colors[colorScheme].muted,
-                          minWidth: 50,
-                          alignItems: "center",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: isSelected
-                              ? Colors[colorScheme].primaryForeground
-                              : Colors[colorScheme].foreground,
-                            fontWeight: isSelected ? "bold" : "normal",
-                            fontSize: 14,
-                          }}
-                        >
-                          {year}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-
-              {/* Month Picker */}
-              <View style={{ marginBottom: 16 }}>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: "600",
-                    color: Colors[colorScheme].foreground,
-                    marginBottom: 8,
-                  }}
-                >
-                  Tháng
-                </Text>
-                <View
-                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 4 }}
-                >
-                  {Array.from({ length: 12 }, (_, i) => {
-                    const month = i + 1;
-                    const isSelected = selectedDate.getMonth() === i;
-                    return (
-                      <TouchableOpacity
-                        key={month}
-                        onPress={() => {
-                          const newDate = new Date(selectedDate);
-                          newDate.setMonth(i);
-                          setSelectedDate(newDate);
-                        }}
-                        style={{
-                          width: "22%",
-                          paddingVertical: 8,
-                          borderRadius: 6,
-                          backgroundColor: isSelected
-                            ? Colors[colorScheme].primary
-                            : Colors[colorScheme].muted,
-                          alignItems: "center",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: isSelected
-                              ? Colors[colorScheme].primaryForeground
-                              : Colors[colorScheme].foreground,
-                            fontWeight: isSelected ? "bold" : "normal",
-                            fontSize: 14,
-                          }}
-                        >
-                          {month}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-
-              {/* Day Picker */}
-              <View>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: "600",
-                    color: Colors[colorScheme].foreground,
-                    marginBottom: 8,
-                  }}
-                >
-                  Ngày
-                </Text>
-                <View
-                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 2 }}
-                >
-                  {Array.from(
-                    {
-                      length: new Date(
-                        selectedDate.getFullYear(),
-                        selectedDate.getMonth() + 1,
-                        0
-                      ).getDate(),
-                    },
-                    (_, i) => {
-                      const day = i + 1;
-                      const isSelected = selectedDate.getDate() === day;
-                      return (
-                        <TouchableOpacity
-                          key={day}
-                          onPress={() => {
-                            const newDate = new Date(selectedDate);
-                            newDate.setDate(day);
-                            setSelectedDate(newDate);
-                          }}
-                          style={{
-                            width: "12%",
-                            paddingVertical: 6,
-                            borderRadius: 6,
-                            backgroundColor: isSelected
-                              ? Colors[colorScheme].primary
-                              : Colors[colorScheme].muted,
-                            alignItems: "center",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              color: isSelected
-                                ? Colors[colorScheme].primaryForeground
-                                : Colors[colorScheme].foreground,
-                              fontWeight: isSelected ? "bold" : "normal",
-                              fontSize: 12,
-                            }}
-                          >
-                            {day}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    }
-                  )}
-                </View>
-              </View>
-            </View>
           </View>
         </View>
       </Modal>
