@@ -47,6 +47,16 @@ const VIVID_POOLS: [string, string][] = [
   ["#60A5FA", "#F472B6"],
   ["#F43F5E", "#FB7185"],
 ];
+
+const fmtDateOnly = (v?: string | Date | null) => {
+  if (!v) return "—";
+  const d = new Date(v);
+  return d.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
 const hashStr = (s: string) => {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
@@ -401,6 +411,7 @@ export default function CompetitorProfileComponent() {
                           id: a.paintingId,
                           title: `${a.award.name} - ${a.contest.title}`,
                           place: a.achievedDate,
+                          achievedDate: fmtDateOnly(a.achievedDate),
                         }}
                         pickGrad={pickGrad}
                         borderColor={C.border}
@@ -482,7 +493,7 @@ function CenteredState({
           fontWeight: "800",
           color: C.foreground,
           marginTop: 16,
-          fontFamily:"Be Vietnam Pro",
+          fontFamily: "Be Vietnam Pro",
         }}
       >
         {title}
@@ -494,7 +505,7 @@ function CenteredState({
             color: C.mutedForeground,
             marginVertical: 12,
             textAlign: "center",
-            fontFamily:"Be Vietnam Pro",
+            fontFamily: "Be Vietnam Pro",
           }}
         >
           {message}
@@ -516,7 +527,7 @@ function CenteredState({
               color: C.primaryForeground,
               fontWeight: "700",
               fontSize: 15,
-              fontFamily:"Be Vietnam Pro",
+              fontFamily: "Be Vietnam Pro",
             }}
           >
             {action.label}

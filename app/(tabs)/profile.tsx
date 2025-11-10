@@ -63,7 +63,7 @@ export default function ProfileScreen() {
           style={{
             backgroundColor: colors.primary,
             color: colors.primaryForeground,
-            width: "100%",
+            width: "90%",
             paddingVertical: 12,
             borderRadius: 16,
             fontWeight: "bold",

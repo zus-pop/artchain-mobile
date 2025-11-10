@@ -23,6 +23,26 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import ArtworkPlaceholder from "../ArtworkPlaceholder";
+
+/* ================= Helpers ================= */
+const ACCENT = "hsl(15 85% 55%)";
+
+/** Chỉ lấy ngày từ chuỗi ISO → "DD/MM/YYYY", không tạo new Date để tránh lệch TZ */
+const fmtDateOnlyISO = (v?: string | null) => {
+  if (!v) return "—";
+  // Kỳ vọng dạng 2025-11-04T17:12:20.737Z
+  const iso = String(v);
+  const ymd = iso.split("T")[0]; // "YYYY-MM-DD"
+  const [y, m, d] = ymd.split("-");
+  if (!y || !m || !d) return "—";
+  return `${d}/${m}/${y}`;
+};
+
+const fmtPrize = (p: number | string) => {
+  const n = typeof p === "string" ? parseFloat(p) : p;
+  return Number.isFinite(n) ? n.toLocaleString("vi-VN") + "₫" : String(p);
+};
 
 type Props = {
   visible: boolean;
@@ -31,13 +51,6 @@ type Props = {
   maxHeightPct?: number;
   disableBackdropClose?: boolean;
   showClose?: boolean;
-};
-
-const ACCENT = "hsl(15 85% 55%)"; // amber-500
-
-const fmtPrize = (p: number | string) => {
-  const n = typeof p === "string" ? parseFloat(p) : p;
-  return Number.isFinite(n) ? n.toLocaleString("vi-VN") + "₫" : String(p);
 };
 
 export default function AchievementModal({
@@ -54,21 +67,20 @@ export default function AchievementModal({
   const screenH = useMemo(() => Dimensions.get("window").height, []);
   const [mounted, setMounted] = useState<boolean>(visible);
 
-  // --- animated values
+  // animated values
   const backdrop = useRef(new Animated.Value(0)).current; // 0..1
   const sheetY = useRef(new Animated.Value(screenH)).current; // start off-screen
-  const dragY = useRef(new Animated.Value(0)).current; // live drag distance
+  const dragY = useRef(new Animated.Value(0)).current; // live drag
   const translateY = Animated.add(sheetY, dragY);
 
-  // --- states to manage scroll vs drag
-  const scrollYRef = useRef(0); // current scroll offset
+  // scroll vs drag
+  const scrollYRef = useRef(0);
   const isDraggingRef = useRef(false);
 
   // thresholds
   const DISMISS_TRANSLATE = 120;
   const DISMISS_VY = 0.9;
 
-  // mount / unmount & animate
   useEffect(() => {
     if (visible) {
       if (!mounted) setMounted(true);
@@ -104,7 +116,7 @@ export default function AchievementModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
-  // android back để đóng
+  // Android back
   useEffect(() => {
     if (!mounted) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -132,36 +144,29 @@ export default function AchievementModal({
     });
   }, [backdrop, sheetY, screenH, onClose]);
 
-  // ---- PAN: cho cả header divider và container (khi content đang ở top)
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponderCapture: (_, g) => {
-        // Ưu tiên bắt nếu kéo xuống rõ rệt & đang ở đỉnh
-        if (g.dy > 6 && Math.abs(g.dx) < 16 && scrollYRef.current <= 0) {
+        if (g.dy > 6 && Math.abs(g.dx) < 16 && scrollYRef.current <= 0)
           return true;
-        }
         return false;
       },
-      onMoveShouldSetPanResponder: (_, g) => {
-        // nếu chưa scroll hoặc đã ở top, cho phép kéo
-        return g.dy > 6 && scrollYRef.current <= 0;
-      },
+      onMoveShouldSetPanResponder: (_, g) =>
+        g.dy > 6 && scrollYRef.current <= 0,
       onPanResponderGrant: () => {
         isDraggingRef.current = true;
       },
       onPanResponderMove: (_, g) => {
-        const dy = Math.max(0, g.dy); // chỉ cho kéo xuống
+        const dy = Math.max(0, g.dy);
         dragY.setValue(dy);
-        // mờ backdrop theo kéo
         const ratio = Math.max(0, Math.min(1, 1 - dy / screenH));
         backdrop.setValue(ratio);
       },
       onPanResponderRelease: (_, g) => {
         isDraggingRef.current = false;
         const shouldDismiss = g.dy > DISMISS_TRANSLATE || g.vy > DISMISS_VY;
-        if (shouldDismiss) {
-          closeNow();
-        } else {
+        if (shouldDismiss) closeNow();
+        else {
           Animated.parallel([
             Animated.spring(dragY, {
               toValue: 0,
@@ -219,7 +224,7 @@ export default function AchievementModal({
         />
       </Pressable>
 
-      {/* SHEET (wrap cả header + content để bắt pan khi ở top) */}
+      {/* Bottom Sheet */}
       <Animated.View
         style={[
           styles.sheet,
@@ -232,11 +237,10 @@ export default function AchievementModal({
         ]}
         {...panResponder.panHandlers}
       >
-        {/* Header: divider để kéo xuống tắt */}
+        {/* Header */}
         <View style={styles.topChrome}>
           <View
             style={styles.dragZone}
-            // vẫn gắn pan ở header để người dùng có điểm kéo rõ ràng
             {...panResponder.panHandlers}
             accessibilityRole="button"
             accessibilityLabel="Kéo xuống để đóng"
@@ -255,13 +259,13 @@ export default function AchievementModal({
                   style={[styles.title, { color: C.foreground }]}
                   numberOfLines={1}
                 >
-                  {item.award.name}
+                  {item.award?.name ?? "Giải thưởng"}
                 </Text>
                 <Text
                   style={[styles.subtitle, { color: C.mutedForeground }]}
                   numberOfLines={1}
                 >
-                  {item.contest.title}
+                  {item.contest?.title ?? "—"}
                 </Text>
               </View>
             </View>
@@ -278,6 +282,7 @@ export default function AchievementModal({
           </View>
         </View>
 
+        {/* Content */}
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
@@ -289,59 +294,117 @@ export default function AchievementModal({
           scrollEventThrottle={16}
           bounces
         >
-          {!!item.paintingImage && (
+          {/* Ảnh / Placeholder */}
+          {item.paintingImage ? (
             <View style={[styles.imageWrap, { borderColor: C.border }]}>
               <Animated.Image
                 source={{ uri: item.paintingImage }}
                 style={styles.image}
                 resizeMode="cover"
               />
-              <View style={[styles.badge, { backgroundColor: ACCENT }]}>
-                <Ionicons name="ribbon" size={14} color="#fff" />
-                <Text style={styles.badgeTxt}>Top {item.award.rank}</Text>
-              </View>
+              {!!item.award?.rank && (
+                <View style={[styles.badge, { backgroundColor: ACCENT }]}>
+                  <Ionicons name="ribbon" size={14} color="#fff" />
+                  <Text style={styles.badgeTxt}>Top {item.award.rank}</Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <View style={[styles.imageWrap, { borderColor: C.border }]}>
+              <ArtworkPlaceholder
+                solidBorder
+                height={180}
+                rounded={12}
+                message="Tranh sẽ được chúng tôi cập nhật sớm nhất có thể"
+                style={{ height: "100%", width: "100%" }}
+              />
+              {!!item.award?.rank && (
+                <View style={[styles.badge, { backgroundColor: ACCENT }]}>
+                  <Ionicons name="ribbon" size={14} color="#fff" />
+                  <Text style={styles.badgeTxt}>Top {item.award.rank}</Text>
+                </View>
+              )}
             </View>
           )}
 
-          <View style={{ gap: 10 }}>
-            <Text
-              style={{
-                fontSize: 19,
-                color: C.foreground,
-                fontFamily: "Be Vietnam Pro",
-                fontWeight: "700",
-                textAlign: "center",
-              }}
-            >
-              {item.paintingTitle}
-            </Text>
+          {/* Thông tin chi tiết */}
+          <View style={{ gap: 12 }}>
+            {!!item.paintingTitle && (
+              <>
+                <Text
+                  style={{
+                    fontSize: 19,
+                    color: C.foreground,
+                    fontFamily: "Be Vietnam Pro",
+                    fontWeight: "700",
+                    textAlign: "center",
+                  }}
+                >
+                  {item.paintingTitle}
+                </Text>
+                <View style={{ height: 1, backgroundColor: C.border }} />
+              </>
+            )}
+
+            <Row
+              C={C}
+              icon="flag-outline"
+              label="Cuộc thi"
+              value={item.contest?.title || "—"}
+              accent={ACCENT}
+            />
+            <Row
+              C={C}
+              icon="time-outline"
+              label="Thời gian"
+              value={
+                item.contest?.startDate && item.contest?.endDate
+                  ? `${fmtDateOnlyISO(
+                      item.contest.startDate
+                    )} → ${fmtDateOnlyISO(item.contest.endDate)}`
+                  : "—"
+              }
+              accent={ACCENT}
+            />
             <View style={{ height: 1, backgroundColor: C.border }} />
             <View
-              style={{ flexDirection: "row", justifyContent: "space-between" }}
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                gap: 16,
+              }}
             >
               <Row
                 C={C}
                 icon="ribbon-outline"
                 label="Xếp hạng"
-                value={`Hạng ${item.award.rank}`}
+                value={item.award?.rank ? `Hạng ${item.award.rank}` : "—"}
                 accent={ACCENT}
               />
               <Row
                 C={C}
                 icon="cash-outline"
                 label="Giải thưởng"
-                value={fmtPrize(item.award.prize as any)}
+                value={
+                  item.award?.prize != null
+                    ? fmtPrize(item.award.prize as any)
+                    : "—"
+                }
                 accent={ACCENT}
               />
             </View>
+
+            {/* Ngày đạt */}
             <Row
               C={C}
               icon="calendar-outline"
               label="Ngày đạt"
-              value={new Date(item.achievedDate).toLocaleDateString("vi-VN")}
+              value={fmtDateOnlyISO(item.achievedDate)}
               accent={ACCENT}
             />
-            {!!item.award.description && (
+
+            {/* Mô tả giải */}
+            {!!item.award?.description && (
               <Row
                 C={C}
                 icon="document-text-outline"
@@ -351,19 +414,9 @@ export default function AchievementModal({
                 accent={ACCENT}
               />
             )}
-            <Row
-              C={C}
-              icon="flag-outline"
-              label="Thời gian cuộc thi"
-              value={`${new Date(item.contest.startDate).toLocaleDateString(
-                "vi-VN"
-              )} → ${new Date(item.contest.endDate).toLocaleDateString(
-                "vi-VN"
-              )}`}
-              accent={ACCENT}
-            />
           </View>
 
+          {/* Footer */}
           <View style={styles.footer}>
             <TouchableOpacity
               onPress={closeNow}
@@ -394,7 +447,7 @@ function Row({
   accent: string;
 }) {
   return (
-    <View style={{ gap: 6 }}>
+    <View style={{ gap: 6, flex: 1 }}>
       <View style={{ flexDirection: "row", alignItems: "center" }}>
         <Ionicons
           name={icon}
@@ -492,7 +545,6 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   badgeTxt: { color: "#fff", fontWeight: "800", fontSize: 12 },
-  dot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
 
   footer: { flexDirection: "row", marginTop: 16, justifyContent: "center" },
   primaryBtn: {

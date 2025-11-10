@@ -78,6 +78,17 @@ const VIVID_POOLS: [string, string][] = [
   ["#60A5FA", "#F472B6"],
   ["#F43F5E", "#FB7185"],
 ];
+
+const fmtDateOnly = (v?: string | Date | null) => {
+  if (!v) return "—";
+  const d = new Date(v);
+  return d.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
 const hashStr = (s: string) => {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
@@ -112,6 +123,7 @@ export default function GuardianProfileComponent() {
     blockGap: 12, // khoảng cách giữa các card trong 1 section
     kpiCardRadius: 18,
   };
+
   const childAvatars = useMemo(
     () => [
       { icon: "person-outline" as const, bg: "#FF6B6B" },
@@ -380,13 +392,23 @@ export default function GuardianProfileComponent() {
                         key={child.userId || child.username || `child-${index}`}
                         style={s.childGridItem}
                       >
-                        <ChildCard
-                          C={C}
-                          avatarBg={avatar.bg}
-                          name={child.fullName}
-                          grade={child.grade ?? undefined}
-                          schoolName={child.schoolName ?? undefined}
-                        />
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          onPress={() =>
+                            router.push({
+                              pathname: "/childrent-detail",
+                              params: { childId: child.userId },
+                            })
+                          }
+                        >
+                          <ChildCard
+                            C={C}
+                            avatarBg={avatar.bg}
+                            name={child.fullName}
+                            grade={child.grade ?? undefined}
+                            schoolName={child.schoolName ?? undefined}
+                          />
+                        </TouchableOpacity>
                       </View>
                     );
                   })}
@@ -424,13 +446,13 @@ export default function GuardianProfileComponent() {
                         setOpenAchModal(true);
                       }}
                     >
-                      {/* Map API -> UI item cho card; KHÔNG đổi logic hiển thị */}
+           
                       <AchievementCard
                         item={{
                           id: a.paintingId,
                           title: `${a.award.name} - ${a.contest.title}`,
-                          place: a.achievedDate,
-                          achievedDate: a.achievedDate,
+                          place: fmtDateOnly(a.achievedDate),
+                          achievedDate: fmtDateOnly(a.achievedDate),
                         }}
                         pickGrad={pickGrad}
                         borderColor={C.border}
