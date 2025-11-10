@@ -1,5 +1,5 @@
 // components/CollapsibleHeader.tsx
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import {
@@ -27,6 +27,7 @@ export default function CollapsibleHeader({
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme();
   const colors = Colors[scheme ?? "light"];
+
   const translateY = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 1],
@@ -48,7 +49,7 @@ export default function CollapsibleHeader({
           height: HEADER_EXPANDED + insets.top,
           paddingTop: insets.top,
         },
-        { backgroundColor: colors.background },
+        { backgroundColor: colors.foreground80 },
       ]}
       pointerEvents="box-none"
     >
@@ -68,33 +69,41 @@ export default function CollapsibleHeader({
       {/* Nhóm text + avatar */}
       <View style={styles.headerTextWrap}>
         <TouchableOpacity activeOpacity={0.8} style={[styles.avatarBtn]}>
-          <Ionicons name="person-circle" size={40} color={colors.foreground} />
+          <Ionicons name="person-circle" size={42} color={colors.background} />
         </TouchableOpacity>
 
-        <View>
+        <View
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            alignContent: "center",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
           <Animated.Text
             style={[
-              styles.hello,
+              styles.username,
               {
                 opacity: nameOpacity,
-                color: colors.foreground,
+                color: colors.background,
               },
             ]}
           >
-            Xin chào,
+            Hi,
           </Animated.Text>
           <Animated.Text
             style={[
               styles.username,
               {
                 opacity: nameOpacity,
-                color: colors.foreground,
+                color: colors.background,
               },
             ]}
-            numberOfLines={1}
           >
             {username}
           </Animated.Text>
+          <MaterialCommunityIcons name="hand-wave" size={24} color="#FFA500" />
         </View>
       </View>
     </Animated.View>
@@ -109,14 +118,15 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 16,
     zIndex: 10,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
+
+    borderBottomRightRadius: 76,
     overflow: "hidden",
+    borderWidth: 0.1,
   },
 
   avatarBtn: {
     position: "absolute",
-    top: 8,
+
     left: 12,
     width: AVATAR,
     height: AVATAR,
@@ -130,8 +140,10 @@ const styles = StyleSheet.create({
     paddingLeft: 12 + AVATAR + 8,
     paddingRight: 16,
     paddingTop: 4,
+    alignContent: "center",
+    justifyContent: "center",
   },
 
-  hello: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  username: { color: "#fff", fontSize: 22, fontWeight: "800", marginTop: 2 },
+  hello: { fontSize: 16, fontWeight: "600" },
+  username: { fontSize: 22, fontWeight: "800", marginTop: 2 },
 });

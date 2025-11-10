@@ -1,7 +1,7 @@
-// screens/CompetitorProfileComponent.tsx  (UPDATED FULL - Spacing tuned)
 import PillButton from "@/components/buttons/PillButton";
+import AchievementModal from "@/components/modals/AchievementModal";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
-import SubmissionDetailsModal from "./modals/SubmissionDetailsModal";
+import SubmissionDetailsModal from "../components/modals/SubmissionDetailsModal";
 
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -23,11 +23,13 @@ import {
 
 import { useWhoAmI } from "@/apis/auth";
 import { useAuthStore } from "@/store/auth-store";
-import type { AchievementItem, ColorTokens, KPIProps } from "@/types/tabkey";
+import type { ColorTokens, KPIProps } from "@/types/tabkey";
 import { formatDateDisplay } from "@/utils/date";
-import { useMySubmission } from "../apis/painting";
+import { useGetAchivementByUserId, useMySubmission } from "../apis/painting";
 import { Painting } from "../types";
-import AchievementCard from "./cards/competitor/AchievementCard";
+import AchievementCard, {
+  AchievementItem,
+} from "./cards/competitor/AchievementCard";
 import EmptyState from "./cards/competitor/EmptyState";
 import SubmissionCard, {
   SubmissionItem,
@@ -66,10 +68,15 @@ export default function CompetitorProfileComponent() {
     kpiCardRadius: 18,
   };
 
+  const [openAchModal, setOpenAchModal] = useState(false);
+  const [selectedAch, setSelectedAch] = useState<AchievementItem | null>(null);
+
   const accessToken = useAuthStore((s) => s.accessToken);
   const { data: user, isLoading, refetch: reloadMe } = useWhoAmI();
   const { data: submissions = [], isLoading: submissionsLoading } =
     useMySubmission();
+  const { data: achievementData, isLoading: achievementsLoading } =
+    useGetAchivementByUserId(user?.userId || "");
 
   const [openDetails, setOpenDetails] = useState(false);
   const [openSubmission, setOpenSubmission] = useState(false);
@@ -80,30 +87,7 @@ export default function CompetitorProfileComponent() {
     "submissions"
   );
 
-  const achievements = useMemo(
-    () =>
-      [
-        {
-          id: "a1",
-          title: 'Giải Nhất "Cuộc thi vẽ tranh thiếu nhi toàn quốc 2024"',
-          place: "2024 - TP. Hồ Chí Minh",
-          awardId: "award_2024_001",
-        },
-        {
-          id: "a2",
-          title: 'Top 10 "Nghệ thuật đường phố TPHCM"',
-          place: "2024 - Quận 1",
-          awardId: "award_2024_002",
-        },
-        {
-          id: "a3",
-          title: "Participation Certificate",
-          place: "2024 - District 3",
-          awardId: null,
-        },
-      ].filter((a) => a.awardId !== null),
-    []
-  ) as AchievementItem[];
+  const achievements = achievementData?.achievements ?? [];
 
   const kpis = useMemo(
     () => [
@@ -135,14 +119,8 @@ export default function CompetitorProfileComponent() {
     title: string;
     withActions?: boolean;
   }) {
-    const [g0, g1] = pickGrad(title);
     return (
-      <LinearGradient
-        colors={[g0, g1]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={[t.topbarGrad, { borderBottomColor: C.border }]}
-      >
+      <View style={[t.topbarGrad, { backgroundColor: C.foreground80 }]}>
         <Text
           style={[
             t.headerTitle,
@@ -171,20 +149,20 @@ export default function CompetitorProfileComponent() {
             </TouchableOpacity>
           </View>
         )}
-      </LinearGradient>
+      </View>
     );
   }
 
   const Avatar = () => {
-    const seed = user?.email || user?.fullName || "user";
-    const [g0, g1] = pickGrad(seed);
     return (
       <View style={{ width: 64, height: 64 }}>
-        <LinearGradient
-          colors={[g0, g1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ position: "absolute", inset: 0, borderRadius: 999 }}
+        <View
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: 999,
+            backgroundColor: C.primary,
+          }}
         />
         <View
           style={{
@@ -203,17 +181,11 @@ export default function CompetitorProfileComponent() {
   };
 
   function KPI({ icon, label, value }: KPIProps) {
-    const [g0, g1] = pickGrad(label + value);
     return (
       <View style={{ flex: 1, alignItems: "center" }}>
-        <LinearGradient
-          colors={[g0, g1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={k.kpiIconGrad}
-        >
+        <View style={[k.kpiIconGrad, { backgroundColor: C.primary }]}>
           <Ionicons name={icon as any} size={18} color="#fff" />
-        </LinearGradient>
+        </View>
         <Text style={{ fontWeight: "900", color: C.foreground, marginTop: 6 }}>
           {value}
         </Text>
@@ -254,22 +226,8 @@ export default function CompetitorProfileComponent() {
   }
 
   return (
-    <SafeAreaProvider style={s.container}>
+    <SafeAreaProvider style={{ backgroundColor: C.newbackground, flex: 1 }}>
       <TopBar title="Hồ sơ thí sinh" withActions />
-
-      {/* background blobs */}
-      <LinearGradient
-        colors={["#a78bfa22", "#60a5fa16"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={bg.blobTL}
-      />
-      <LinearGradient
-        colors={["#fda4af1f", "#fde68a1f"]}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={bg.blobBR}
-      />
 
       <Animated.ScrollView
         contentContainerStyle={{ paddingBottom: SP.pagePB }}
@@ -282,12 +240,7 @@ export default function CompetitorProfileComponent() {
         contentInsetAdjustmentBehavior="automatic"
       >
         {/* header compact */}
-        <View
-          style={[
-            s.headerWrap,
-            { borderBottomColor: C.border, marginBottom: SP.sectionGap },
-          ]}
-        >
+        <View style={[s.headerWrap, { marginBottom: SP.sectionGap }]}>
           <TouchableOpacity
             onPress={() => setOpenDetails(true)}
             activeOpacity={0.9}
@@ -331,7 +284,6 @@ export default function CompetitorProfileComponent() {
           />
         </View>
 
-        {/* KPI row */}
         <View
           style={[
             s.kpiCard,
@@ -342,7 +294,6 @@ export default function CompetitorProfileComponent() {
               shadowColor: "#000",
               marginHorizontal: 16,
               marginBottom: SP.sectionGap,
-              borderRadius: SP.kpiCardRadius,
             },
           ]}
         >
@@ -373,8 +324,7 @@ export default function CompetitorProfileComponent() {
             ]}
             activeKey={activeTab}
             onChange={(k) => setActiveTab(k as any)}
-            pickGrad={pickGrad}
-            cardBg={C.card}
+            activeFg={C.primary}
             mutedFg={C.mutedForeground}
           />
         </View>
@@ -428,15 +378,34 @@ export default function CompetitorProfileComponent() {
           )}
           {activeTab === "achievements" && (
             <View style={[s.tabScrollContent, { gap: SP.blockGap }]}>
-              {achievements.length > 0 ? (
+              {achievementsLoading ? (
+                <EmptyState
+                  C={C}
+                  icon="sync"
+                  title="Đang tải thành tích..."
+                  compact
+                />
+              ) : achievements.length > 0 ? (
                 <View style={{ gap: SP.blockGap, marginBottom: SP.sectionGap }}>
                   {achievements.map((a) => (
-                    <AchievementCard
-                      key={a.id}
-                      item={{ id: a.id, title: a.title, place: a.place }}
-                      pickGrad={pickGrad}
-                      borderColor={C.border}
-                    />
+                    <TouchableOpacity
+                      key={a.paintingId}
+                      activeOpacity={0.9}
+                      onPress={() => {
+                        setSelectedAch(a);
+                        setOpenAchModal(true);
+                      }}
+                    >
+                      <AchievementCard
+                        item={{
+                          id: a.paintingId,
+                          title: `${a.award.name} - ${a.contest.title}`,
+                          place: a.achievedDate,
+                        }}
+                        pickGrad={pickGrad}
+                        borderColor={C.border}
+                      />
+                    </TouchableOpacity>
                   ))}
                 </View>
               ) : (
@@ -474,6 +443,11 @@ export default function CompetitorProfileComponent() {
           scheme={scheme}
         />
       )}
+      <AchievementModal
+        visible={openAchModal}
+        onClose={() => setOpenAchModal(false)}
+        item={selectedAch}
+      />
     </SafeAreaProvider>
   );
 }
@@ -508,6 +482,7 @@ function CenteredState({
           fontWeight: "800",
           color: C.foreground,
           marginTop: 16,
+          fontFamily:"Be Vietnam Pro",
         }}
       >
         {title}
@@ -519,6 +494,7 @@ function CenteredState({
             color: C.mutedForeground,
             marginVertical: 12,
             textAlign: "center",
+            fontFamily:"Be Vietnam Pro",
           }}
         >
           {message}
@@ -540,6 +516,7 @@ function CenteredState({
               color: C.primaryForeground,
               fontWeight: "700",
               fontSize: 15,
+              fontFamily:"Be Vietnam Pro",
             }}
           >
             {action.label}
@@ -561,9 +538,8 @@ const s = StyleSheet.create({
     paddingBottom: 12,
     gap: 12,
     backgroundColor: "transparent",
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  name: { fontSize: 16, fontWeight: "900" },
+  name: { fontSize: 19, fontWeight: "700", fontFamily: "Be Vietnam Pro" },
   handle: { marginTop: 2, opacity: 0.85 },
   addBadge: {
     position: "absolute",
@@ -577,7 +553,7 @@ const s = StyleSheet.create({
   kpiCard: {
     flexDirection: "row",
     alignItems: "stretch",
-    borderRadius: 18,
+    borderRadius: 4,
     paddingVertical: 14,
     paddingHorizontal: 14,
     shadowOpacity: 0.08,

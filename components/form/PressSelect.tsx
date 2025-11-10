@@ -130,7 +130,6 @@ export default function PressSelect({
             />
           ) : null}
 
-          {/* Text (co giãn, không tràn icon phải) */}
           <Text
             style={{
               flex: 1,
@@ -144,7 +143,7 @@ export default function PressSelect({
             {value || placeholder || ""}
           </Text>
 
-          {/* Right icon: ô cố định để không chồng lấn */}
+        
           <View style={{ width: 24, alignItems: "flex-end", marginLeft: 6 }}>
             <Ionicons
               name={rightIcon}

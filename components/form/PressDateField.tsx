@@ -159,14 +159,8 @@ export default function PressDateField({
               color: value ? C.foreground : C.mutedForeground,
             }}
           >
-            {displayText || "Chọn ngày sinh"}
+            {displayText}
           </Text>
-
-          <Ionicons
-            name="chevron-down"
-            size={18}
-            color={errorText ? C.destructive : C.mutedForeground}
-          />
         </TouchableOpacity>
       </View>
 

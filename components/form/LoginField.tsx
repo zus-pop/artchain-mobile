@@ -19,7 +19,11 @@ type Props = {
   name: string;
   placeholder: string; // dùng làm floating label
   icon?: React.ComponentProps<typeof Ionicons>["name"];
+  keyboardType?: React.ComponentProps<typeof TextInput>["keyboardType"];
   isPassword?: boolean;
+  textContentType?: React.ComponentProps<typeof TextInput>["textContentType"];
+  autoCapitalize?: React.ComponentProps<typeof TextInput>["autoCapitalize"];
+  errorText?: string;
 };
 
 export default function LoginField({
@@ -27,7 +31,11 @@ export default function LoginField({
   name,
   placeholder,
   icon,
+  keyboardType,
   isPassword,
+  textContentType,
+  autoCapitalize,
+  errorText,
 }: Props) {
   const scheme = useColorScheme() ?? "light";
   const C = Colors[scheme];
@@ -65,17 +73,16 @@ export default function LoginField({
     outputRange: [0, 0.2],
   });
 
+  const labelY = focusAnim.interpolate({
+    inputRange: [0, 1],
 
-const labelY = focusAnim.interpolate({
-  inputRange: [0, 1],
+    outputRange: [INPUT_HEIGHT / 2 - 29, -27],
+  });
 
-  outputRange: [INPUT_HEIGHT / 2 - 29, -27],
-});
-
-const labelSize = focusAnim.interpolate({
-  inputRange: [0, 1],
-  outputRange: [15, 12], // trước là [16, 12]
-});
+  const labelSize = focusAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [15, 12], // trước là [16, 12]
+  });
 
   const labelColor = focusAnim.interpolate({
     inputRange: [0, 1],
@@ -207,7 +214,9 @@ const labelSize = focusAnim.interpolate({
                     field.onBlur();
                   }}
                   secureTextEntry={isPassword && !show}
-                  autoCapitalize="none"
+                  autoCapitalize={autoCapitalize}
+                  keyboardType={keyboardType}
+                  textContentType={textContentType}
                   style={S.input}
                   selectionColor={C.primary}
                 />

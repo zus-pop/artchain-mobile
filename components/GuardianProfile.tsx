@@ -1,11 +1,11 @@
 // screens/GuardianProfileComponent.tsx
 import PillButton from "@/components/buttons/PillButton";
-import AchievementCard from "@/components/cards/guardian/AchievementCard";
 import ChildCard from "@/components/cards/guardian/ChildrentCard";
+import AchievementModal from "@/components/modals/AchievementModal";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
 
 // ⚡ dùng GuardianTabs phiên bản mới (slider dưới, không bọc nền)
-import GuardianTabs, { GuardianTabKey } from "@/components/tabs/GuardianTabs";
+import { GuardianTabKey } from "@/components/tabs/GuardianTabs";
 
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -24,10 +24,48 @@ import {
 // ===== Types / APIs =====
 import { useWhoAmI } from "@/apis/auth";
 import { useGuardianChildren } from "@/apis/guardian";
+import { useGetAchivementByUserId } from "@/apis/painting";
 import { useAuthStore } from "@/store/auth-store";
 import type { ColorTokens, KPIProps } from "@/types/tabkey";
 import { LinearGradient } from "expo-linear-gradient";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import AchievementCard from "./cards/competitor/AchievementCard";
+import EmptyState from "./cards/competitor/EmptyState";
+import SegmentedTabsProfile from "./tabs/SegmentedTabsProfile";
+
+/* -------------------- API types (tối thiểu các field đang dùng) -------------------- */
+type ApiAchievementAward = {
+  awardId: number;
+  name: string;
+  description?: string;
+  rank?: number;
+  prize?: number;
+};
+
+type ApiAchievementContest = {
+  contestId: number;
+  title: string;
+  startDate?: string;
+  endDate?: string;
+};
+
+type ApiAchievementItem = {
+  paintingId: string;
+  paintingTitle?: string;
+  paintingImage?: string;
+  award: ApiAchievementAward;
+  contest: ApiAchievementContest;
+  achievedDate: string; // ISO string
+};
+
+type ApiAchievementsData = {
+  user: { userId: string; fullName: string };
+  achievements: ApiAchievementItem[];
+  totalAchievements: number;
+};
 
 /* -------------------- Color helpers -------------------- */
 const VIVID_POOLS: [string, string][] = [
@@ -67,22 +105,13 @@ export default function GuardianProfileComponent() {
   const [activeTab, setActiveTab] = useState<GuardianTabKey>("children");
   const [refreshing, setRefreshing] = useState(false);
 
-  const achievements = useMemo(
-    () => [
-      {
-        id: "a1",
-        title: 'Giải Nhất "Cuộc thi vẽ tranh thiếu nhi toàn quốc 2024"',
-        place: "2024 - TP. Hồ Chí Minh",
-      },
-      {
-        id: "a2",
-        title: 'Top 10 "Nghệ thuật đường phố TPHCM"',
-        place: "2024 - Quận 1",
-      },
-    ],
-    []
-  );
-
+  const insets = useSafeAreaInsets();
+  const SP = {
+    pagePB: Math.max(24, insets.bottom + 16), // paddingBottom cuối ScrollView
+    sectionGap: 18, // khoảng cách giữa các khối lớn
+    blockGap: 12, // khoảng cách giữa các card trong 1 section
+    kpiCardRadius: 18,
+  };
   const childAvatars = useMemo(
     () => [
       { icon: "person-outline" as const, bg: "#FF6B6B" },
@@ -101,11 +130,24 @@ export default function GuardianProfileComponent() {
   const getChildAvatar = (index: number) =>
     childAvatars[index % childAvatars.length];
 
+  const [openAchModal, setOpenAchModal] = useState(false);
+  const [selectedAch, setSelectedAch] = useState<ApiAchievementItem | null>(
+    null
+  );
+
+  const { data: achievementData, isLoading: achievementsLoading } =
+    useGetAchivementByUserId(user?.userId || "");
+
   useFocusEffect(
     useCallback(() => {
       reloadMe();
     }, [reloadMe])
   );
+
+  // Ép kiểu sang API data; KHÔNG đổi logic
+  const achievements: ApiAchievementItem[] =
+    (achievementData as unknown as ApiAchievementsData | undefined)
+      ?.achievements ?? [];
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -206,7 +248,7 @@ export default function GuardianProfileComponent() {
       <View
         style={[
           s.topbar,
-          { backgroundColor: BRAND, borderBottomColor: C.border },
+          { backgroundColor: C.foreground80, borderBottomColor: C.border },
         ]}
       >
         <Text style={s.headerTitle}>Hồ sơ phụ huynh</Text>
@@ -225,20 +267,6 @@ export default function GuardianProfileComponent() {
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Background blobs (giữ nguyên) */}
-      <LinearGradient
-        colors={["#a78bfa22", "#60a5fa16"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={bg.blobTL}
-      />
-      <LinearGradient
-        colors={["#fda4af1f", "#fde68a1f"]}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={bg.blobBR}
-      />
 
       <Animated.ScrollView
         contentContainerStyle={{ paddingBottom: 110 }}
@@ -289,25 +317,55 @@ export default function GuardianProfileComponent() {
             onPress={() => router.push("/profile-detail")}
           />
         </View>
+        <View
+          style={{
+            width: "95%",
+            height: 1,
+            backgroundColor: "gray",
 
+            marginVertical: 10,
+
+            alignSelf: "center",
+          }}
+        />
         {/* KPI */}
         <View style={s.kpiCard}>
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, flexDirection: "row", gap: 12 }}>
             <KPI
               icon="people-outline"
               label="Con em"
               value={String(children?.length || 0)}
               C={C}
             />
+            <KPI
+              icon="trophy-outline"
+              label="Thành tích"
+              value={String(achievements.length)}
+              C={C}
+            />
           </View>
         </View>
 
-        <GuardianTabs
-          C={C}
-          activeTab={activeTab}
-          onChange={setActiveTab}
-          style={{ marginHorizontal: 12, marginTop: 8, marginBottom: 8 }}
-        />
+        <View style={{}}>
+          <SegmentedTabsProfile
+            tabs={[
+              {
+                key: "children",
+                label: "Con em",
+                icon: "people-outline",
+              },
+              {
+                key: "achievements",
+                label: "Thành tích",
+                icon: "trophy-outline",
+              },
+            ]}
+            activeKey={activeTab}
+            onChange={(k) => setActiveTab(k as any)}
+            activeFg={C.primary}
+            mutedFg={C.mutedForeground}
+          />
+        </View>
 
         {/* Tab Content */}
         <View style={s.tabContent}>
@@ -347,37 +405,53 @@ export default function GuardianProfileComponent() {
           )}
 
           {activeTab === "achievements" && (
-            <View style={s.tabScrollContent}>
-              {achievements.length > 0 ? (
-                <View style={{ gap: 12 }}>
+            <View style={[s.tabScrollContent, { gap: SP.blockGap }]}>
+              {achievementsLoading ? (
+                <EmptyState
+                  C={C}
+                  icon="sync"
+                  title="Đang tải thành tích..."
+                  compact
+                />
+              ) : achievements.length > 0 ? (
+                <View style={{ gap: SP.blockGap, marginBottom: SP.sectionGap }}>
                   {achievements.map((a) => (
-                    <AchievementCard
-                      key={a.id}
-                      C={C}
-                      title={a.title}
-                      place={a.place}
-                    />
+                    <TouchableOpacity
+                      key={a.paintingId}
+                      activeOpacity={0.9}
+                      onPress={() => {
+                        setSelectedAch(a);
+                        setOpenAchModal(true);
+                      }}
+                    >
+                      {/* Map API -> UI item cho card; KHÔNG đổi logic hiển thị */}
+                      <AchievementCard
+                        item={{
+                          id: a.paintingId,
+                          title: `${a.award.name} - ${a.contest.title}`,
+                          place: a.achievedDate,
+                          achievedDate: a.achievedDate,
+                        }}
+                        pickGrad={pickGrad}
+                        borderColor={C.border}
+                      />
+                    </TouchableOpacity>
                   ))}
                 </View>
               ) : (
-                <View style={s.emptyTab}>
-                  <Ionicons name="trophy-outline" size={64} color={C.muted} />
-                  <Text style={s.emptyTabText}>
-                    Con em chưa có thành tích nào
-                  </Text>
-                  <TouchableOpacity style={s.exploreButton}>
-                    <Text style={s.exploreButtonText}>
-                      Khuyến khích tham gia
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                <EmptyState
+                  C={C}
+                  icon="trophy-outline"
+                  title="Chưa có thành tích nào"
+                  action="Tham gia cuộc thi"
+                  compact
+                />
               )}
             </View>
           )}
         </View>
       </Animated.ScrollView>
 
-      {/* Modal hồ sơ cá nhân */}
       <ProfileDetailsModal
         visible={openDetails}
         onClose={() => setOpenDetails(false)}
@@ -407,6 +481,13 @@ export default function GuardianProfileComponent() {
           </LinearGradient>
         </TouchableOpacity>
       )}
+
+      {/* Modal thành tích (nhận item kiểu API) */}
+      <AchievementModal
+        visible={openAchModal}
+        onClose={() => setOpenAchModal(false)}
+        item={selectedAch}
+      />
     </SafeAreaView>
   );
 }
@@ -415,14 +496,9 @@ function KPI({ icon, label, value, C }: KPIProps) {
   const [g0, g1] = pickGrad(label + value);
   return (
     <View style={{ flex: 1, alignItems: "center" }}>
-      <LinearGradient
-        colors={[g0, g1]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={sKpi.iconGrad}
-      >
+      <View style={sKpi.iconGrad}>
         <Ionicons name={icon} size={18} color={C.primaryForeground} />
-      </LinearGradient>
+      </View>
       <Text style={{ fontWeight: "800", color: C.foreground }}>{value}</Text>
       <Text style={{ fontSize: 12, color: C.mutedForeground }}>{label}</Text>
     </View>
@@ -433,10 +509,11 @@ const sKpi = StyleSheet.create({
   iconGrad: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 36,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 6,
+    backgroundColor: "hsl(15 85% 55%)",
   },
 });
 
@@ -487,12 +564,12 @@ const styles = (C: ColorTokens) =>
       alignItems: "stretch",
       backgroundColor: C.card,
       marginHorizontal: 12,
-      borderRadius: 14,
+      borderRadius: 4,
       paddingVertical: 12,
       paddingHorizontal: 8,
       shadowColor: "#000",
       shadowOpacity: 0.08,
-      shadowRadius: 12,
+      shadowRadius: 4,
       shadowOffset: { width: 0, height: 3 },
       elevation: 2,
     },
@@ -508,7 +585,7 @@ const styles = (C: ColorTokens) =>
       marginHorizontal: -6,
     },
     childGridItem: {
-      width: "50%",
+      width: "100%",
       paddingHorizontal: 6,
       marginBottom: 12,
     },

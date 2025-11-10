@@ -3,7 +3,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-export type AchievementItem = { id: string; title: string; place: string };
+export type AchievementItem = {
+  achievedDate: string; id: string; title: string; place: string 
+};
 
 export default function AchievementCard({
   item,

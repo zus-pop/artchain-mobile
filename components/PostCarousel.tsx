@@ -5,6 +5,7 @@ import React from "react";
 import {
   Dimensions,
   ImageBackground,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -50,7 +51,7 @@ export default function PostCarousel({
         {/* chips */}
         <View style={styles.chipsRow}>
           <View style={styles.dateChip}>
-            <Ionicons name="calendar-outline" size={12} color="#fff" />
+            <Ionicons name="calendar-outline" size={12} color="#423137" />
             <Text style={styles.chipText}>
               {new Date(item.published_at).toLocaleDateString()}
             </Text>
@@ -72,6 +73,12 @@ export default function PostCarousel({
             <View style={styles.tagsRow}>
               {item.postTags.slice(0, 3).map((postTag, i) => (
                 <View key={i} style={styles.tag}>
+                  <Ionicons
+                    name="pricetag-outline"
+                    size={10}
+                    color="#fff"
+                    style={{ marginRight: 3 }}
+                  />
                   <Text style={styles.tagText}>{postTag.tag.tag_name}</Text>
                 </View>
               ))}
@@ -86,18 +93,10 @@ export default function PostCarousel({
           )}
 
           <View style={styles.ctaRow}>
-            <View style={styles.detailBtn}>
-              <Ionicons name="eye-outline" size={14} color="#fff" />
+            <Pressable style={styles.detailBtn}>
               <Text style={styles.detailTxt}>Chi tiết</Text>
-            </View>
-            <LinearGradient
-              colors={["#FDE68A", "#F59E0B"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.nextBtn}
-            >
-              <Ionicons name="chevron-forward" size={16} color="#111827" />
-            </LinearGradient>
+              <Ionicons name="arrow-forward" size={14} color="#fff" />
+            </Pressable>
           </View>
         </View>
       </ImageBackground>
@@ -211,49 +210,56 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
   },
-  chipText: { color: "#fff", fontWeight: "800", fontSize: 12 },
+  chipText: { color: "#423137", fontWeight: "800", fontSize: 12 },
   dateChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 999,
+    borderRadius: 4,
     backgroundColor: "rgba(0,0,0,0.35)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.28)",
   },
   content: { position: "absolute", left: 12, right: 12, bottom: 12 },
   title: {
-    color: "#fff",
+    color: "#423137",
     fontSize: 17,
     fontWeight: "900",
     marginBottom: 6,
     letterSpacing: 0.2,
-    textShadowColor: "rgba(0,0,0,0.35)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    fontFamily: "Be Vietnam Pro",
   },
-  desc: { color: "rgba(255,255,255,0.92)", fontSize: 13, marginBottom: 8 },
+  desc: {
+    color: "#423137",
+    fontSize: 13,
+    marginBottom: 8,
+    fontFamily: "Be Vietnam Pro",
+  },
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
   tag: {
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(255,255,255,0.10)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 4,
+    display: "flex",
+    flexDirection: "row",
+    alignItems: "center",
+    fontFamily: "Be Vietnam Pro",
   },
   tagText: { color: "#fff", fontSize: 11, fontWeight: "600" },
   ctaRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   detailBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    borderRadius: 999,
+    gap: 2,
+    borderRadius: 4,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "hsl(15 85% 55%)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.35)",
   },

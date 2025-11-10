@@ -93,6 +93,7 @@ export default function CollapsibleHeader({
           shadowRadius: 8,
           shadowOffset: { width: 0, height: 3 },
           elevation: 2,
+          backgroundColor: C.foreground80,
         },
       ]}
     >
@@ -186,8 +187,8 @@ const styles = (C: any) =>
     titleWrap: { marginBottom: 10 },
     title: {
       fontSize: 20,
-      fontWeight: "800",
-      color: C.foreground,
+      fontWeight: "700",
+      color: "white",
       letterSpacing: 0.3,
     },
 

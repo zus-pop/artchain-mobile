@@ -19,7 +19,7 @@ export default function SignupScreen() {
       {/* Back Button */}
       <View
         style={{
-          paddingTop: 48,
+          paddingTop: 38,
           paddingHorizontal: 16,
           paddingBottom: 8,
         }}
@@ -55,28 +55,31 @@ export default function SignupScreen() {
           justifyContent: "center",
           alignItems: "center",
           padding: 24,
+          borderWidth: 1,
         }}
       >
-        <Text
-          style={{
-            fontSize: 28,
-            fontWeight: "bold",
-            color: Colors[colorScheme].primary,
-            marginBottom: 8,
-          }}
-        >
-          ARTCHAIN
-        </Text>
-        <Text
-          style={{
-            fontSize: 18,
-            color: Colors[colorScheme].foreground,
-            marginBottom: 32,
-            textAlign: "center",
-          }}
-        >
-          Chọn loại tài khoản để đăng ký
-        </Text>
+        <View style={{ marginTop: 28, alignItems: "center", borderWidth: 1 }}>
+          <Text
+            style={{
+              fontSize: 28,
+              fontWeight: "bold",
+              color: Colors[colorScheme].primary,
+              marginBottom: 8,
+            }}
+          >
+            ARTCHAIN
+          </Text>
+          <Text
+            style={{
+              fontSize: 18,
+              color: Colors[colorScheme].foreground,
+              marginBottom: 32,
+              textAlign: "center",
+            }}
+          >
+            Chọn loại tài khoản để đăng ký
+          </Text>
+        </View>
 
         <TouchableOpacity
           onPress={() => router.push("/competitor-signup")}

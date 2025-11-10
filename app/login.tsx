@@ -1,4 +1,4 @@
-
+import LoginField from "@/components/form/LoginField";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,7 +18,6 @@ import {
 } from "react-native";
 import { z } from "zod";
 import { useLoginMutation } from "../apis/auth";
-import LoginField from "@/components/form/LoginField";
 
 const schema = z.object({
   username: z
@@ -47,7 +46,7 @@ export default function LoginScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const C = Colors[colorScheme];
   const { mutate, isPending } = useLoginMutation();
-  const [showPassword, setShowPassword] = useState(false); // giữ nguyên state cũ (không phá logic)
+  const [showPassword, setShowPassword] = useState(false); 
 
   const handleLogin = (data: Schema) => {
     mutate({ username: data.username, password: data.password });
@@ -99,27 +98,29 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Image
-            source={require("../assets/logo/Logo.png")}
-            style={{ width: 300, height: 300 }}
-            resizeMode="contain"
-          />
+          <View>
+            <Image
+              source={require("../assets/logo/Logo.png")}
+              style={{ width: 300, height: 300 , }} 
+              resizeMode="contain"
+            />
 
-          {/* Ô nhập có hoạt ảnh cam */}
-          <LoginField
-            control={control}
-            name="username"
-            placeholder="Tên đăng nhập"
-            icon="person-outline"
-          />
-          <LoginField
-            control={control}
-            name="password"
-            placeholder="Mật khẩu"
-            icon="lock-closed-outline"
-            isPassword
-          />
-
+            <View style={{ marginTop: -34 , }}>
+              <LoginField 
+                control={control}
+                name="username"
+                placeholder="Tên đăng nhập"
+                icon="person-outline"
+              />
+              <LoginField
+                control={control}
+                name="password"
+                placeholder="Mật khẩu"
+                icon="lock-closed-outline"
+                isPassword
+              />
+            </View>
+          </View>
           <TouchableOpacity
             style={{
               width: "100%",

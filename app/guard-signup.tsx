@@ -173,6 +173,7 @@ export default function GuardSignupScreen() {
             icon="lock-closed-outline"
             isPassword
             textContentType="oneTimeCode"
+            autoCapitalize="none"
             errorText={errors.password?.message}
           />
 
@@ -184,6 +185,7 @@ export default function GuardSignupScreen() {
             icon="lock-closed-outline"
             isPassword
             textContentType="oneTimeCode"
+            autoCapitalize="none"
             errorText={errors.confirmPassword?.message}
           />
 

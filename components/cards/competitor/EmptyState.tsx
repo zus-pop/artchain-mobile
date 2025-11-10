@@ -39,7 +39,7 @@ export default function EmptyState({
 
   return (
     <View style={[styles.wrap, { paddingVertical: compact ? 36 : 60 }, style]}>
-      <Ionicons name={icon} size={64} color={C.muted} />
+      <Ionicons name={icon} size={64} color={C.chart1} />
       <Text style={[styles.title, { color: C.mutedForeground }]}>{title}</Text>
       {!!action && (
         <TouchableOpacity

@@ -6,6 +6,7 @@
 import { Platform } from "react-native";
 export interface ThemeColors {
   background: string;
+  newbackground: string;
   foreground: string;
   card: string;
   cardForeground: string;
@@ -57,6 +58,7 @@ export interface Theme {
 export const Colors = {
   light: {
     background: "hsl(30 25% 98%)",
+    newbackground: "hsl(36°, 90%, 19%)",
     foreground: "hsl(20 15% 15%)",
     card: "hsl(0 0% 100%)",
     cardForeground: "hsl(20 15% 15%)",
@@ -101,6 +103,7 @@ export const Colors = {
   },
   dark: {
     background: "hsl(20 15% 8%)",
+    newbackground: "hsl(36 19% 90%)",
     foreground: "hsl(25 10% 90%)",
     card: "hsl(20 12% 15%)",
     cardForeground: "hsl(25 8% 85%)",
@@ -161,6 +164,7 @@ export const Fonts = Platform.select({
     serif: "serif",
     rounded: "normal",
     mono: "monospace",
+    default: "Be Vietnam Pro",
   },
   web: {
     sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",

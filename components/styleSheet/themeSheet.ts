@@ -142,25 +142,25 @@ const themedStyles = StyleSheet.create({
     backgroundColor: Colors[colorScheme].background,
   },
   section: {
-    backgroundColor: Colors[colorScheme].background,
-    marginVertical: 8,
+    backgroundColor: Colors[colorScheme].newbackground,
+
     marginHorizontal: 4,
     borderRadius: 6,
     paddingVertical: 18,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
+    fontSize: 16,
+    fontWeight: "800",
     color: Colors[colorScheme].primary,
-    marginBottom: 12,
+
     paddingHorizontal: 20,
     letterSpacing: 0.5,
+    fontFamily: "Be Vietnam Pro",
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
   },
   categoriesContainer: {
     paddingLeft: 20,
