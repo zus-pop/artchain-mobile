@@ -24,7 +24,7 @@ type Props = {
   scheme: "light" | "dark";
   translateY: Animated.AnimatedInterpolation<number> | Animated.Value;
   /** giữ để tương thích API cũ */
-  progress: Animated.AnimatedInterpolation<number>;
+  progress?: Animated.AnimatedInterpolation<number>;
   headerOnLayout: (e: LayoutChangeEvent) => void;
 
   searchQuery: string;

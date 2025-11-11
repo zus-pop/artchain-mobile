@@ -4,6 +4,7 @@ import { useContestById } from "@/apis/contest";
 import AppHeader from "@/components/AppHeader"; // header tùy biến có nút back
 import { Colors, withOpacity } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Rounds } from "@/types";
 import { router, useLocalSearchParams } from "expo-router";
 import { ExternalLink, FileText, Trophy, Users } from "lucide-react-native";
 import React from "react";
@@ -117,12 +118,12 @@ export default function ContestDetail() {
   const rules = DEFAULT_RULES;
 
   // Get ROUND_1 and ROUND_2 data
-  const findRound1 = (rounds?: any[]) => {
+  const findRound1 = (rounds?: Rounds[]) => {
     if (!rounds || !Array.isArray(rounds)) return null;
     return rounds.find((r) => r?.name === "ROUND_1") || null;
   };
 
-  const findRound2 = (rounds?: any[]) => {
+  const findRound2 = (rounds?: Rounds[]) => {
     if (!rounds || !Array.isArray(rounds)) return null;
     return rounds.find((r) => r?.name === "ROUND_2") || null;
   };

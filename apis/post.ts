@@ -1,36 +1,46 @@
 import myAxios from "@/constants/custom-axios";
 import { ApiResponse } from "@/types";
-import { Post, PostFilters } from "@/types/post";
-import { useQuery } from "@tanstack/react-query";
+import { Post, PostFilters, Tag } from "@/types/post";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
-export function usePosts(postFilters?: PostFilters) {
+export function usePosts(filters?: PostFilters) {
   const params: PostFilters = {};
 
-  if (postFilters && postFilters.account_id) {
-    params.account_id = postFilters.account_id;
+  if (filters && filters.account_id) {
+    params.account_id = filters.account_id;
   }
 
-  if (postFilters && postFilters.tag_id) {
-    params.tag_id = postFilters.tag_id;
+  if (filters && filters.tag_id) {
+    params.tag_id = filters.tag_id;
   }
 
-  if (postFilters && postFilters.search) {
-    params.search = postFilters.search;
+  if (filters && filters.search) {
+    params.search = filters.search;
   }
 
-  if (postFilters && postFilters.page) {
-    params.page = postFilters.page;
+  if (filters && filters.limit) {
+    params.limit = filters.limit;
   }
-
-  if (postFilters && postFilters.limit) {
-    params.limit = postFilters.limit;
-  }
-  return useQuery({
-    queryKey: ["posts", postFilters],
-    queryFn: async () => {
+  return useInfiniteQuery({
+    queryKey: ["posts", filters],
+    queryFn: async ({ pageParam }) => {
+      params.page = pageParam;
       const response = await myAxios.get<ApiResponse<Post[]>>("/posts", {
         params,
       });
+      return response.data;
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.hasNextPage ? Number(lastPage.meta.page) + 1 : null,
+  });
+}
+
+export function useGetPostTags() {
+  return useQuery({
+    queryKey: ["tags"],
+    queryFn: async () => {
+      const response = await myAxios.get<ApiResponse<Tag[]>>("posts/tags");
       return response.data;
     },
   });

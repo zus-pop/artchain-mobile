@@ -1,7 +1,4 @@
-import { ApiResponse } from "./api-response";
-
 export interface Contest {
-  filter(arg0: (d: any) => boolean): any;
   contestId: number;
   title: string;
   bannerUrl?: string;
@@ -15,6 +12,23 @@ export interface Contest {
   createdBy: string;
   rounds: Rounds[];
   examinerRole: ExaminerRole;
+}
+export interface ExaminerContest {
+  contestId: number;
+  title: string;
+  bannerUrl?: string;
+  description: string;
+  numOfAward: number;
+  round2Quantity: number;
+  ruleUrl: string;
+  startDate: string;
+  endDate: string;
+  status: ContestStatus;
+  createdBy: string;
+  rounds: Rounds[];
+  examinerRole: ExaminerRole;
+  isScheduleEnforced: boolean;
+  canEvaluate: boolean;
 }
 
 export interface Rounds {
@@ -34,6 +48,8 @@ export interface Rounds {
 
 export interface ContestFilter {
   status?: ContestStatus;
+  page?: number;
+  limit?: number;
 }
 
 // types
@@ -45,17 +61,6 @@ export interface Pagination {
   hasNext: boolean;
   hasPrev: boolean;
 }
-
-export const normalizePagination = (
-  p: ApiResponse<any>["meta"]
-): Pagination => ({
-  page: Number(p.page ?? 1),
-  limit: Number(p.limit ?? 10),
-  total: Number(p.total ?? 0),
-  totalPages: Number(p.totalPages ?? 0),
-  hasNext: Boolean(p.hasNextPage),
-  hasPrev: Boolean(p.hasPreviousPage),
-});
 
 export type ContestStatus =
   | "ACTIVE"

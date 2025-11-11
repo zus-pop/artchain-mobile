@@ -12,7 +12,7 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Platform,
@@ -24,14 +24,15 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNotification } from "../../providers";
 
 /* =================== Screen =================== */
 export default function Home() {
   const { data, refetch: refetchMe } = useWhoAmI();
-  const { data: postsData, refetch: refetchPosts } = usePosts();
+  const { data: postsData, refetch: refetchPosts } = usePosts({ limit: 5 });
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
-
-  const posts = postsData?.data || [];
+  const { requestPushToken } = useNotification();
+  const posts = postsData?.pages?.flatMap((page) => page.data) ?? [];
 
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerProgress = useRef(new Animated.Value(0)).current;
@@ -49,13 +50,24 @@ export default function Home() {
     }
   );
 
+  useEffect(() => {
+    if (data) {
+      requestPushToken().then((token) => {
+        console.log(`Push token: [${token}]`);
+      });
+    }
+  }, [data]);
+
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    refetchMe();
-    refetchPosts();
-    setRefreshing(false);
+  const onRefresh = React.useCallback(async () => {
+    try {
+      setRefreshing(true);
+      await refetchMe();
+      await refetchPosts();
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
 
   const ANDROID_SB = StatusBar.currentHeight ?? 0;
