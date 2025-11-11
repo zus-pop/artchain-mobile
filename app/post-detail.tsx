@@ -90,7 +90,7 @@ export default function PostDetail() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <ScrollView
-        style={{ flex: 1, backgroundColor: C.background }}
+        style={{ flex: 1, backgroundColor: C.newbackground }}
         contentContainerStyle={{ paddingBottom: 28 }}
       >
         {/* ======= HERO ======= */}
@@ -103,6 +103,32 @@ export default function PostDetail() {
             >
               <Ionicons name="chevron-back" size={20} color="#fff" />
             </Pressable>
+
+            <View
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                gap: 10,
+                marginLeft: "auto",
+              }}
+            >
+              <Pressable
+                onPress={onShare}
+                style={[styles.fab, { backgroundColor: "#00000055" }]}
+              >
+                <Ionicons name="share-social-outline" size={18} color="#fff" />
+              </Pressable>
+              <Pressable
+                onPress={() => setBookmarked((b) => !b)}
+                style={[styles.fab, { backgroundColor: "#00000055" }]}
+              >
+                <Ionicons
+                  name={bookmarked ? "bookmark" : "bookmark-outline"}
+                  size={18}
+                  color="#fff"
+                />
+              </Pressable>
+            </View>
           </View>
 
           {post.image_url ? (
@@ -124,24 +150,6 @@ export default function PostDetail() {
           )}
 
           {/* Floating actions */}
-          <View style={styles.fabRow}>
-            <Pressable
-              onPress={onShare}
-              style={[styles.fab, { backgroundColor: "#00000055" }]}
-            >
-              <Ionicons name="share-social-outline" size={18} color="#fff" />
-            </Pressable>
-            <Pressable
-              onPress={() => setBookmarked((b) => !b)}
-              style={[styles.fab, { backgroundColor: "#00000055" }]}
-            >
-              <Ionicons
-                name={bookmarked ? "bookmark" : "bookmark-outline"}
-                size={18}
-                color="#fff"
-              />
-            </Pressable>
-          </View>
         </View>
 
         {/* ======= TITLE + META ======= */}
@@ -149,62 +157,6 @@ export default function PostDetail() {
           <Text style={[styles.title, { color: C.foreground }]}>
             {post.title}
           </Text>
-
-          <View style={styles.metaRow}>
-            {!!published && (
-              <View
-                style={[
-                  styles.metaPill,
-                  {
-                    backgroundColor:
-                      scheme === "dark"
-                        ? "rgba(148,163,184,0.12)"
-                        : "rgba(2,6,23,0.06)",
-                    borderColor:
-                      scheme === "dark"
-                        ? "rgba(148,163,184,0.25)"
-                        : "rgba(2,6,23,0.10)",
-                  },
-                ]}
-              >
-                <Ionicons
-                  name="calendar-outline"
-                  size={14}
-                  color={C.mutedForeground}
-                />
-                <Text style={[styles.metaText, { color: C.mutedForeground }]}>
-                  {published}
-                </Text>
-              </View>
-            )}
-
-            {!!post.creator?.fullName && (
-              <View
-                style={[
-                  styles.metaPill,
-                  {
-                    backgroundColor:
-                      scheme === "dark"
-                        ? "rgba(148,163,184,0.12)"
-                        : "rgba(2,6,23,0.06)",
-                    borderColor:
-                      scheme === "dark"
-                        ? "rgba(148,163,184,0.25)"
-                        : "rgba(2,6,23,0.10)",
-                  },
-                ]}
-              >
-                <Ionicons
-                  name="person-circle-outline"
-                  size={14}
-                  color={C.mutedForeground}
-                />
-                <Text style={[styles.metaText, { color: C.mutedForeground }]}>
-                  {post.creator.fullName}
-                </Text>
-              </View>
-            )}
-          </View>
 
           {!!post.postTags?.length && (
             <View style={styles.tagsRow}>
@@ -215,25 +167,21 @@ export default function PostDetail() {
                     styles.tagChip,
                     {
                       backgroundColor:
-                        scheme === "dark"
-                          ? "rgba(59,130,246,0.18)"
-                          : "rgba(59,130,246,0.12)",
+                        scheme === "dark" ? "rgba(59,130,246,0.18)" : "black",
                       borderColor:
-                        scheme === "dark"
-                          ? "rgba(59,130,246,0.35)"
-                          : "rgba(59,130,246,0.25)",
+                        scheme === "dark" ? "rgba(59,130,246,0.35)" : "white",
                     },
                   ]}
                 >
                   <Ionicons
                     name="pricetag-outline"
                     size={12}
-                    color={scheme === "dark" ? "#93C5FD" : "#2563EB"}
+                    color={scheme === "dark" ? "#93C5FD" : "white"}
                   />
                   <Text
                     style={[
                       styles.tagText,
-                      { color: scheme === "dark" ? "#BFDBFE" : "#1D4ED8" },
+                      { color: scheme === "dark" ? "#BFDBFE" : "white" },
                     ]}
                   >
                     {pt.tag.tag_name}
@@ -242,17 +190,31 @@ export default function PostDetail() {
               ))}
             </View>
           )}
+          <View style={[styles.divider, { backgroundColor: "black" }]} />
+          <View style={styles.metaRow}>
+            {!!post.creator?.fullName && (
+              <View style={[styles.metaPill]}>
+                <Ionicons
+                  name="person-circle-outline"
+                  size={26}
+                  color="black"
+                />
+                <Text style={[styles.metaText, { color: "black" }]}>
+                  {post.creator.fullName}
+                </Text>
+              </View>
+            )}
 
-          <View
-            style={{
-              height: StyleSheet.hairlineWidth,
-              backgroundColor:
-                scheme === "dark"
-                  ? "rgba(148,163,184,0.18)"
-                  : "rgba(2,6,23,0.08)",
-              marginVertical: 12,
-            }}
-          />
+            {!!published && (
+              <View style={[styles.metaPill]}>
+                <Text style={[styles.metaText, { color: "black" }]}>
+                  {published}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: "black" }]} />
 
           <Markdown style={mdStyles(scheme, C)}>{post.content || ""}</Markdown>
         </View>
@@ -280,7 +242,11 @@ const styles = StyleSheet.create({
 
   heroWrap: { width: "100%", paddingBottom: 16 },
   heroGrad: { position: "absolute", left: 0, right: 0, top: 0, height: 220 },
-
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: 2,
+    marginTop: 12,
+  },
   headerActions: {
     position: "absolute",
     top: 0,
@@ -295,7 +261,7 @@ const styles = StyleSheet.create({
   whiteBackBtn: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.35)",
@@ -311,7 +277,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  heroImg: { width: "100%", height: "100%" },
+  heroImg: { width: "96%", height: "98%", borderRadius: 4 },
   heroGlass: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(255,255,255,0.06)",
@@ -336,7 +302,7 @@ const styles = StyleSheet.create({
 
   outerPad: { paddingHorizontal: 16, marginTop: 8 },
 
-  title: { fontSize: 24, fontWeight: "900", letterSpacing: 0.2 },
+  title: { fontSize: 19, fontWeight: "700", letterSpacing: 0.2 },
 
   metaRow: {
     flexDirection: "row",
@@ -344,6 +310,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 8,
     marginTop: 10,
+    justifyContent: "space-between",
   },
   metaPill: {
     flexDirection: "row",
@@ -351,10 +318,8 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
   },
-  metaText: { fontSize: 12.5, fontWeight: "700" },
+  metaText: { fontSize: 14.5, fontWeight: "400" },
 
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
   tagChip: {

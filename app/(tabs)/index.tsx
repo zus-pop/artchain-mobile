@@ -7,6 +7,7 @@ import CollapsibleHeader, {
 } from "@/components/header/CollapsibleHeader";
 import PostCarousel from "@/components/PostCarousel";
 import themedStyles from "@/components/styleSheet/themeSheet";
+import ImageCard from "@/components/ui/imageCard";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,7 +15,10 @@ import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   Animated,
+  Platform,
   RefreshControl,
+  ScrollView,
+  StatusBar,
   Text,
   TouchableOpacity,
   View,
@@ -54,12 +58,17 @@ export default function Home() {
     setRefreshing(false);
   }, []);
 
+  const ANDROID_SB = StatusBar.currentHeight ?? 0;
+  const topGap = Platform.OS === "ios" ? insets.top : ANDROID_SB;
+  const headerTop = HEADER_EXPANDED + topGap;
   return (
-    <View
+    <ScrollView
       style={[
         themedStyles.container,
-        { backgroundColor: Colors[colorScheme].background },
+        { backgroundColor: Colors[colorScheme].newbackground },
       ]}
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
     >
       <CollapsibleHeader
         progress={headerProgress}
@@ -67,15 +76,18 @@ export default function Home() {
       />
 
       <Animated.ScrollView
+        contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: HEADER_EXPANDED + 20,
-          paddingBottom: 120,
+          paddingTop: headerTop + 12,
+          paddingBottom: 60,
         }}
         scrollEventThrottle={16}
         bounces
         alwaysBounceVertical
         onScroll={handleScroll}
+        style={{ backgroundColor: Colors[colorScheme].newbackground }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -84,11 +96,17 @@ export default function Home() {
             titleColor="#f97316"
             colors={["#f97316"]}
             progressBackgroundColor="#fff"
-            progressViewOffset={insets.top + HEADER_COLLAPSED / 2}
+            progressViewOffset={Math.max(0, topGap + HEADER_COLLAPSED / 2)}
           />
         }
       >
         <View style={themedStyles.section}>
+          <View style={{ marginBottom: 16 }}>
+            <ImageCard
+              image={require("../../assets/images/home/Home.png")}
+              height={190}
+            />
+          </View>
           <View
             style={[themedStyles.sectionHeader, { alignItems: "baseline" }]}
           >
@@ -101,7 +119,7 @@ export default function Home() {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               onPress={() => router.push("/posts")}
             >
-              <Text style={[themedStyles.seeAllText, { fontWeight: "800" }]}>
+              <Text style={[themedStyles.seeAllText, { fontWeight: "500" }]}>
                 Xem tất cả
               </Text>
               <Ionicons
@@ -113,7 +131,7 @@ export default function Home() {
           </View>
 
           {posts.length > 0 ? (
-            <>
+            <View>
               <PostCarousel
                 data={posts.slice(0, 3)}
                 scheme={colorScheme}
@@ -140,11 +158,10 @@ export default function Home() {
                 }}
               >
                 {posts.slice(0, 4).map((item) => (
-                  <View key={item.post_id.toString()} style={{ width: "48%" }}>
+                  <View key={item.post_id.toString()} style={{ width: "98%" }}>
                     <PostCard
                       item={item}
-                      thumbSize={88}
-                      showDivider={false}
+                      showDivider={true}
                       onPress={(post) =>
                         router.push({
                           pathname: "/post-detail",
@@ -160,7 +177,7 @@ export default function Home() {
                   </View>
                 ))}
               </View>
-            </>
+            </View>
           ) : (
             <View style={{ padding: 40, alignItems: "center" }}>
               <Ionicons
@@ -174,7 +191,8 @@ export default function Home() {
                   fontSize: 16,
                   color: Colors[colorScheme].mutedForeground,
                   textAlign: "center",
-                  marginBottom: 8,
+                  fontWeight: "700",
+                  fontFamily: "Be Vietnam Pro",
                 }}
               >
                 Chưa có thông báo nào
@@ -193,6 +211,6 @@ export default function Home() {
           )}
         </View>
       </Animated.ScrollView>
-    </View>
+    </ScrollView>
   );
 }

@@ -66,7 +66,7 @@ export default function ContestsScreen() {
 
   // ===== API =====
   const {
-    data: contests = [],
+    data: contests = { items: [], pagination: {} },
     isLoading,
     isFetching,
     error,
@@ -222,7 +222,7 @@ export default function ContestsScreen() {
             Không tải được dữ liệu. Vui lòng thử lại.
           </Text>
         </View>
-      ) : contests.length === 0 ? (
+      ) : contests.items.length === 0 ? (
         <View style={s.stateWrap}>
           <Text style={s.stateText}>
             {debouncedQuery && debouncedQuery.length === 1
@@ -233,7 +233,7 @@ export default function ContestsScreen() {
       ) : (
         <Animated.FlatList
           ref={listRef}
-          data={contests}
+          data={contests.items}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           contentContainerStyle={{
@@ -281,7 +281,7 @@ export default function ContestsScreen() {
         />
       )}
 
-      {isFetching && !isLoading && contests.length > 0 && (
+      {isFetching && !isLoading && contests.items.length > 0 && (
         <View style={s.fetchingFoot}>
           <ActivityIndicator color={C.mutedForeground} />
         </View>
@@ -294,7 +294,7 @@ export default function ContestsScreen() {
 const styles = (scheme: "light" | "dark") => {
   const C = Colors[scheme];
   return StyleSheet.create({
-    screen: { flex: 1, backgroundColor: C.background, paddingBottom: 32 },
+    screen: { flex: 1, backgroundColor: C.newbackground, paddingBottom: 32 },
     stateWrap: {
       flex: 1,
       justifyContent: "center",

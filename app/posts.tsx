@@ -88,8 +88,7 @@ export default function PostsScreen() {
   const renderPostItem = ({ item }: { item: any }) => (
     <PostCard
       item={item}
-      thumbSize={80} // ⬅️ SMALLER for 2-column grid
-      showDivider={false}
+      showDivider={true}
       onPress={(post) =>
         router.push({
           pathname: "/post-detail",
@@ -119,7 +118,7 @@ export default function PostsScreen() {
   );
 
   const Empty = () => (
-    <View style={styles.emptyContainer}>
+    <View style={styles.emptyContainer }>
       <LinearGradient
         colors={getPrimaryGradient()}
         start={{ x: 0, y: 0 }}
@@ -158,7 +157,7 @@ export default function PostsScreen() {
 
   // ------- UI -------
   return (
-    <View style={[styles.container, { backgroundColor: C.background }]}>
+    <View style={[styles.container, ]}>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar barStyle="light-content" />
       <LinearGradient
@@ -177,7 +176,6 @@ export default function PostsScreen() {
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="chevron-back" size={20} color="#fff" />
-            <Text style={styles.backTxt}>Back</Text>
           </TouchableOpacity>
           <Text style={styles.heroTitle}>Khám phá các bài viết</Text>
         </View>
@@ -330,7 +328,6 @@ export default function PostsScreen() {
         data={posts}
         keyExtractor={(item) => item.post_id.toString()}
         renderItem={renderPostItem}
-        numColumns={2} // ⬅️ 2-COLUMN GRID
         ListEmptyComponent={isLoading ? <Loading /> : <Empty />}
         contentContainerStyle={[
           styles.listContainer,

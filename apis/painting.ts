@@ -9,6 +9,8 @@ import {
   Round1PreliminaryEvaluationRequest,
   Round2EvaluationRequest,
 } from "@/types";
+import { AchievementsApiResponse } from "@/types/achievements";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { router } from "expo-router";
@@ -202,5 +204,19 @@ export function usePaintingEvaluations(paintingId: string) {
       return response.data;
     },
     enabled: !!paintingId,
+  });
+}
+
+export function useGetAchivementByUserId(userId: string) {
+  return useQuery({
+    queryKey: ["achievements", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const res = await myAxios.get<AchievementsApiResponse>(
+        `/users/${userId}/achievements`
+      );
+      return res.data.data; 
+    },
+    staleTime: 30_000,
   });
 }

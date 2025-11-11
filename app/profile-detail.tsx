@@ -2,28 +2,24 @@
 import { useWhoAmI } from "@/apis/auth";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
 import myAxios from "@/constants/custom-axios";
-import { Colors } from "@/constants/theme";
+import { Colors, withOpacity } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { ColorTokens } from "@/types/tabkey";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
-import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Animated,
-  ColorValue,
   Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
   Text,
   View,
-  type ViewStyle,
 } from "react-native";
 
 /* ================= Helpers ================= */
-const center: ViewStyle = { alignItems: "center", justifyContent: "center" };
 const HEADER_H = 56;
 
 const toAlpha = (hex: string, a: number) => {
@@ -34,93 +30,6 @@ const toAlpha = (hex: string, a: number) => {
   const b = parseInt(h.slice(4, 6), 16);
   return `rgba(${r},${g},${b},${a})`;
 };
-
-type Grad = readonly [ColorValue, ColorValue];
-const asGrad = (a: ColorValue, b: ColorValue): Grad => [a, b] as const;
-
-/* ============== Floating Orbs ============== */
-function FloatingOrbs({ C }: { C: ColorTokens }) {
-  const t1 = useRef(new Animated.Value(0)).current;
-  const t2 = useRef(new Animated.Value(0)).current;
-  const t3 = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const loop = (val: Animated.Value, delay: number) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(val, {
-            toValue: 1,
-            duration: 3500,
-            delay,
-            useNativeDriver: true,
-          }),
-          Animated.timing(val, {
-            toValue: 0,
-            duration: 3500,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    loop(t1, 0);
-    loop(t2, 400);
-    loop(t3, 800);
-  }, [t1, t2, t3]);
-
-  const tr = (v: Animated.Value, dist: number) =>
-    [
-      {
-        translateY: v.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, -dist],
-        }),
-      },
-      {
-        translateX: v.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, dist / 2],
-        }),
-      },
-    ] as const;
-
-  const gPink: Grad = asGrad("#f9a8d4", "#f472b6");
-  const gIndigo: Grad = asGrad("#818cf8", "#6366f1");
-  const gCyan: Grad = asGrad("#67e8f9", "#22d3ee");
-
-  return (
-    <>
-      <Animated.View
-        style={[orbStyles.orb, orbStyles.orbTL, { transform: tr(t1, 18) }]}
-      >
-        <LinearGradient
-          colors={gPink}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={orbStyles.fill}
-        />
-      </Animated.View>
-      <Animated.View
-        style={[orbStyles.orb, orbStyles.orbTR, { transform: tr(t2, 22) }]}
-      >
-        <LinearGradient
-          colors={gIndigo}
-          start={{ x: 0, y: 1 }}
-          end={{ x: 1, y: 0 }}
-          style={orbStyles.fill}
-        />
-      </Animated.View>
-      <Animated.View
-        style={[orbStyles.orb, orbStyles.orbBR, { transform: tr(t3, 20) }]}
-      >
-        <LinearGradient
-          colors={gCyan}
-          start={{ x: 1, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={orbStyles.fill}
-        />
-      </Animated.View>
-    </>
-  );
-}
 
 /* ============== Main ============== */
 export default function ProfileDetailScreen() {
@@ -142,14 +51,6 @@ export default function ProfileDetailScreen() {
       setRefreshing(false);
     }
   };
-
-  const achievements = useMemo(
-    () => [
-      { id: "a1", title: "Top 1 - Sự kiện tháng 6", place: "2024 - TP.HCM" },
-      { id: "a2", title: "Top 10 - Mùa hè sáng tạo", place: "2024 - Quận 1" },
-    ],
-    []
-  );
 
   // Upload avatar
   const pickAndUploadAvatar = async () => {
@@ -179,14 +80,14 @@ export default function ProfileDetailScreen() {
 
   if (isLoading) {
     return (
-      <View style={[s.container, center]}>
+      <View style={[s.container, s.center]}>
         <Text style={{ color: C.mutedForeground }}>Đang tải hồ sơ...</Text>
       </View>
     );
   }
   if (!userUI || error) {
     return (
-      <View style={[s.container, center]}>
+      <View style={[s.container, s.center]}>
         <Text style={{ color: C.mutedForeground }}>
           Không lấy được dữ liệu hồ sơ
         </Text>
@@ -194,25 +95,11 @@ export default function ProfileDetailScreen() {
     );
   }
 
-  const headerGrad: Grad =
-    scheme === "dark"
-      ? asGrad("#0b1020", "#111827")
-      : asGrad("#dbeafe", "#f5f3ff");
-
   return (
     <View style={s.container}>
-      {/* Background */}
-      <LinearGradient
-        colors={headerGrad}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <FloatingOrbs C={C} />
-
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 28, paddingTop: HEADER_H }}
+        contentContainerStyle={{ paddingBottom: 28 }}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }
@@ -225,78 +112,37 @@ export default function ProfileDetailScreen() {
             tintColor={C.primary}
           />
         }
+        style={{ backgroundColor: C.background }}
       >
-        {/* Hero glass */}
-        <View style={s.heroWrap}>
-          <LinearGradient
-            colors={
-              [
-                toAlpha("#ffffff", scheme === "dark" ? 0.06 : 0.75),
-                toAlpha("#ffffff", 0.0),
-              ] as const
-            }
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.hero}
-          >
-            <View style={s.heroActions}>
-              <CircleBtn onPress={() => {}}>
-                <Ionicons
-                  name="share-social-outline"
-                  size={18}
-                  color={scheme === "dark" ? "#fff" : "#111"}
-                />
-              </CircleBtn>
-              <CircleBtn onPress={() => setOpenDetails(true)}>
-                <Ionicons
-                  name="settings-outline"
-                  size={18}
-                  color={scheme === "dark" ? "#fff" : "#111"}
-                />
-              </CircleBtn>
-            </View>
-          </LinearGradient>
-
-          {/* Avatar + camera pinned */}
-          <View style={s.avatarWrap}>
-            <View style={s.avatarBox}>
-              <View style={s.avatarRing}>
-                <LinearGradient
-                  colors={[C.primary, "#a78bfa"] as const}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={s.avatarRingFill}
-                />
-                <View style={[s.avatar, { backgroundColor: C.background }]}>
-                  <Ionicons name="person" size={28} color={C.mutedForeground} />
-                </View>
+        {/* Card avatar + nút camera */}
+        <View style={[s.card, { marginTop: 12 }]}>
+          <View style={s.avatarBox}>
+            <View style={s.avatarRing}>
+              <View style={s.avatarRingFill} />
+              <View style={[s.avatar, { backgroundColor: C.background }]}>
+                <Ionicons name="person" size={28} color={C.mutedForeground} />
               </View>
-
-              <Pressable
-                onPress={pickAndUploadAvatar}
-                style={({ pressed }) => [
-                  s.camBtn,
-                  {
-                    backgroundColor: C.primary,
-                    opacity: pressed ? 0.9 : 1,
-                    borderColor: scheme === "dark" ? "#111827" : "#fff",
-                  },
-                ]}
-              >
-                <Ionicons
-                  name="camera-outline"
-                  size={16}
-                  color={C.primaryForeground}
-                />
-              </Pressable>
             </View>
-          </View>
-        </View>
 
-        {/* Name + stats + edit */}
-        <View
-          style={{ alignItems: "center", marginTop: 44, paddingHorizontal: 16 }}
-        >
+            <Pressable
+              onPress={pickAndUploadAvatar}
+              style={({ pressed }) => [
+                s.camBtn,
+                {
+                  backgroundColor: C.primary,
+                  opacity: pressed ? 0.9 : 1,
+                  borderColor: scheme === "dark" ? "#111827" : "#fff",
+                },
+              ]}
+            >
+              <Ionicons
+                name="camera-outline"
+                size={16}
+                color={C.primaryForeground}
+              />
+            </Pressable>
+          </View>
+
           <Text style={s.name} numberOfLines={1}>
             {userUI.fullName}
           </Text>
@@ -320,20 +166,16 @@ export default function ProfileDetailScreen() {
           </Pressable>
         </View>
 
-        {/* Info card */}
+        {/* Thông tin tài khoản */}
         <View
           style={[
-            s.detailCard,
+            s.card,
             {
-              backgroundColor: toAlpha(
-                "#ffffff",
-                scheme === "dark" ? 0.06 : 0.75
-              ),
-              borderColor: toAlpha(C.border, 0.6),
+              gap: 6,
             },
           ]}
         >
-          <Text style={s.detailTitle}>Thông tin tài khoản</Text>
+          <Text style={s.sectionTitle}>Thông tin tài khoản</Text>
           <InfoRow
             icon="mail-outline"
             label="Email"
@@ -373,7 +215,7 @@ export default function ProfileDetailScreen() {
         </View>
       </Animated.ScrollView>
 
-      {/* Modal chi tiết hồ sơ (scrollable) */}
+      {/* Modal chi tiết hồ sơ */}
       <ProfileDetailsModal
         visible={openDetails}
         onClose={() => setOpenDetails(false)}
@@ -452,8 +294,8 @@ function InfoRow({
         style={[
           infoStyles.icWrap,
           {
-            backgroundColor: toAlpha(C.primary as string, 0.1),
-            borderColor: toAlpha(C.primary as string, 0.25),
+            backgroundColor: withOpacity(C.primary as string, 0.1),
+            borderColor: withOpacity(C.primary as string, 0.25),
           },
         ]}
       >
@@ -514,90 +356,76 @@ const infoStyles = StyleSheet.create({
   value: { fontSize: 14, fontWeight: "800" },
 });
 
-const orbStyles = StyleSheet.create({
-  orb: {
-    position: "absolute",
-    borderRadius: 999,
-    opacity: 0.9,
-    overflow: "hidden",
-  },
-  fill: { flex: 1 },
-  orbTL: { top: -30, left: -40, width: 220, height: 220 },
-  orbTR: { top: 40, right: -60, width: 260, height: 260 },
-  orbBR: { bottom: -50, right: -30, width: 220, height: 220 },
-});
-
 const styles = (C: ColorTokens) =>
   StyleSheet.create({
-    container: { flex: 1 },
+    container: { flex: 1, backgroundColor: C.background },
+    center: { alignItems: "center", justifyContent: "center" },
 
-    heroWrap: { paddingTop: 12, paddingHorizontal: 12, marginTop: 6 },
-    hero: {
-      height: 160,
-      borderRadius: 18,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: toAlpha(C.border, 0.7),
-      shadowColor: "#000",
-      shadowOpacity: 0.08,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: 2,
-      justifyContent: "flex-start",
-    },
-    heroActions: {
-      marginLeft: "auto",
-      flexDirection: "row",
-      gap: 10,
-      padding: 10,
-    },
-
-    avatarWrap: {
-      position: "absolute",
-      left: 0,
-      right: 0,
-      bottom: -36,
+    header: {
+      paddingHorizontal: 16,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: C.border,
+      backgroundColor: C.card,
       alignItems: "center",
-      zIndex: 2,
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    headerTitle: { fontSize: 18, fontWeight: "900", letterSpacing: 0.2 },
+
+    card: {
+      marginTop: 12,
+      marginHorizontal: 16,
+      borderRadius: 14,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: C.border,
+      backgroundColor: C.card,
+      padding: 14,
+      ...Platform.select({
+        ios: {
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 2 },
+        },
+        android: { elevation: 1 },
+      }),
     },
 
-    // NEW: khối định vị để camBtn bám vào
+    // avatar
     avatarBox: {
-      width: 86,
-      height: 86,
+      alignSelf: "center",
+      width: 90,
+      height: 90,
       position: "relative",
       alignItems: "center",
       justifyContent: "center",
+      marginTop: 6,
+      marginBottom: 8,
     },
-
     avatarRing: {
-      width: 86,
-      height: 86,
-      borderRadius: 43,
+      width: 90,
+      height: 90,
+      borderRadius: 45,
       position: "relative",
-      shadowColor: "#000",
-      shadowOpacity: 0.12,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 3,
     },
-    avatarRingFill: { ...StyleSheet.absoluteFillObject, borderRadius: 43 },
-
+    avatarRingFill: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: 45,
+      backgroundColor: withOpacity(C.primary as string, 0.18),
+    },
     avatar: {
       position: "absolute",
       left: 5,
       top: 5,
-      width: 76,
-      height: 76,
-      borderRadius: 38,
+      width: 80,
+      height: 80,
+      borderRadius: 40,
       borderWidth: 3,
-      borderColor: "#fff",
+      borderColor: C.background,
       alignItems: "center",
       justifyContent: "center",
       overflow: "hidden",
-      ...Platform.select({ android: { elevation: 4 } }),
+      ...Platform.select({ android: { elevation: 2 } }),
     },
-
-    // UPDATED: luôn ở góc dưới-phải avatar
     camBtn: {
       position: "absolute",
       right: -4,
@@ -608,50 +436,51 @@ const styles = (C: ColorTokens) =>
       alignItems: "center",
       justifyContent: "center",
       borderWidth: 2,
-      ...Platform.select({ android: { elevation: 4 } }),
+      ...Platform.select({ android: { elevation: 3 } }),
     },
 
-    name: { fontSize: 20, fontWeight: "900", color: C.foreground },
+    name: {
+      fontSize: 20,
+      fontWeight: "900",
+      color: C.foreground,
+      textAlign: "center",
+      marginTop: 6,
+    },
 
     statsRow: {
-      marginTop: 12,
+      marginTop: 10,
       flexDirection: "row",
       justifyContent: "space-evenly",
       width: "100%",
-      paddingHorizontal: 16,
+      paddingHorizontal: 8,
     },
 
     editBtn: {
-      marginTop: 14,
+      marginTop: 12,
       paddingVertical: 12,
       paddingHorizontal: 18,
       borderRadius: 999,
-      width: "92%",
+      width: "100%",
       alignItems: "center",
-      shadowOpacity: 0.08,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 1,
     },
     editTxt: { fontWeight: "900", fontSize: 15, letterSpacing: 0.3 },
 
-    detailCard: {
-      marginTop: 26,
-      marginHorizontal: 16,
-      borderRadius: 14,
-      borderWidth: StyleSheet.hairlineWidth,
-      padding: 14,
-      gap: 6,
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 1,
-    },
-    detailTitle: {
+    sectionTitle: {
       fontSize: 16,
       fontWeight: "900",
       marginBottom: 6,
       color: C.foreground,
       letterSpacing: 0.2,
     },
+
+    achRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingVertical: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: C.border,
+    },
+    achText: { fontSize: 14.5, fontWeight: "700" },
+    achPlace: { fontSize: 12, marginLeft: "auto" },
   });

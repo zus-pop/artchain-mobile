@@ -49,7 +49,7 @@ const SubmissionDetailsModal: React.FC<Props> = ({
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   // Snap points for the bottom sheet - use percentage
-  const snapPoints = useMemo(() => ["94%"], []);
+  const snapPoints = useMemo(() => ["80%"], []);
 
   // Control modal visibility with useEffect
   useEffect(() => {
@@ -486,6 +486,7 @@ const st = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 0.2,
     marginBottom: 8,
+    fontFamily: "Be Vietnam Pro",
   },
   chipsRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   chip: {
@@ -503,16 +504,22 @@ const st = StyleSheet.create({
     paddingVertical: 6,
     marginLeft: 2,
   },
-  statusTxt: { fontSize: 12, fontWeight: "900", letterSpacing: 0.3 },
+  statusTxt: {
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.3,
+    fontFamily: "Be Vietnam Pro",
+  },
 
   /* Sections */
   section: { paddingHorizontal: 14, paddingTop: 14 },
   sectionTight: { paddingBottom: 6 },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: "900",
+    fontWeight: "600",
     marginBottom: 8,
     letterSpacing: 0.2,
+    fontFamily: "Be Vietnam Pro",
   },
   desc: { fontSize: 14, lineHeight: 20 },
 
@@ -549,8 +556,12 @@ const st = StyleSheet.create({
     marginBottom: 8,
   },
   avatarRow: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
-  evalName: { fontSize: 15, fontWeight: "800" },
-  evalSpecialization: { fontSize: 13, fontWeight: "500" },
+  evalName: { fontSize: 15, fontWeight: "600" },
+  evalSpecialization: {
+    fontSize: 13,
+    fontWeight: "500",
+    fontFamily: "Be Vietnam Pro",
+  },
   evalDate: { fontSize: 12, marginTop: 2 },
   scorePill: {
     paddingHorizontal: 12,
@@ -568,6 +579,7 @@ const st = StyleSheet.create({
     paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(0,0,0,0.1)",
+    fontFamily: "Be Vietnam Pro",
   },
   scoreRow: {
     flexDirection: "row",
@@ -581,14 +593,23 @@ const st = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(0,0,0,0.15)",
   },
-  scoreLabel: { fontSize: 13, fontWeight: "600" },
-  scoreValue: { fontSize: 13, fontWeight: "700" },
+  scoreLabel: { fontSize: 13, fontWeight: "600", fontFamily: "Be Vietnam Pro" },
+  scoreValue: { fontSize: 13, fontWeight: "700", fontFamily: "Be Vietnam Pro" },
 
   /* Empty / Loading */
   skeletonWrap: { alignItems: "center", paddingVertical: 30 },
-  loadingTxt: { marginTop: 10, fontWeight: "700" },
+  loadingTxt: {
+    marginTop: 10,
+    fontWeight: "700",
+    fontFamily: "Be Vietnam Pro",
+  },
   emptyEval: { alignItems: "center", paddingVertical: 36 },
-  emptyTitle: { marginTop: 10, fontSize: 15, fontWeight: "900" },
+  emptyTitle: {
+    marginTop: 10,
+    fontSize: 15,
+    fontWeight: "600",
+    fontFamily: "Be Vietnam Pro",
+  },
   emptySub: { marginTop: 4, fontSize: 13.5 },
 
   /* Footer */
@@ -611,5 +632,10 @@ const st = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  ctaTxt: { fontSize: 15, fontWeight: "900", letterSpacing: 0.2 },
+  ctaTxt: {
+    fontSize: 15,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+    fontFamily: "Be Vietnam Pro",
+  },
 });

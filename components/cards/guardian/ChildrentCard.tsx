@@ -110,6 +110,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
     elevation: 1,
+    width: "100%",
   },
 
   header: { flexDirection: "row", alignItems: "center" },
@@ -133,9 +134,11 @@ const styles = StyleSheet.create({
 
   metaRow: {
     marginTop: 6,
-    flexDirection: "column",
+    flexDirection: "row",
     gap: 4,
-    minWidth: 0,
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   metaItem: {
     flexDirection: "row",

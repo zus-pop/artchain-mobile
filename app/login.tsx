@@ -1,11 +1,11 @@
+import LoginField from "@/components/form/LoginField";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-
+import { useForm } from "react-hook-form";
 import {
   Image,
   KeyboardAvoidingView,
@@ -13,7 +13,6 @@ import {
   ScrollView,
   StatusBar,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -30,7 +29,6 @@ const schema = z.object({
     .trim()
     .nonempty("Password is required"),
 });
-
 type Schema = z.infer<typeof schema>;
 
 export default function LoginScreen() {
@@ -38,62 +36,53 @@ export default function LoginScreen() {
     control,
     handleSubmit,
     formState: { errors, isValid },
-  } = useForm({
+  } = useForm<Schema>({
     mode: "all",
     resolver: zodResolver(schema),
+    defaultValues: { username: "", password: "" },
   });
+
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
+  const C = Colors[colorScheme];
   const { mutate, isPending } = useLoginMutation();
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); 
 
   const handleLogin = (data: Schema) => {
-    // Placeholder: Implement login logic
-    mutate({
-      username: data.username,
-      password: data.password,
-    });
+    mutate({ username: data.username, password: data.password });
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors[colorScheme].background }}>
+    <View style={{ flex: 1, backgroundColor: C.background }}>
       <StatusBar
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
-        backgroundColor={Colors[colorScheme].background}
+        backgroundColor={C.background}
       />
+
       {/* Header */}
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          backgroundColor: Colors[colorScheme].card,
+          backgroundColor: C.card,
           paddingHorizontal: 12,
           paddingTop: 36,
           paddingBottom: 16,
           borderBottomWidth: 1,
-          borderBottomColor: Colors[colorScheme].border,
+          borderBottomColor: C.border,
         }}
       >
         <TouchableOpacity
           onPress={() => router.back()}
           style={{ padding: 8, marginRight: 8 }}
         >
-          <Ionicons
-            name="arrow-back"
-            size={24}
-            color={Colors[colorScheme].primary}
-          />
+          <Ionicons name="arrow-back" size={24} color={C.primary} />
         </TouchableOpacity>
-        <Text
-          style={{
-            fontSize: 22,
-            fontWeight: "bold",
-            color: Colors[colorScheme].primary,
-          }}
-        >
+        <Text style={{ fontSize: 22, fontWeight: "bold", color: C.primary }}>
           Đăng nhập
         </Text>
       </View>
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -112,130 +101,40 @@ export default function LoginScreen() {
           <View>
             <Image
               source={require("../assets/logo/Logo.png")}
-              style={{ width: 300, height: 300 }}
+              style={{ width: 300, height: 300 , }} 
               resizeMode="contain"
             />
-          </View>
-          {/* <Text
-            style={{
-              fontSize: 28,
-              fontWeight: "bold",
-              color: Colors[colorScheme].primary,
-              marginBottom: 18,
-            }}
-          >
-            ARTCHAIN
-          </Text> */}
 
-          <Controller
-            control={control}
-            name="username"
-            render={({ field }) => (
-              <TextInput
+            <View style={{ marginTop: -34 , }}>
+              <LoginField 
+                control={control}
+                name="username"
                 placeholder="Tên đăng nhập"
-                onChangeText={field.onChange}
-                style={{
-                  width: "100%",
-                  borderWidth: 1,
-                  borderColor: Colors[colorScheme].border,
-                  backgroundColor: Colors[colorScheme].input,
-                  color: Colors[colorScheme].foreground,
-                  borderRadius: 12,
-                  marginBottom: 14,
-                  padding: 12,
-                  fontSize: 16,
-                }}
-                placeholderTextColor={Colors[colorScheme].mutedForeground}
-                {...field}
+                icon="person-outline"
               />
-            )}
-          />
-          {errors.username && (
-            <Text
-              style={{
-                color: Colors[colorScheme].destructive,
-                fontSize: 14,
-                marginBottom: 8,
-                alignSelf: "flex-start",
-                marginLeft: 4,
-              }}
-            >
-              {errors.username.message}
-            </Text>
-          )}
-
-          <Controller
-            control={control}
-            name="password"
-            render={({ field }) => (
-              <View style={{ width: "100%", marginBottom: 18 }}>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    borderWidth: 1,
-                    borderColor: Colors[colorScheme].border,
-                    backgroundColor: Colors[colorScheme].input,
-                    borderRadius: 12,
-                  }}
-                >
-                  <TextInput
-                    placeholder="Mật khẩu"
-                    onChangeText={field.onChange}
-                    secureTextEntry={!showPassword}
-                    style={{
-                      flex: 1,
-                      color: Colors[colorScheme].foreground,
-                      padding: 12,
-                      fontSize: 16,
-                    }}
-                    placeholderTextColor={Colors[colorScheme].mutedForeground}
-                    {...field}
-                  />
-                  <TouchableOpacity
-                    onPress={() => setShowPassword(!showPassword)}
-                    style={{
-                      padding: 12,
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Ionicons
-                      name={!showPassword ? "eye-off" : "eye"}
-                      size={20}
-                      color={Colors[colorScheme].mutedForeground}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          />
-          {errors.password && (
-            <Text
-              style={{
-                color: Colors[colorScheme].destructive,
-                fontSize: 14,
-                marginBottom: 8,
-                alignSelf: "flex-start",
-                marginLeft: 4,
-              }}
-            >
-              {errors.password.message}
-            </Text>
-          )}
-
+              <LoginField
+                control={control}
+                name="password"
+                placeholder="Mật khẩu"
+                icon="lock-closed-outline"
+                isPassword
+              />
+            </View>
+          </View>
           <TouchableOpacity
             style={{
               width: "100%",
-              backgroundColor:
-                isValid && !isPending
-                  ? Colors[colorScheme].primary
-                  : Colors[colorScheme].muted,
-              borderRadius: 12,
+              backgroundColor: isValid && !isPending ? C.primary : C.muted,
+              borderRadius: 14,
               paddingVertical: 14,
               alignItems: "center",
               marginBottom: 12,
               opacity: isValid && !isPending ? 1 : 0.7,
+              shadowColor: C.primary,
+              shadowOpacity: 0.25,
+              shadowRadius: 10,
+              shadowOffset: { width: 0, height: 6 },
+              ...(Platform.OS === "android" ? { elevation: 2 } : null),
             }}
             onPress={handleSubmit(handleLogin)}
             disabled={!isValid || isPending}
@@ -244,9 +143,9 @@ export default function LoginScreen() {
               style={{
                 color:
                   isValid && !isPending
-                    ? Colors[colorScheme].primaryForeground
-                    : Colors[colorScheme].mutedForeground,
-                fontWeight: "bold",
+                    ? C.primaryForeground
+                    : C.mutedForeground,
+                fontWeight: "700",
                 fontSize: 16,
               }}
             >
@@ -258,7 +157,7 @@ export default function LoginScreen() {
             onPress={() => router.replace("/signup")}
             style={{ marginTop: 8 }}
           >
-            <Text style={{ color: Colors[colorScheme].primary, fontSize: 15 }}>
+            <Text style={{ color: C.primary, fontSize: 15 }}>
               Chưa có tài khoản? Đăng ký
             </Text>
           </TouchableOpacity>

@@ -158,7 +158,7 @@ export function ContestCard({
       <View style={s.body}>
         {!!contest.description && (
           <View style={s.descRow}>
-            <FileText size={15} color={C.mutedForeground} />
+            <FileText size={20} color={C.destructive} />
             <Text style={s.desc} numberOfLines={2}>
               {contest.description}
             </Text>
@@ -167,17 +167,23 @@ export function ContestCard({
 
         <View style={s.metaSection}>
           {/* Ngày & giải thưởng: GIỮ TRUNG TÍNH */}
-          <Row icon={<CalendarDays size={15} color={C.mutedForeground} />}>
-            <Text style={s.metaText} numberOfLines={1}>
-              {dateText}
-            </Text>
-          </Row>
-
-          <Row icon={<Trophy size={15} color={C.mutedForeground} />}>
-            <Text style={s.metaText} numberOfLines={1}>
-              {(contest.numOfAward ?? 0) + " giải thưởng"}
-            </Text>
-          </Row>
+          <View
+            style={{ flexDirection: "row", justifyContent: "space-between" }}
+          >
+            <Row icon={<CalendarDays size={15} color={C.mutedForeground} />}>
+              <Text style={s.metaText} numberOfLines={1}>
+                {dateText}
+              </Text>
+            </Row>
+            <View>
+              <Text>||</Text>
+            </View>
+            <Row icon={<Trophy size={15} color={C.mutedForeground} />}>
+              <Text style={s.metaText} numberOfLines={1}>
+                {(contest.numOfAward ?? 0) + " giải thưởng"}
+              </Text>
+            </Row>
+          </View>
 
           {/* Trạng thái: CHỈ PHẦN NÀY ĐỔI MÀU */}
           <Row icon={<StatusIcon size={15} color={statusColor} />}>
@@ -188,17 +194,6 @@ export function ContestCard({
               {statusLabel}
             </Text>
           </Row>
-        </View>
-
-        {/* CTA theo brand */}
-        <View style={s.ctaWrap}>
-          <Pressable
-            onPress={onPress}
-            android_ripple={{ color: BRAND.a22 }}
-            style={({ pressed }) => [s.ctaBtn, pressed && { opacity: 0.9 }]}
-          >
-            <Text style={s.ctaText}>Xem Chi Tiết</Text>
-          </Pressable>
         </View>
       </View>
     </Pressable>
@@ -249,7 +244,13 @@ const styles = (
           }
         : null),
     },
-    cover: { width: "100%", height: COVER_H, justifyContent: "flex-end" },
+    cover: {
+      width: "100%",
+      height: COVER_H,
+      justifyContent: "flex-end",
+
+      borderRadius: 10,
+    },
     coverImg: { resizeMode: "cover" },
     overlay: {
       ...StyleSheet.absoluteFillObject,
@@ -272,6 +273,7 @@ const styles = (
       maxWidth: "90%",
       borderWidth: 1,
       borderColor: "rgba(255,255,255,0.3)",
+      fontFamily: "Be Vietnam Pro",
     },
     title: {
       color: "#fff",
@@ -279,19 +281,27 @@ const styles = (
       fontWeight: "800",
       lineHeight: 19,
       letterSpacing: 0.2,
+      fontFamily: "Be Vietnam Pro",
     },
 
     body: { padding: 16, gap: 4, backgroundColor: C.card },
     descRow: {
       flexDirection: "row",
       gap: 8,
-      alignItems: "flex-start",
-      marginBottom: 8,
-    },
-    desc: { color: C.mutedForeground, lineHeight: 17, fontSize: 13, flex: 1 },
 
-    metaSection: { gap: 6, marginTop: 4 },
-    metaText: { color: C.foreground, fontSize: 13, fontWeight: "600", flex: 1 },
+      marginBottom: 8,
+      alignContent: "center",
+      alignItems: "center",
+    },
+    desc: { lineHeight: 17, fontSize: 17, flex: 1, fontWeight: "700" },
+
+    metaSection: { gap: 6, marginTop: 4, display: "flex" },
+    metaText: {
+      color: C.mutedForeground,
+      fontSize: 13,
+      fontWeight: "600",
+      fontFamily: "Be Vietnam Pro",
+    },
 
     ctaWrap: { marginTop: 12 },
     ctaBtn: {
@@ -311,5 +321,6 @@ const styles = (
       fontSize: 13,
       fontWeight: "600",
       letterSpacing: 0.2,
+      fontFamily: "Be Vietnam Pro",
     },
   });

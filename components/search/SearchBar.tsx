@@ -142,13 +142,7 @@ export default React.memo(function SearchBar({
           )}
         </View>
 
-        <TouchableOpacity
-          style={s.filterButton}
-          onPress={onToggleFilters}
-          activeOpacity={0.85}
-        >
-          <Filter size={18} color={C.primaryForeground} />
-        </TouchableOpacity>
+       
       </View>
 
       {/* Lịch sử (chips) */}

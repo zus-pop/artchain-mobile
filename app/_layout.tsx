@@ -141,6 +141,10 @@ export default function RootLayout() {
                   name="children-participate"
                   options={{ headerShown: false }}
                 />
+                <Stack.Screen
+                  name="childrent-detail"
+                  options={{ headerShown: false }}
+                />
               </Stack>
 
               <Toaster richColors />

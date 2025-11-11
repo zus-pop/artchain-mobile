@@ -421,10 +421,12 @@ const styles = (C: any) => {
       fontWeight: "bold",
       color: "white",
       marginBottom: 4,
+      fontFamily: "Be Vietnam Pro",
     },
     heroSubtitle: {
       fontSize: 16,
       color: "rgba(255,255,255,0.9)",
+      fontFamily: "Be Vietnam Pro",
     },
     // INFO BAR
     infoBar: {
@@ -440,6 +442,7 @@ const styles = (C: any) => {
       paddingVertical: 12,
       paddingHorizontal: 16,
       gap: 8,
+      fontFamily: "Be Vietnam Pro",
     },
     infoBarItem: {
       flexDirection: "row",
@@ -447,6 +450,7 @@ const styles = (C: any) => {
       justifyContent: "center",
       gap: 6,
       minWidth: 80,
+      fontFamily: "Be Vietnam Pro",
     },
     infoBarItemLast: {
       marginLeft: 0,
@@ -456,6 +460,7 @@ const styles = (C: any) => {
       fontWeight: "500",
       color: C.foreground,
       textAlign: "center",
+      fontFamily: "Be Vietnam Pro",
     },
     statusDotSmall: {
       width: 6,
@@ -468,6 +473,7 @@ const styles = (C: any) => {
       paddingHorizontal: 16,
       marginBottom: 24,
       gap: 12,
+      fontFamily: "Be Vietnam Pro",
     },
     infoCard: {
       flex: 1,
@@ -479,33 +485,39 @@ const styles = (C: any) => {
       borderWidth: 1,
       borderColor: C.border,
       gap: 8,
+      fontFamily: "Be Vietnam Pro",
     },
     infoCardHeader: {
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
       marginBottom: 8,
+      fontFamily: "Be Vietnam Pro",
     },
     infoCardTitle: {
       fontSize: 12,
       color: C.mutedForeground,
-      fontWeight: "500",
+      fontWeight: "400",
+      fontFamily: "Be Vietnam Pro",
     },
     infoCardValue: {
       fontSize: 24,
       fontWeight: "bold",
       color: C.foreground,
+      fontFamily: "Be Vietnam Pro",
     },
     infoCardLabel: {
       fontSize: 11,
       color: C.mutedForeground,
       fontWeight: "500",
       textAlign: "center",
+      fontFamily: "Be Vietnam Pro",
     },
     statusBadge: {
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
+      fontFamily: "Be Vietnam Pro",
     },
     statusDot: {
       width: 8,
@@ -515,6 +527,7 @@ const styles = (C: any) => {
     statusBadgeText: {
       fontSize: 12,
       fontWeight: "500",
+      fontFamily: "Be Vietnam Pro",
     },
     // SECTIONS
     section: {
@@ -594,11 +607,13 @@ const styles = (C: any) => {
       fontSize: 14,
       color: C.mutedForeground,
       marginBottom: 2,
+      fontFamily: "Be Vietnam Pro",
     },
     roundDate: {
       fontSize: 15,
       fontWeight: "500",
       color: C.foreground,
+      fontFamily: "Be Vietnam Pro",
     },
     // ACTIONS
     actionsContainer: {
@@ -621,6 +636,7 @@ const styles = (C: any) => {
       fontSize: 16,
       fontWeight: "500",
       color: C.foreground,
+      fontFamily: "Be Vietnam Pro",
     },
     rewardsButton: {
       backgroundColor: C.accent,
@@ -638,6 +654,7 @@ const styles = (C: any) => {
       fontSize: 16,
       fontWeight: "600",
       color: C.primaryForeground,
+      fontFamily: "Be Vietnam Pro",
     },
     // RULES
     rulesContainer: {
