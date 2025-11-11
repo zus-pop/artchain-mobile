@@ -3,21 +3,15 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { AchievementItem } from "@/types/achievements";
 import { Ionicons } from "@expo/vector-icons";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
 import {
-  Animated,
-  BackHandler,
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetScrollView,
+} from "@gorhom/bottom-sheet";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import {
   Dimensions,
-  Modal,
-  PanResponder,
-  Pressable,
-  ScrollView,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -39,7 +33,7 @@ const fmtDateOnlyISO = (v?: string | null) => {
   return `${d}/${m}/${y}`;
 };
 
-const fmtPrize = (p: number | string) => {
+const fmtPrize = (p: string) => {
   const n = typeof p === "string" ? parseFloat(p) : p;
   return Number.isFinite(n) ? n.toLocaleString("vi-VN") + "₫" : String(p);
 };
@@ -65,190 +59,61 @@ export default function AchievementModal({
   const C = Colors[scheme];
 
   const screenH = useMemo(() => Dimensions.get("window").height, []);
-  const [mounted, setMounted] = useState<boolean>(visible);
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-  // animated values
-  const backdrop = useRef(new Animated.Value(0)).current; // 0..1
-  const sheetY = useRef(new Animated.Value(screenH)).current; // start off-screen
-  const dragY = useRef(new Animated.Value(0)).current; // live drag
-  const translateY = Animated.add(sheetY, dragY);
+  // Snap points for the bottom sheet
+  const snapPoints = useMemo(() => ["90%"], []);
 
-  // scroll vs drag
-  const scrollYRef = useRef(0);
-  const isDraggingRef = useRef(false);
-
-  // thresholds
-  const DISMISS_TRANSLATE = 120;
-  const DISMISS_VY = 0.9;
-
+  // Control modal visibility
   useEffect(() => {
     if (visible) {
-      if (!mounted) setMounted(true);
-      sheetY.setValue(screenH);
-      dragY.setValue(0);
-      backdrop.setValue(0);
-      Animated.parallel([
-        Animated.timing(backdrop, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(sheetY, {
-          toValue: 0,
-          duration: 260,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else if (mounted) {
-      Animated.parallel([
-        Animated.timing(backdrop, {
-          toValue: 0,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-        Animated.timing(sheetY, {
-          toValue: screenH,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-      ]).start(() => setMounted(false));
+      bottomSheetModalRef.current?.present();
+    } else {
+      bottomSheetModalRef.current?.dismiss();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
-  // Android back
-  useEffect(() => {
-    if (!mounted) return;
-    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      closeNow();
-      return true;
-    });
-    return () => sub.remove();
-  }, [mounted]);
+  const handleSheetChanges = useCallback(
+    (index: number) => {
+      if (index === -1) {
+        onClose();
+      }
+    },
+    [onClose]
+  );
 
-  const closeNow = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(backdrop, {
-        toValue: 0,
-        duration: 160,
-        useNativeDriver: true,
-      }),
-      Animated.timing(sheetY, {
-        toValue: screenH,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setMounted(false);
-      onClose?.();
-    });
-  }, [backdrop, sheetY, screenH, onClose]);
+  // Render backdrop
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        pressBehavior={disableBackdropClose ? "none" : "close"}
+      />
+    ),
+    [disableBackdropClose]
+  );
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponderCapture: (_, g) => {
-        if (g.dy > 6 && Math.abs(g.dx) < 16 && scrollYRef.current <= 0)
-          return true;
-        return false;
-      },
-      onMoveShouldSetPanResponder: (_, g) =>
-        g.dy > 6 && scrollYRef.current <= 0,
-      onPanResponderGrant: () => {
-        isDraggingRef.current = true;
-      },
-      onPanResponderMove: (_, g) => {
-        const dy = Math.max(0, g.dy);
-        dragY.setValue(dy);
-        const ratio = Math.max(0, Math.min(1, 1 - dy / screenH));
-        backdrop.setValue(ratio);
-      },
-      onPanResponderRelease: (_, g) => {
-        isDraggingRef.current = false;
-        const shouldDismiss = g.dy > DISMISS_TRANSLATE || g.vy > DISMISS_VY;
-        if (shouldDismiss) closeNow();
-        else {
-          Animated.parallel([
-            Animated.spring(dragY, {
-              toValue: 0,
-              useNativeDriver: true,
-              bounciness: 0,
-              speed: 18,
-            }),
-            Animated.timing(backdrop, {
-              toValue: 1,
-              duration: 140,
-              useNativeDriver: true,
-            }),
-          ]).start();
-        }
-      },
-      onPanResponderTerminate: () => {
-        isDraggingRef.current = false;
-        Animated.parallel([
-          Animated.spring(dragY, {
-            toValue: 0,
-            useNativeDriver: true,
-            bounciness: 0,
-            speed: 18,
-          }),
-          Animated.timing(backdrop, {
-            toValue: 1,
-            duration: 140,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      },
-    })
-  ).current;
-
-  if (!mounted || !item) return null;
+  if (!item) return null;
 
   return (
-    <Modal
-      visible={mounted}
-      transparent
-      animationType="none"
-      onRequestClose={closeNow}
-      statusBarTranslucent
+    <BottomSheetModal
+      ref={bottomSheetModalRef}
+      snapPoints={snapPoints}
+      onChange={handleSheetChanges}
+      backgroundStyle={{ backgroundColor: C.card }}
+      handleIndicatorStyle={{ backgroundColor: C.mutedForeground }}
+      enablePanDownToClose={!disableBackdropClose}
+      backdropComponent={renderBackdrop}
     >
-      {/* Backdrop */}
-      <Pressable
-        style={StyleSheet.absoluteFill}
-        onPress={!disableBackdropClose ? closeNow : undefined}
-      >
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: "rgba(0,0,0,0.5)", opacity: backdrop },
-          ]}
-        />
-      </Pressable>
-
-      {/* Bottom Sheet */}
-      <Animated.View
-        style={[
-          styles.sheet,
-          {
-            backgroundColor: C.card,
-            borderColor: C.border,
-            maxHeight: screenH * maxHeightPct,
-            transform: [{ translateY }],
-          },
-        ]}
-        {...panResponder.panHandlers}
+      <BottomSheetScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
         <View style={styles.topChrome}>
-          <View
-            style={styles.dragZone}
-            {...panResponder.panHandlers}
-            accessibilityRole="button"
-            accessibilityLabel="Kéo xuống để đóng"
-            hitSlop={{ top: 10, bottom: 10, left: 24, right: 24 }}
-          >
-            <View style={[styles.handle, { backgroundColor: C.border }]} />
-          </View>
-
           <View style={[styles.header, { borderBottomColor: C.border }]}>
             <View style={styles.headerLeft}>
               <View style={[styles.headerIcon, { backgroundColor: ACCENT }]}>
@@ -272,7 +137,7 @@ export default function AchievementModal({
 
             {showClose && (
               <TouchableOpacity
-                onPress={closeNow}
+                onPress={onClose}
                 style={styles.iconBtn}
                 hitSlop={10}
               >
@@ -282,152 +147,137 @@ export default function AchievementModal({
           </View>
         </View>
 
-        {/* Content */}
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
-          showsVerticalScrollIndicator={false}
-          scrollEnabled={!isDraggingRef.current}
-          onScroll={(e) => {
-            scrollYRef.current = e.nativeEvent.contentOffset.y;
-          }}
-          scrollEventThrottle={16}
-          bounces
-        >
-          {/* Ảnh / Placeholder */}
-          {item.paintingImage ? (
-            <View style={[styles.imageWrap, { borderColor: C.border }]}>
-              <Animated.Image
-                source={{ uri: item.paintingImage }}
-                style={styles.image}
-                resizeMode="cover"
-              />
-              {!!item.award?.rank && (
-                <View style={[styles.badge, { backgroundColor: ACCENT }]}>
-                  <Ionicons name="ribbon" size={14} color="#fff" />
-                  <Text style={styles.badgeTxt}>Top {item.award.rank}</Text>
-                </View>
-              )}
-            </View>
-          ) : (
-            <View style={[styles.imageWrap, { borderColor: C.border }]}>
-              <ArtworkPlaceholder
-                solidBorder
-                height={180}
-                rounded={12}
-                message="Tranh sẽ được chúng tôi cập nhật sớm nhất có thể"
-                style={{ height: "100%", width: "100%" }}
-              />
-              {!!item.award?.rank && (
-                <View style={[styles.badge, { backgroundColor: ACCENT }]}>
-                  <Ionicons name="ribbon" size={14} color="#fff" />
-                  <Text style={styles.badgeTxt}>Top {item.award.rank}</Text>
-                </View>
-              )}
-            </View>
+        {/* Ảnh / Placeholder */}
+        {item.paintingImage ? (
+          <View style={[styles.imageWrap, { borderColor: C.border }]}>
+            <Image
+              source={{ uri: item.paintingImage }}
+              style={styles.image}
+              resizeMode="cover"
+            />
+            {!!item.award?.rank && (
+              <View style={[styles.badge, { backgroundColor: ACCENT }]}>
+                <Ionicons name="ribbon" size={14} color="#fff" />
+                <Text style={styles.badgeTxt}>Top {item.award.rank}</Text>
+              </View>
+            )}
+          </View>
+        ) : (
+          <View style={[styles.imageWrap, { borderColor: C.border }]}>
+            <ArtworkPlaceholder
+              solidBorder
+              height={180}
+              rounded={12}
+              message="Tranh sẽ được chúng tôi cập nhật sớm nhất có thể"
+              style={{ height: "100%", width: "100%" }}
+            />
+            {!!item.award?.rank && (
+              <View style={[styles.badge, { backgroundColor: ACCENT }]}>
+                <Ionicons name="ribbon" size={14} color="#fff" />
+                <Text style={styles.badgeTxt}>Top {item.award.rank}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Thông tin chi tiết */}
+        <View style={{ gap: 12 }}>
+          {!!item.paintingTitle && (
+            <>
+              <Text
+                style={{
+                  fontSize: 19,
+                  color: C.foreground,
+                  fontFamily: "Be Vietnam Pro",
+                  fontWeight: "700",
+                  textAlign: "center",
+                }}
+              >
+                {item.paintingTitle}
+              </Text>
+              <View style={{ height: 1, backgroundColor: C.border }} />
+            </>
           )}
 
-          {/* Thông tin chi tiết */}
-          <View style={{ gap: 12 }}>
-            {!!item.paintingTitle && (
-              <>
-                <Text
-                  style={{
-                    fontSize: 19,
-                    color: C.foreground,
-                    fontFamily: "Be Vietnam Pro",
-                    fontWeight: "700",
-                    textAlign: "center",
-                  }}
-                >
-                  {item.paintingTitle}
-                </Text>
-                <View style={{ height: 1, backgroundColor: C.border }} />
-              </>
-            )}
-
+          <Row
+            C={C}
+            icon="flag-outline"
+            label="Cuộc thi"
+            value={item.contest?.title || "—"}
+            accent={ACCENT}
+          />
+          <Row
+            C={C}
+            icon="time-outline"
+            label="Thời gian"
+            value={
+              item.contest?.startDate && item.contest?.endDate
+                ? `${fmtDateOnlyISO(item.contest.startDate)} → ${fmtDateOnlyISO(
+                    item.contest.endDate
+                  )}`
+                : "—"
+            }
+            accent={ACCENT}
+          />
+          <View style={{ height: 1, backgroundColor: C.border }} />
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              gap: 16,
+            }}
+          >
             <Row
               C={C}
-              icon="flag-outline"
-              label="Cuộc thi"
-              value={item.contest?.title || "—"}
+              icon="ribbon-outline"
+              label="Xếp hạng"
+              value={item.award?.rank ? `Hạng ${item.award.rank}` : "—"}
               accent={ACCENT}
             />
             <Row
               C={C}
-              icon="time-outline"
-              label="Thời gian"
+              icon="cash-outline"
+              label="Giải thưởng"
               value={
-                item.contest?.startDate && item.contest?.endDate
-                  ? `${fmtDateOnlyISO(
-                      item.contest.startDate
-                    )} → ${fmtDateOnlyISO(item.contest.endDate)}`
-                  : "—"
+                item.award?.prize != null ? fmtPrize(item.award.prize) : "—"
               }
               accent={ACCENT}
             />
-            <View style={{ height: 1, backgroundColor: C.border }} />
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                gap: 16,
-              }}
-            >
-              <Row
-                C={C}
-                icon="ribbon-outline"
-                label="Xếp hạng"
-                value={item.award?.rank ? `Hạng ${item.award.rank}` : "—"}
-                accent={ACCENT}
-              />
-              <Row
-                C={C}
-                icon="cash-outline"
-                label="Giải thưởng"
-                value={
-                  item.award?.prize != null
-                    ? fmtPrize(item.award.prize as any)
-                    : "—"
-                }
-                accent={ACCENT}
-              />
-            </View>
+          </View>
 
-            {/* Ngày đạt */}
+          {/* Ngày đạt */}
+          <Row
+            C={C}
+            icon="calendar-outline"
+            label="Ngày đạt"
+            value={fmtDateOnlyISO(item.achievedDate)}
+            accent={ACCENT}
+          />
+
+          {/* Mô tả giải */}
+          {!!item.award?.description && (
             <Row
               C={C}
-              icon="calendar-outline"
-              label="Ngày đạt"
-              value={fmtDateOnlyISO(item.achievedDate)}
+              icon="document-text-outline"
+              label="Mô tả giải"
+              value={item.award.description}
+              multiline
               accent={ACCENT}
             />
+          )}
+        </View>
 
-            {/* Mô tả giải */}
-            {!!item.award?.description && (
-              <Row
-                C={C}
-                icon="document-text-outline"
-                label="Mô tả giải"
-                value={item.award.description}
-                multiline
-                accent={ACCENT}
-              />
-            )}
-          </View>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <TouchableOpacity
-              onPress={closeNow}
-              style={[styles.primaryBtn, { backgroundColor: ACCENT }]}
-            >
-              <Text style={styles.primaryBtnTxt}>Đóng</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </Animated.View>
-    </Modal>
+        {/* Footer */}
+        <View style={styles.footer}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={[styles.primaryBtn, { backgroundColor: ACCENT }]}
+          >
+            <Text style={styles.primaryBtnTxt}>Đóng</Text>
+          </TouchableOpacity>
+        </View>
+      </BottomSheetScrollView>
+    </BottomSheetModal>
   );
 }
 
@@ -483,20 +333,6 @@ function Row({
 }
 
 const styles = StyleSheet.create({
-  sheet: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: "hidden",
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: -6 },
-    elevation: 12,
-  },
   topChrome: { paddingTop: 6 },
   dragZone: {
     alignItems: "center",

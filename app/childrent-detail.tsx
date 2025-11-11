@@ -1,16 +1,15 @@
 // app/childrent-detail.tsx
 import { useWhoAmI } from "@/apis/auth";
 import { useGuardianChildren } from "@/apis/guardian";
-import { useGetAchivementByUserId, useMySubmission } from "@/apis/painting";
+import { useGetAchievementByUserId, useMySubmission } from "@/apis/painting";
 import AppHeader from "@/components/AppHeader";
-import AchievementCard, {
-  AchievementItem,
-} from "@/components/cards/competitor/AchievementCard";
+import AchievementCard from "@/components/cards/competitor/AchievementCard";
 import EmptyState from "@/components/cards/competitor/EmptyState";
 import AchievementModal from "@/components/modals/AchievementModal";
 import SegmentedTabsProfile from "@/components/tabs/SegmentedTabsProfile";
 import { Colors, withOpacity } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import type { AchievementItem } from "@/types/achievements";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   BookUser,
@@ -110,7 +109,7 @@ export default function ChildrentDetailScreen() {
     useMySubmission();
 
   const { data: achievementData, isLoading: achievementsLoading } =
-    useGetAchivementByUserId(childId);
+    useGetAchievementByUserId(childId);
 
   const achievements = achievementData?.achievements ?? [];
 

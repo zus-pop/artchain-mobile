@@ -77,10 +77,14 @@ export default function SubmissionCard({
         <Text style={styles.contest}>{item.contestTitle}</Text>
         <View style={styles.metaRow}>
           <View style={styles.metaChip}>
-            <Ionicons name="calendar-outline" size={12} color={mutedFg} />
-            <Text style={[styles.metaTxt, { color: mutedFg }]}>
-              {item.date}
-            </Text>
+            {item.date && (
+              <>
+                <Ionicons name="calendar-outline" size={12} color={mutedFg} />
+                <Text style={[styles.metaTxt, { color: mutedFg }]}>
+                  {item.date}
+                </Text>
+              </>
+            )}
           </View>
           <View style={[styles.statusChip, statusStyle]}>
             <Text style={styles.statusTxt}>{statusText}</Text>

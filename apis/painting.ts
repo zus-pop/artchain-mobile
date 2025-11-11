@@ -207,7 +207,7 @@ export function usePaintingEvaluations(paintingId: string) {
   });
 }
 
-export function useGetAchivementByUserId(userId: string) {
+export function useGetAchievementByUserId(userId: string) {
   return useQuery({
     queryKey: ["achievements", userId],
     enabled: !!userId,
@@ -215,7 +215,7 @@ export function useGetAchivementByUserId(userId: string) {
       const res = await myAxios.get<AchievementsApiResponse>(
         `/users/${userId}/achievements`
       );
-      return res.data.data; 
+      return res.data.data;
     },
     staleTime: 30_000,
   });

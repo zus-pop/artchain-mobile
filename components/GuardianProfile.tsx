@@ -21,11 +21,11 @@ import {
   View,
 } from "react-native";
 
-// ===== Types / APIs =====
 import { useWhoAmI } from "@/apis/auth";
 import { useGuardianChildren } from "@/apis/guardian";
-import { useGetAchivementByUserId } from "@/apis/painting";
+import { useGetAchievementByUserId } from "@/apis/painting";
 import { useAuthStore } from "@/store/auth-store";
+import type { AchievementItem } from "@/types/achievements";
 import type { ColorTokens, KPIProps } from "@/types/tabkey";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -52,18 +52,9 @@ type ApiAchievementContest = {
   endDate?: string;
 };
 
-type ApiAchievementItem = {
-  paintingId: string;
-  paintingTitle?: string;
-  paintingImage?: string;
-  award: ApiAchievementAward;
-  contest: ApiAchievementContest;
-  achievedDate: string; // ISO string
-};
-
 type ApiAchievementsData = {
   user: { userId: string; fullName: string };
-  achievements: ApiAchievementItem[];
+  achievements: AchievementItem[];
   totalAchievements: number;
 };
 
@@ -143,12 +134,10 @@ export default function GuardianProfileComponent() {
     childAvatars[index % childAvatars.length];
 
   const [openAchModal, setOpenAchModal] = useState(false);
-  const [selectedAch, setSelectedAch] = useState<ApiAchievementItem | null>(
-    null
-  );
+  const [selectedAch, setSelectedAch] = useState<AchievementItem | null>(null);
 
   const { data: achievementData, isLoading: achievementsLoading } =
-    useGetAchivementByUserId(user?.userId || "");
+    useGetAchievementByUserId(user?.userId || "");
 
   useFocusEffect(
     useCallback(() => {
@@ -157,7 +146,7 @@ export default function GuardianProfileComponent() {
   );
 
   // Ép kiểu sang API data; KHÔNG đổi logic
-  const achievements: ApiAchievementItem[] =
+  const achievements: AchievementItem[] =
     (achievementData as unknown as ApiAchievementsData | undefined)
       ?.achievements ?? [];
 
@@ -446,12 +435,10 @@ export default function GuardianProfileComponent() {
                         setOpenAchModal(true);
                       }}
                     >
-           
                       <AchievementCard
                         item={{
                           id: a.paintingId,
                           title: `${a.award.name} - ${a.contest.title}`,
-                          place: fmtDateOnly(a.achievedDate),
                           achievedDate: fmtDateOnly(a.achievedDate),
                         }}
                         pickGrad={pickGrad}

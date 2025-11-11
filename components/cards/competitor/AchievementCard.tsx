@@ -4,7 +4,9 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 export type AchievementItem = {
-  achievedDate: string; id: string; title: string; place: string 
+  achievedDate: string;
+  id: string;
+  title: string;
 };
 
 export default function AchievementCard({
@@ -29,7 +31,7 @@ export default function AchievementCard({
       </LinearGradient>
       <View style={{ flex: 1 }}>
         <Text style={s.title}>{item.title}</Text>
-        <Text style={s.place}>{item.place}</Text>
+        <Text style={s.achievedDate}>{item.achievedDate}</Text>
       </View>
     </View>
   );
@@ -58,5 +60,5 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   title: { fontSize: 15, fontWeight: "700", marginBottom: 4 },
-  place: { fontSize: 13, opacity: 0.8 },
+  achievedDate: { fontSize: 13, opacity: 0.8 },
 });
