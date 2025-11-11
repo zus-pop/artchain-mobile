@@ -29,7 +29,6 @@ type Props = {
 };
 
 const { height: SCREEN_H } = Dimensions.get("window");
-const FOOTER_H = 70;
 const HERO_H = Math.min(420, Math.max(320, SCREEN_H * 0.5));
 
 const SubmissionDetailsModal: React.FC<Props> = ({
@@ -102,40 +101,10 @@ const SubmissionDetailsModal: React.FC<Props> = ({
   const STATUS = statusMap[statusKey] ?? statusMap.UNKNOWN;
 
   // ---------- Determine painting round ----------
-  const paintingRound = useMemo(() => {
-    if (!submission?.contest?.rounds) return null;
-    return submission.contest.rounds.find(
-      (r) => r.roundId === submission.roundId
-    );
-  }, [submission]);
-
-  const isRound2 = paintingRound?.name === "ROUND_2";
-
-  // ---------- Derived ----------
-  const averageScore = useMemo(() => {
-    if (!evaluations?.length) return 0;
-    if (isRound2) {
-      // For Round 2, calculate average of detailed scores
-      const total = evaluations.reduce((sum, e) => {
-        const scores = [
-          e.creativityScore,
-          e.compositionScore,
-          e.colorScore,
-          e.technicalScore,
-          e.aestheticScore,
-        ].filter((score) => score !== null && score !== undefined);
-        return sum + (scores.reduce((a, b) => a + b, 0) / scores.length || 0);
-      }, 0);
-      return Math.round((total / evaluations.length) * 10) / 10;
-    } else {
-      // For Round 1, use scoreRound1
-      const total = evaluations.reduce(
-        (sum, e) => sum + (e.scoreRound1 ?? 0),
-        0
-      );
-      return Math.round((total / evaluations.length) * 10) / 10;
-    }
-  }, [evaluations, isRound2]);
+  const isRound2 = useMemo(() => {
+    if (!evaluations?.length) return false;
+    return evaluations.some((e) => e.scoreRound2 !== null);
+  }, [evaluations]);
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
@@ -241,15 +210,9 @@ const SubmissionDetailsModal: React.FC<Props> = ({
 
         {/* Evaluations */}
         <View style={[st.section, st.sectionTight]}>
-          <View style={st.evalHeader}>
-            <Text style={[st.sectionTitle, { color: C.foreground }]}>
-              Đánh giá từ Ban Giám khảo
-            </Text>
-            <View style={st.avgBox}>
-              <Ionicons name="star" size={14} color={"#f59e0b"} />
-              <Text style={st.avgTxt}>{averageScore}/10</Text>
-            </View>
-          </View>
+          <Text style={[st.sectionTitle, { color: C.foreground }]}>
+            Đánh giá từ Ban Giám khảo
+          </Text>
 
           {isLoading ? (
             <View style={st.skeletonWrap}>
@@ -315,23 +278,8 @@ const SubmissionDetailsModal: React.FC<Props> = ({
                     style={st.scorePill}
                   >
                     <Text style={st.scoreTxt}>
-                      {isRound2
-                        ? (() => {
-                            const scores = [
-                              e.creativityScore,
-                              e.compositionScore,
-                              e.colorScore,
-                              e.technicalScore,
-                              e.aestheticScore,
-                            ].filter(
-                              (score) => score !== null && score !== undefined
-                            );
-                            const avg =
-                              scores.reduce((a, b) => a + b, 0) / scores.length;
-                            return Math.round(avg * 10) / 10;
-                          })()
-                        : e.scoreRound1}
-                      /10
+                      {isRound2 ? e.scoreRound2 : e.scoreRound1}
+                      {isRound2 ? "/100" : "/10"}
                     </Text>
                   </LinearGradient>
                 </View>
@@ -387,36 +335,6 @@ const SubmissionDetailsModal: React.FC<Props> = ({
                       </Text>
                       <Text style={[st.scoreValue, { color: C.foreground }]}>
                         {e.aestheticScore ?? "—"}/10
-                      </Text>
-                    </View>
-                    <View style={[st.scoreRow, st.totalScoreRow]}>
-                      <Text
-                        style={[
-                          st.scoreLabel,
-                          { color: C.foreground, fontWeight: "800" },
-                        ]}
-                      >
-                        Tổng điểm:
-                      </Text>
-                      <Text
-                        style={[
-                          st.scoreValue,
-                          { color: C.primary, fontWeight: "900" },
-                        ]}
-                      >
-                        {(() => {
-                          const scores = [
-                            e.creativityScore,
-                            e.compositionScore,
-                            e.colorScore,
-                            e.technicalScore,
-                            e.aestheticScore,
-                          ].filter(
-                            (score) => score !== null && score !== undefined
-                          );
-                          return scores.reduce((a, b) => a + b, 0);
-                        })()}
-                        /100
                       </Text>
                     </View>
                   </View>

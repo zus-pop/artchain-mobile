@@ -1,14 +1,13 @@
-import { usePosts } from "@/apis/post";
+import { useGetPostTags, usePosts } from "@/apis/post";
 import PostCard from "@/components/cards/PostCard";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, router } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   RefreshControl,
   StatusBar,
   StyleSheet,
@@ -17,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { FlatList } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type FilterType = "all" | "tag";
@@ -44,36 +44,32 @@ export default function PostsScreen() {
   }, [searchInput]);
 
   // ------- API -------
-  const {
-    data: postsData,
-    isLoading,
-    refetch,
-  } = usePosts({
-    search: searchQuery || undefined,
-    tag_id: selectedTagId,
-  });
-  const posts = postsData?.data || [];
+  const { data, isPending, fetchNextPage, isFetchingNextPage, refetch } =
+    usePosts({
+      search: searchQuery || undefined,
+      tag_id: selectedTagId,
+    });
 
-  // ------- HELPERS -------
-  const getTagId = (tagName: string, list: any[]): number | undefined => {
-    for (const post of list) {
-      const t = post.postTags?.find((pt: any) => pt.tag.tag_name === tagName);
-      if (t) return t.tag.tag_id;
-    }
-    return undefined;
+  const { data: tagsData } = useGetPostTags();
+
+  // Get flattened posts data
+  const posts = data?.pages?.flatMap((page) => page.data) ?? [];
+
+  // Get tags from API
+  const allTags = (tagsData?.data || []).map((tag: any) => tag.tag_name).sort();
+
+  const getTagId = (tagName: string) => {
+    const tag = (tagsData?.data || []).find((t: any) => t.tag_name === tagName);
+    return tag ? parseInt(tag.tag_id) : undefined;
   };
 
-  const allTags = useMemo(() => {
-    const set = new Set<string>();
-    posts.forEach((p: any) =>
-      p.postTags?.forEach((pt: any) => set.add(pt.tag.tag_name))
-    );
-    return Array.from(set).sort();
-  }, [posts]);
-
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    Promise.resolve(refetch?.()).finally(() => setRefreshing(false));
+  const onRefresh = React.useCallback(async () => {
+    try {
+      setRefreshing(true);
+      await refetch?.();
+    } finally {
+      setRefreshing(false);
+    }
   }, [refetch]);
 
   const clearFilters = () => {
@@ -85,22 +81,106 @@ export default function PostsScreen() {
   };
 
   // ------- RENDERERS -------
-  const renderPostItem = ({ item }: { item: any }) => (
-    <PostCard
-      item={item}
-      showDivider={true}
-      onPress={(post) =>
-        router.push({
-          pathname: "/post-detail",
-          params: {
-            post: JSON.stringify({
-              ...post,
-              image_url: encodeURIComponent(post.image_url),
-            }),
-          },
-        })
-      }
-    />
+  const renderPostItem = React.useCallback(
+    ({ item }: { item: any }) => (
+      <PostCard
+        item={item}
+        showDivider={true}
+        onPress={(post) =>
+          router.push({
+            pathname: "/post-detail",
+            params: {
+              post: JSON.stringify({
+                ...post,
+                image_url: encodeURIComponent(post.image_url),
+              }),
+            },
+          })
+        }
+      />
+    ),
+    []
+  );
+
+  const renderFilterTab = React.useCallback(
+    (filterType: FilterType) => {
+      const active = selectedFilter === filterType;
+      const colors = getPrimaryGradient();
+      return (
+        <TouchableOpacity
+          key={filterType}
+          activeOpacity={0.9}
+          onPress={() => {
+            setSelectedFilter(filterType);
+            if (filterType === "all") {
+              setSelectedTag(null);
+              setSelectedTagId(undefined);
+            }
+          }}
+          style={styles.tabBtnOuter}
+        >
+          <LinearGradient
+            colors={
+              active
+                ? colors
+                : ["rgba(255,255,255,0.15)", "rgba(255,255,255,0.12)"]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.tabBtn}
+          >
+            <Text style={[styles.tabText, { color: "#fff" }]}>
+              {filterType === "all" ? "Tất cả" : "Theo thẻ"}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      );
+    },
+    [selectedFilter]
+  );
+
+  const renderTagItem = React.useCallback(
+    (tagName: string) => {
+      const active = selectedTag === tagName;
+      const grad = getPrimaryGradient();
+      return (
+        <TouchableOpacity
+          key={tagName}
+          activeOpacity={0.9}
+          onPress={() => {
+            if (active) {
+              setSelectedTag(null);
+              setSelectedTagId(undefined);
+            } else {
+              const id = getTagId(tagName);
+              setSelectedTag(tagName);
+              setSelectedTagId(id);
+            }
+          }}
+          style={styles.tagChipOuter}
+        >
+          <LinearGradient
+            colors={
+              active
+                ? grad
+                : ["rgba(255,255,255,0.14)", "rgba(255,255,255,0.1)"]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.tagChip}
+          >
+            <Ionicons
+              name="pricetag-outline"
+              size={12}
+              color="#fff"
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.tagText}>{tagName}</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      );
+    },
+    [selectedTag, getTagId]
   );
 
   const Loading = () => (
@@ -118,7 +198,7 @@ export default function PostsScreen() {
   );
 
   const Empty = () => (
-    <View style={styles.emptyContainer }>
+    <View style={styles.emptyContainer}>
       <LinearGradient
         colors={getPrimaryGradient()}
         start={{ x: 0, y: 0 }}
@@ -157,7 +237,7 @@ export default function PostsScreen() {
 
   // ------- UI -------
   return (
-    <View style={[styles.container, ]}>
+    <View style={[styles.container]}>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar barStyle="light-content" />
       <LinearGradient
@@ -209,89 +289,14 @@ export default function PostsScreen() {
 
           {/* Filter tabs */}
           <View style={styles.tabRow}>
-            {(["all", "tag"] as FilterType[]).map((ft, idx) => {
-              const active = selectedFilter === ft;
-              const colors = getPrimaryGradient();
-              return (
-                <TouchableOpacity
-                  key={ft}
-                  activeOpacity={0.9}
-                  onPress={() => {
-                    setSelectedFilter(ft);
-                    if (ft === "all") {
-                      setSelectedTag(null);
-                      setSelectedTagId(undefined);
-                    }
-                  }}
-                  style={styles.tabBtnOuter}
-                >
-                  <LinearGradient
-                    colors={
-                      active
-                        ? colors
-                        : ["rgba(255,255,255,0.15)", "rgba(255,255,255,0.12)"]
-                    }
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.tabBtn}
-                  >
-                    <Text style={[styles.tabText, { color: "#fff" }]}>
-                      {ft === "all" ? "Tất cả" : "Theo thẻ"}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              );
-            })}
+            {(["all", "tag"] as FilterType[]).map((ft) => renderFilterTab(ft))}
           </View>
 
           {/* Tag chips */}
           {selectedFilter === "tag" && (
-            <FlatList
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              data={allTags}
-              keyExtractor={(t) => t}
-              contentContainerStyle={styles.tagRow}
-              renderItem={({ item }) => {
-                const active = selectedTag === item;
-                const grad = getPrimaryGradient();
-                return (
-                  <TouchableOpacity
-                    activeOpacity={0.9}
-                    onPress={() => {
-                      if (active) {
-                        setSelectedTag(null);
-                        setSelectedTagId(undefined);
-                      } else {
-                        const id = getTagId(item, posts);
-                        setSelectedTag(item);
-                        setSelectedTagId(id);
-                      }
-                    }}
-                    style={styles.tagChipOuter}
-                  >
-                    <LinearGradient
-                      colors={
-                        active
-                          ? grad
-                          : ["rgba(255,255,255,0.14)", "rgba(255,255,255,0.1)"]
-                      }
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.tagChip}
-                    >
-                      <Ionicons
-                        name="pricetag-outline"
-                        size={12}
-                        color="#fff"
-                        style={{ marginRight: 6 }}
-                      />
-                      <Text style={styles.tagText}>{item}</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                );
-              }}
-            />
+            <View style={styles.tagRow}>
+              {allTags.map((item) => renderTagItem(item))}
+            </View>
           )}
         </View>
       </LinearGradient>
@@ -328,7 +333,37 @@ export default function PostsScreen() {
         data={posts}
         keyExtractor={(item) => item.post_id.toString()}
         renderItem={renderPostItem}
-        ListEmptyComponent={isLoading ? <Loading /> : <Empty />}
+        getItemLayout={(data, index) => ({
+          length: 200, // Approximate height of each item
+          offset: 200 * index,
+          index,
+        })}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        removeClippedSubviews={true}
+        ListEmptyComponent={
+          isPending && posts.length === 0 ? <Loading /> : <Empty />
+        }
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <View style={styles.loadingContainer}>
+              <LinearGradient
+                colors={getPrimaryGradient()}
+                style={styles.loadingBadge}
+              >
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={styles.loadingText}>Loading more posts...</Text>
+              </LinearGradient>
+            </View>
+          ) : null
+        }
+        onEndReached={() => {
+          if (!isFetchingNextPage) {
+            fetchNextPage();
+          }
+        }}
+        onEndReachedThreshold={0.5}
         contentContainerStyle={[
           styles.listContainer,
           { paddingBottom: insets.bottom + 24 },
@@ -439,8 +474,14 @@ const styles = StyleSheet.create({
   },
 
   /* Tag chips */
-  tagRow: { paddingTop: 8, paddingBottom: 4 },
-  tagChipOuter: { marginRight: 8, borderRadius: 999 },
+  tagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingTop: 12,
+    paddingBottom: 8,
+    paddingHorizontal: 4,
+  },
+  tagChipOuter: { marginRight: 12, marginBottom: 8, borderRadius: 999 },
   tagChip: {
     flexDirection: "row",
     alignItems: "center",

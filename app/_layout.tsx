@@ -10,6 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { NotificationProvider } from "@/providers";
 import { View } from "react-native";
 import { Toaster } from "sonner-native";
 export const unstable_settings = {
@@ -55,100 +56,105 @@ export default function RootLayout() {
             }}
           />
           <QueryClientProvider client={queryClient}>
-            <StatusBar translucent animated backgroundColor="transparent" />
-            <ThemeProvider value={theme}>
-              <Stack>
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen
-                  name="login"
-                  options={{
-                    title: "Login",
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="signup"
-                  options={{
-                    title: "Signup",
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="setting"
-                  options={{
-                    title: "Setting",
-                    headerShown: false,
-                    // presentation: "formSheet",
-                  }}
-                />
-                <Stack.Screen
-                  name="notifications"
-                  options={{
-                    title: "Notification",
-                    headerShown: false,
-                    presentation: "modal",
-                  }}
-                />
-                <Stack.Screen
-                  name="profile-detail"
-                  options={{ title: "Chi tiết hồ sơ", headerShown: true }}
-                />
-                <Stack.Screen
-                  name="contest-detail"
-                  options={{ title: "Contest Detail", headerShown: false }}
-                />
-                <Stack.Screen
-                  name="searchContest"
-                  options={{ title: "Search Contest", headerShown: false }}
-                />
-                <Stack.Screen
-                  name="results"
-                  options={{ title: "Search Results", headerShown: false }}
-                />
-                <Stack.Screen
-                  name="competitor-signup"
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="guard-signup"
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="painting-upload"
-                  options={{ title: "Bài vẽ dự thi", headerShown: false }}
-                />
-                <Stack.Screen
-                  name="painting-evaluation-round1"
-                  options={{ title: "Chấm bài", headerShown: false }}
-                />
-                <Stack.Screen
-                  name="painting-evaluation-round2"
-                  options={{ title: "Chấm bài", headerShown: false }}
-                />
-                <Stack.Screen
-                  name="painting-review-round1"
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="contest-paintings"
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="add-child"
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="children-participate"
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="childrent-detail"
-                  options={{ headerShown: false }}
-                />
-              </Stack>
+            <NotificationProvider>
+              <StatusBar translucent animated backgroundColor="transparent" />
+              <ThemeProvider value={theme}>
+                <Stack>
+                  <Stack.Screen
+                    name="(tabs)"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="login"
+                    options={{
+                      title: "Login",
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="signup"
+                    options={{
+                      title: "Signup",
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="setting"
+                    options={{
+                      title: "Setting",
+                      headerShown: false,
+                      // presentation: "formSheet",
+                    }}
+                  />
+                  <Stack.Screen
+                    name="notifications"
+                    options={{
+                      title: "Notification",
+                      headerShown: false,
+                      presentation: "modal",
+                    }}
+                  />
+                  <Stack.Screen
+                    name="profile-detail"
+                    options={{ title: "Chi tiết hồ sơ", headerShown: true }}
+                  />
+                  <Stack.Screen
+                    name="contest-detail"
+                    options={{ title: "Contest Detail", headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="searchContest"
+                    options={{ title: "Search Contest", headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="results"
+                    options={{ title: "Search Results", headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="competitor-signup"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="guard-signup"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="painting-upload"
+                    options={{ title: "Bài vẽ dự thi", headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="painting-evaluation-round1"
+                    options={{ title: "Chấm bài", headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="painting-evaluation-round2"
+                    options={{ title: "Chấm bài", headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="painting-review-round1"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="contest-paintings"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="add-child"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="children-participate"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="childrent-detail"
+                    options={{ headerShown: false }}
+                  />
+                </Stack>
 
-              <Toaster richColors />
-            </ThemeProvider>
+                <Toaster richColors />
+              </ThemeProvider>
+            </NotificationProvider>
           </QueryClientProvider>
         </BottomSheetModalProvider>
       </SafeAreaProvider>

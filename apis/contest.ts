@@ -1,44 +1,29 @@
+import myAxios from "@/constants/custom-axios";
 import { ApiResponse } from "@/types";
-import { useQuery } from "@tanstack/react-query";
-import myAxios from "../constants/custom-axios";
-import { Contest, ContestFilter, Pagination } from "../types/contest";
+import { Contest, ContestFilter, ExaminerContest } from "@/types/contest";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
-export const normalizePagination = (
-  p: ApiResponse<any>["meta"]
-): Pagination => ({
-  page: Number(p.page ?? 1),
-  limit: Number(p.limit ?? 10),
-  total: Number(p.total ?? 0),
-  totalPages: Number(p.totalPages ?? 0),
-  hasNext: Boolean(p.hasNextPage),
-  hasPrev: Boolean(p.hasPreviousPage),
-});
+export function useContest(filters: ContestFilter = { status: "ALL" }) {
+  const params: ContestFilter = {};
+  if (filters.status && filters.status !== "ALL")
+    params.status = filters.status;
+  if (filters.limit) params.limit = filters.limit;
 
-export function useContest(
-  page = 1,
-  limit = 10,
-  filter: ContestFilter = { status: "ALL" }
-) {
-  const params: Record<string, string | number> = { page, limit };
-  if (filter?.status && filter.status !== "ALL") params.status = filter.status;
-
-  return useQuery({
-    queryKey: ["contests", page, limit, params.status ?? "ALL"],
-    queryFn: async () => {
-      const response = await myAxios.get<ApiResponse<Contest>>("/contests", {
+  return useInfiniteQuery({
+    queryKey: ["contests", filters],
+    queryFn: async ({ pageParam }) => {
+      params.page = pageParam;
+      const response = await myAxios.get<ApiResponse<Contest[]>>("/contests", {
         params,
       });
-      return response.data;
+      const filteredData = response.data.data.filter(
+        (contest) => contest.status !== "DRAFT"
+      );
+      return { ...response.data, data: filteredData };
     },
-    staleTime: 30_000,
-    placeholderData: (prev) => prev,
-    select: (res) => ({
-      items:
-        ((params.status ?? "ALL") === "ALL"
-          ? res.data.filter((d) => d.status !== "DRAFT")
-          : res.data) ?? [],
-      pagination: normalizePagination(res.meta),
-    }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.hasNext ? Number(lastPage.meta.page) + 1 : null,
   });
 }
 
@@ -57,10 +42,8 @@ export function useExaminerContest(examinerId: string | undefined) {
     queryKey: ["/contests/examiner", examinerId],
     queryFn: async () => {
       const response = await myAxios.get(`/contests/examiner/${examinerId}`);
-      return response.data.data as Contest[];
+      return response.data.data as ExaminerContest[];
     },
     enabled: !!examinerId,
   });
 }
-
-

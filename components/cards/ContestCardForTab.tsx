@@ -1,3 +1,4 @@
+import { ExaminerContest } from "@/types/contest";
 import type { ColorTokens } from "@/types/tabkey";
 import { formatDateDisplay } from "@/utils/date";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,13 +13,12 @@ import {
   View,
   ViewStyle,
 } from "react-native";
-import { Contest } from "../../types";
 
 type Props = {
   C: ColorTokens;
-  contest: Contest;
-  onEvaluate?: (contest: Contest) => Promise<void> | void;
-  onPress?: (contest: Contest) => void;
+  contest: ExaminerContest;
+  onEvaluate?: (contest: ExaminerContest) => Promise<void> | void;
+  onPress?: (contest: ExaminerContest) => void;
   style?: ViewStyle;
   titleStyle?: TextStyle;
 };
@@ -36,7 +36,7 @@ function calcProgress(start: string | Date, end: string | Date) {
   return { pct, daysLeft };
 }
 
-function statusMeta(status: Contest["status"], C: ColorTokens) {
+function statusMeta(status: ExaminerContest["status"], C: ColorTokens) {
   switch (status) {
     case "ACTIVE":
       return {
@@ -89,13 +89,16 @@ function statusMeta(status: Contest["status"], C: ColorTokens) {
   }
 }
 
-function examinerRoleMeta(C: ColorTokens, role?: Contest["examinerRole"]) {
+function examinerRoleMeta(
+  C: ColorTokens,
+  role?: ExaminerContest["examinerRole"]
+) {
   if (!role) return null;
 
   switch (role) {
     case "ROUND_1":
       return {
-        label: "Vai trò: Chấm vòng 1",
+        label: "Chấm Vòng 1",
         icon: "medal-outline" as const,
         grad: [C.primary, C.chart1],
         fg: C.primaryForeground,
@@ -103,7 +106,7 @@ function examinerRoleMeta(C: ColorTokens, role?: Contest["examinerRole"]) {
       };
     case "ROUND_2":
       return {
-        label: "Vai trò: Chấm vòng 2",
+        label: "Chấm Vòng 2",
         icon: "trophy-outline" as const,
         grad: [C.destructive, C.primary],
         fg: C.primaryForeground,
@@ -111,7 +114,7 @@ function examinerRoleMeta(C: ColorTokens, role?: Contest["examinerRole"]) {
       };
     default:
       return {
-        label: "Vai trò: " + String(role),
+        label: String(role),
         icon: "help-circle-outline" as const,
         grad: [C.muted, C.border],
         fg: C.foreground,
@@ -259,13 +262,18 @@ function ContestCardColorful({
             {/* Evaluate Button */}
             <Pressable
               onPress={handleEvaluate}
-              disabled={isEvaluating}
+              disabled={isEvaluating || !contest.canEvaluate}
               android_ripple={{ color: "#ffffff22" }}
               style={({ pressed }) => [
                 styles.evaluateBtn,
                 {
                   backgroundColor: "transparent",
-                  opacity: isEvaluating ? 0.6 : pressed ? 0.96 : 1,
+                  opacity:
+                    isEvaluating || !contest.canEvaluate
+                      ? 0.6
+                      : pressed
+                      ? 0.96
+                      : 1,
                   shadowColor: st.grad[1],
                 },
               ]}
@@ -282,7 +290,11 @@ function ContestCardColorful({
                   color="#fff"
                 />
                 <Text style={styles.evaluateBtnText}>
-                  {isEvaluating ? "Đang xử lý..." : "Đánh giá"}
+                  {isEvaluating
+                    ? "Đang xử lý..."
+                    : !contest.canEvaluate
+                    ? "Chưa tới lịch chấm"
+                    : "Đánh giá"}
                 </Text>
               </LinearGradient>
             </Pressable>

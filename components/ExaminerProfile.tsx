@@ -25,7 +25,7 @@ import {
 import { useWhoAmI } from "@/apis/auth";
 import { useExaminerContest } from "@/apis/contest";
 import { useAuthStore } from "@/store/auth-store";
-import type { Contest, Schedule } from "@/types";
+import type { ExaminerContest, Schedule } from "@/types";
 import type { ColorTokens, KPIProps } from "@/types/tabkey";
 import { useSchedules } from "../apis/schedule";
 import ContestCardForTab from "./cards/ContestCardForTab";
@@ -108,8 +108,8 @@ export default function ExaminerProfileScreen() {
   // KPIs
   const examinerStats = useMemo(() => {
     const activeContests =
-      ongoingContests?.filter((c: Contest) => c.status === "ACTIVE").length ??
-      0;
+      ongoingContests?.filter((c: ExaminerContest) => c.status === "ACTIVE")
+        .length ?? 0;
     return { activeContests };
   }, [ongoingContests]);
 
@@ -438,11 +438,11 @@ export default function ExaminerProfileScreen() {
             {activeTab === "contests" ? (
               ongoingContests && ongoingContests.length > 0 ? (
                 <View style={{ gap: 12 }}>
-                  {ongoingContests.map((contest: Contest) => (
+                  {ongoingContests.map((contest: ExaminerContest) => (
                     <ContestCardForTab
                       key={contest.contestId}
                       C={C}
-                      contest={contest as any}
+                      contest={contest}
                       onEvaluate={(c) => {
                         router.push({
                           pathname: "/contest-paintings",
