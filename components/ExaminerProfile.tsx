@@ -73,6 +73,11 @@ export default function ExaminerProfileScreen() {
   );
   const [refreshing, setRefreshing] = useState(false);
 
+  // Schedules
+  const { data: schedules, refetch: reloadSchedules } = useSchedules(
+    user?.userId
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -82,7 +87,9 @@ export default function ExaminerProfileScreen() {
     } finally {
       setRefreshing(false);
     }
-  }, [reloadMe, reloadContest]); // Header animation
+  }, [reloadMe, reloadContest, reloadSchedules]);
+
+  // Header animation
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerTranslateY = scrollY.interpolate({
     inputRange: [0, 100],
@@ -133,11 +140,6 @@ export default function ExaminerProfileScreen() {
     []
   );
 
-  // Schedules
-  const { data: schedules, refetch: reloadSchedules } = useSchedules(
-    user?.userId
-  );
-
   // Dynamic styles that use theme colors
   const dynamicStyles = {
     topbarGrad: {
@@ -146,8 +148,9 @@ export default function ExaminerProfileScreen() {
       alignItems: "center" as const,
       paddingHorizontal: 16,
       paddingVertical: 13,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: C.primary + "55",
+      // bỏ đường kẻ để tránh "vệt trắng"
+      // borderBottomWidth: StyleSheet.hairlineWidth,
+      // borderBottomColor: C.primary + "55",
     },
   };
 
@@ -165,7 +168,6 @@ export default function ExaminerProfileScreen() {
         colors={[BRAND, BRAND_DARK]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
-        // Absolute + zIndex để "ăn" trên nội dung, tôn trọng safe area
         style={[
           dynamicStyles.topbarGrad,
           { paddingTop: insets.top, zIndex: 20 },
@@ -264,7 +266,7 @@ export default function ExaminerProfileScreen() {
   /* ---------- Loading / Auth states ---------- */
   if (isLoading) {
     return (
-      <SafeAreaView style={s.container}>
+      <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
         <TopBar C={C} title="Hồ sơ" />
         <CenteredState
           C={C}
@@ -277,7 +279,7 @@ export default function ExaminerProfileScreen() {
 
   if (!accessToken || !user) {
     return (
-      <SafeAreaView style={s.container}>
+      <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
         <TopBar C={C} title="Hồ sơ" />
         <CenteredState
           C={C}
@@ -293,30 +295,16 @@ export default function ExaminerProfileScreen() {
     );
   }
 
-  const TOP_PAD = Math.max(headerH, insets.top + 56); // fallback an toàn
+  const TOP_PAD = Math.max(headerH, insets.top + 54); 
 
   return (
-    <SafeAreaView style={s.container}>
-      {/* Header nổi */}
-      <View style={t.topbarHolder}>
+    <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
+      
+      <View style={t.topbarHolder} pointerEvents="box-none">
         <TopBar C={C} title="Hồ sơ giám khảo" withActions />
       </View>
 
-      {/* Background blobs */}
-      <LinearGradient
-        colors={["#FF6B6B22", "#FFD16616"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={bg.blobTL}
-      />
-      <LinearGradient
-        colors={["#22C55E1f", "#A3E6351f"]}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={bg.blobBR}
-      />
-
-      {/* ScrollView positioned below header */}
+      
       <View style={{ flex: 1, marginTop: TOP_PAD }}>
         <Animated.ScrollView
           style={{ flex: 1 }}
@@ -332,11 +320,13 @@ export default function ExaminerProfileScreen() {
           }
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: true }
+            {
+              useNativeDriver: true,
+            }
           )}
           scrollEventThrottle={16}
         >
-          {/* Header compact (nằm trong content bên dưới header nổi) */}
+         
           <Animated.View
             style={[
               s.headerWrap,
@@ -350,11 +340,11 @@ export default function ExaminerProfileScreen() {
             <TouchableOpacity
               onPress={() => setOpenDetails(true)}
               activeOpacity={0.9}
-              style={{ padding: 8, margin: -8 }} // Expand touch area
+              style={{ padding: 8, margin: -8 }}
             >
               <View>
                 <Avatar />
-                {/* Badge cọ vẽ gradient */}
+                
                 <View style={[s.addBadge, { borderColor: C.background }]}>
                   {(() => {
                     const [b0, b1] = pickGrad("badge");
@@ -437,7 +427,7 @@ export default function ExaminerProfileScreen() {
           <View style={{ paddingHorizontal: 16 }}>
             {activeTab === "contests" ? (
               ongoingContests && ongoingContests.length > 0 ? (
-                <View style={{ gap: 12 }}>
+                <View style={{ gap: 30 }}>
                   {ongoingContests.map((contest: ExaminerContest) => (
                     <ContestCardForTab
                       key={contest.contestId}
@@ -645,12 +635,11 @@ function CenteredState({
 
 /* ---------- Styles ---------- */
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "transparent" },
+  container: { flex: 1 },
   headerWrap: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 14,
     paddingBottom: 10,
     gap: 10,
     backgroundColor: "transparent",
@@ -683,28 +672,13 @@ const s = StyleSheet.create({
 
 const t = StyleSheet.create({
   // Holder để header absolute chiếm chỗ ở top (zIndex cao)
-  topbarHolder: { position: "absolute", top: 0, left: 0, right: 0 },
+  topbarHolder: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+  },
   headerTitle: { fontSize: 24, fontWeight: "600" },
   iconBtn: { padding: 8, marginLeft: 4 },
-});
-
-const bg = StyleSheet.create({
-  blobTL: {
-    position: "absolute",
-    top: 120,
-    right: -40,
-    width: 200,
-    height: 200,
-    borderRadius: 120,
-    transform: [{ rotate: "25deg" }],
-  },
-  blobBR: {
-    position: "absolute",
-    bottom: 60,
-    left: -50,
-    width: 240,
-    height: 240,
-    borderRadius: 140,
-    transform: [{ rotate: "-15deg" }],
-  },
 });

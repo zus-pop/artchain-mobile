@@ -58,7 +58,7 @@ export interface Theme {
 export const Colors = {
   light: {
     background: "hsl(30 25% 98%)",
-    newbackground: "hsl(36°, 90%, 19%)",
+    newbackground: "#EAE6E0",
     foreground: "hsl(20 15% 15%)",
     card: "hsl(0 0% 100%)",
     cardForeground: "hsl(20 15% 15%)",

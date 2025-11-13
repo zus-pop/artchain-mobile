@@ -55,10 +55,9 @@ export default function SignupScreen() {
           justifyContent: "center",
           alignItems: "center",
           padding: 24,
-          borderWidth: 1,
         }}
       >
-        <View style={{ marginTop: 28, alignItems: "center", borderWidth: 1 }}>
+        <View style={{ marginTop: 28, alignItems: "center" }}>
           <Text
             style={{
               fontSize: 28,

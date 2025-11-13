@@ -8,6 +8,7 @@ import type { ColorTokens } from "@/types/tabkey";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   Animated,
@@ -18,6 +19,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 /* ================= Helpers ================= */
 const HEADER_H = 56;
@@ -80,154 +82,233 @@ export default function ProfileDetailScreen() {
 
   if (isLoading) {
     return (
-      <View style={[s.container, s.center]}>
-        <Text style={{ color: C.mutedForeground }}>Đang tải hồ sơ...</Text>
-      </View>
+      <SafeAreaView
+        style={[
+          s.safeArea,
+          {
+            backgroundColor: "#EAE6E0",
+            paddingTop: Platform.OS === "ios" ? 8 : 0,
+          },
+        ]}
+        edges={["top"]}
+      >
+        {/* Header */}
+        <View style={s.header}>
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => [
+              s.headerIconBtn,
+              { opacity: pressed ? 0.6 : 1 },
+            ]}
+          >
+            <Ionicons name="arrow-back" size={20} color="white" />
+          </Pressable>
+          <Text style={s.headerTitle}>Hồ sơ</Text>
+          <View style={{ width: 32 }} />
+        </View>
+
+        <View style={[s.container, s.center]}>
+          <Text style={{ color: C.mutedForeground }}>Đang tải hồ sơ...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
+
   if (!userUI || error) {
     return (
-      <View style={[s.container, s.center]}>
-        <Text style={{ color: C.mutedForeground }}>
-          Không lấy được dữ liệu hồ sơ
-        </Text>
-      </View>
+      <SafeAreaView
+        style={[
+          s.safeArea,
+          {
+            backgroundColor: C.border,
+            paddingTop: Platform.OS === "ios" ? 8 : 0,
+          },
+        ]}
+        edges={["top"]}
+      >
+        {/* Header */}
+        <View style={s.header}>
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => [
+              s.headerIconBtn,
+              { opacity: pressed ? 0.6 : 1 },
+            ]}
+          >
+            <Ionicons name="arrow-back" size={20} color="#111827" />
+          </Pressable>
+          <Text style={s.headerTitle}>Hồ sơ</Text>
+          <View style={{ width: 32 }} />
+        </View>
+
+        <View style={[s.container, s.center]}>
+          <Text style={{ color: C.mutedForeground }}>
+            Không lấy được dữ liệu hồ sơ
+          </Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={s.container}>
-      <Animated.ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 28 }}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={C.primary}
-          />
-        }
-        style={{ backgroundColor: C.background }}
-      >
-        {/* Card avatar + nút camera */}
-        <View style={[s.card, { marginTop: 12 }]}>
-          <View style={s.avatarBox}>
-            <View style={s.avatarRing}>
-              <View style={s.avatarRingFill} />
-              <View style={[s.avatar, { backgroundColor: C.background }]}>
-                <Ionicons name="person" size={28} color={C.mutedForeground} />
+    <SafeAreaView
+      style={[
+        s.safeArea,
+        {
+          backgroundColor: "#EAE6E0",
+          paddingTop: Platform.OS === "ios" ? 8 : 0,
+        },
+      ]}
+      edges={["top"]}
+    >
+      <View style={s.container}>
+        {/* Header cố định trong screen */}
+        <View style={s.header}>
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => [
+              s.headerIconBtn,
+              { opacity: pressed ? 0.6 : 1 },
+            ]}
+          >
+            <Ionicons name="arrow-back" size={20} color="#111827" />
+          </Pressable>
+          <Text style={s.headerTitle}>Hồ sơ</Text>
+          <View style={{ width: 32 }} />
+        </View>
+
+        <Animated.ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 28 }}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true }
+          )}
+          scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={C.primary}
+            />
+          }
+          style={{ backgroundColor: "#EAE6E0" }}
+        >
+          {/* Card avatar + nút camera */}
+          <View style={[s.card, { marginTop: 12 }]}>
+            <View style={s.avatarBox}>
+              <View style={s.avatarRing}>
+                <View style={s.avatarRingFill} />
+                <View style={[s.avatar, { backgroundColor: C.background }]}>
+                  <Ionicons name="person" size={28} color={C.mutedForeground} />
+                </View>
               </View>
+
+              <Pressable
+                onPress={pickAndUploadAvatar}
+                style={({ pressed }) => [
+                  s.camBtn,
+                  {
+                    backgroundColor: C.primary,
+                    opacity: pressed ? 0.9 : 1,
+                    borderColor: scheme === "dark" ? "#111827" : "#fff",
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="camera-outline"
+                  size={16}
+                  color={C.primaryForeground}
+                />
+              </Pressable>
+            </View>
+
+            <Text style={s.name} numberOfLines={1}>
+              {userUI.fullName}
+            </Text>
+
+            <View style={s.statsRow}>
+              <StatBox label="Cuộc thi" value="12" C={C} />
+              <StatBox label="Giải thưởng" value="03" C={C} />
+              <StatBox label="Theo dõi" value="1.2K" C={C} />
             </View>
 
             <Pressable
-              onPress={pickAndUploadAvatar}
+              onPress={() => setOpenDetails(true)}
               style={({ pressed }) => [
-                s.camBtn,
-                {
-                  backgroundColor: C.primary,
-                  opacity: pressed ? 0.9 : 1,
-                  borderColor: scheme === "dark" ? "#111827" : "#fff",
-                },
+                s.editBtn,
+                { backgroundColor: C.primary, opacity: pressed ? 0.92 : 1 },
               ]}
             >
-              <Ionicons
-                name="camera-outline"
-                size={16}
-                color={C.primaryForeground}
-              />
+              <Text style={[s.editTxt, { color: C.primaryForeground }]}>
+                Chỉnh sửa hồ sơ
+              </Text>
             </Pressable>
           </View>
 
-          <Text style={s.name} numberOfLines={1}>
-            {userUI.fullName}
-          </Text>
-
-          <View style={s.statsRow}>
-            <StatBox label="Cuộc thi" value="12" C={C} />
-            <StatBox label="Giải thưởng" value="03" C={C} />
-            <StatBox label="Theo dõi" value="1.2K" C={C} />
-          </View>
-
-          <Pressable
-            onPress={() => setOpenDetails(true)}
-            style={({ pressed }) => [
-              s.editBtn,
-              { backgroundColor: C.primary, opacity: pressed ? 0.92 : 1 },
+          {/* Thông tin tài khoản */}
+          <View
+            style={[
+              s.card,
+              {
+                gap: 6,
+              },
             ]}
           >
-            <Text style={[s.editTxt, { color: C.primaryForeground }]}>
-              Chỉnh sửa hồ sơ
-            </Text>
-          </Pressable>
-        </View>
+            <Text style={s.sectionTitle}>Thông tin tài khoản</Text>
+            <InfoRow
+              icon="mail-outline"
+              label="Email"
+              value={userUI.email}
+              C={C}
+            />
+            <InfoRow
+              icon="call-outline"
+              label="Điện thoại"
+              value={userUI.phone || "—"}
+              C={C}
+            />
+            <InfoRow
+              icon="calendar-outline"
+              label="Ngày sinh"
+              value={fmtDate(userUI.birthday) || "—"}
+              C={C}
+            />
+            <InfoRow
+              icon="school-outline"
+              label="Trường"
+              value={userUI.schoolName || "—"}
+              C={C}
+            />
+            <InfoRow
+              icon="location-outline"
+              label="Phường / Xã"
+              value={userUI.ward || "—"}
+              C={C}
+            />
+            <InfoRow
+              icon="ribbon-outline"
+              label="Khối / Lớp"
+              value={userUI.grade || "—"}
+              C={C}
+            />
+          </View>
+        </Animated.ScrollView>
 
-        {/* Thông tin tài khoản */}
-        <View
-          style={[
-            s.card,
-            {
-              gap: 6,
-            },
-          ]}
-        >
-          <Text style={s.sectionTitle}>Thông tin tài khoản</Text>
-          <InfoRow
-            icon="mail-outline"
-            label="Email"
-            value={userUI.email}
-            C={C}
-          />
-          <InfoRow
-            icon="call-outline"
-            label="Điện thoại"
-            value={userUI.phone || "—"}
-            C={C}
-          />
-          <InfoRow
-            icon="calendar-outline"
-            label="Ngày sinh"
-            value={fmtDate(userUI.birthday) || "—"}
-            C={C}
-          />
-          <InfoRow
-            icon="school-outline"
-            label="Trường"
-            value={userUI.schoolName || "—"}
-            C={C}
-          />
-          <InfoRow
-            icon="location-outline"
-            label="Phường / Xã"
-            value={userUI.ward || "—"}
-            C={C}
-          />
-          <InfoRow
-            icon="ribbon-outline"
-            label="Khối / Lớp"
-            value={userUI.grade || "—"}
-            C={C}
-          />
-        </View>
-      </Animated.ScrollView>
-
-      {/* Modal chi tiết hồ sơ */}
-      <ProfileDetailsModal
-        visible={openDetails}
-        onClose={() => setOpenDetails(false)}
-        scheme={scheme}
-        user={{
-          userId: userUI.userId,
-          fullname: userUI.fullName,
-          email: userUI.email,
-          phone: userUI.phone || "",
-        }}
-      />
-    </View>
+        {/* Modal chi tiết hồ sơ */}
+        <ProfileDetailsModal
+          visible={openDetails}
+          onClose={() => setOpenDetails(false)}
+          scheme={scheme}
+          user={{
+            userId: userUI.userId,
+            fullname: userUI.fullName,
+            email: userUI.email,
+            phone: userUI.phone || "",
+          }}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -299,12 +380,10 @@ function InfoRow({
           },
         ]}
       >
-        <Ionicons name={icon} size={16} color={C.primary} />
+        <Ionicons name={icon} size={16} color={C.background} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={[infoStyles.label, { color: C.mutedForeground }]}>
-          {label}
-        </Text>
+        <Text style={[infoStyles.label, { color: C.background }]}>{label}</Text>
         <Text
           style={[infoStyles.value, { color: C.foreground }]}
           numberOfLines={1}
@@ -358,19 +437,40 @@ const infoStyles = StyleSheet.create({
 
 const styles = (C: ColorTokens) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: C.background },
+    // SafeArea wrapper
+    safeArea: {
+      flex: 1,
+    },
+
+    container: {
+      flex: 1,
+    },
     center: { alignItems: "center", justifyContent: "center" },
 
+    // New header inside screen (uses beige bg to match body)
     header: {
+      height: HEADER_H,
       paddingHorizontal: 16,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: C.border,
-      backgroundColor: C.card,
-      alignItems: "center",
       flexDirection: "row",
+      alignItems: "center",
       justifyContent: "space-between",
+      backgroundColor: "#rgba(31, 41, 55, 0.8)",
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: toAlpha("#000000", 0.06),
     },
-    headerTitle: { fontSize: 18, fontWeight: "900", letterSpacing: 0.2 },
+    headerIconBtn: {
+      width: 42,
+      height: 42,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(0,0,0,0.04)",
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: "800",
+      color: "#FFF",
+    },
 
     card: {
       marginTop: 12,
