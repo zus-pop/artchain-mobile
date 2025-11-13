@@ -1,22 +1,30 @@
 // app/childrent-detail.tsx
 import { useWhoAmI } from "@/apis/auth";
 import { useGuardianChildren } from "@/apis/guardian";
-import { useGetAchivementByUserId, useMySubmission } from "@/apis/painting";
+import {
+  useGetAchivementByUserId,
+  useGetSubmissionsByCompetitorId,
+} from "@/apis/painting";
 import AppHeader from "@/components/AppHeader";
 import AchievementCard, {
   AchievementItem,
 } from "@/components/cards/competitor/AchievementCard";
 import EmptyState from "@/components/cards/competitor/EmptyState";
+import SubmissionCard, {
+  SubmissionItem,
+} from "@/components/cards/competitor/SubmissionCard";
 import AchievementModal from "@/components/modals/AchievementModal";
+import SubmissionDetailsModal from "@/components/modals/SubmissionDetailsModal";
 import SegmentedTabsProfile from "@/components/tabs/SegmentedTabsProfile";
 import { Colors, withOpacity } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Painting } from "@/types";
+import { formatDateDisplay } from "@/utils/date";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   BookUser,
   Cake,
   CalendarDays,
-  FileText,
   Mail,
   MapPin,
   Phone,
@@ -35,6 +43,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /* ---------- Helpers ---------- */
+
 function fmtDateTime(v?: string | Date | null) {
   if (!v) return undefined;
   try {
@@ -107,12 +116,16 @@ export default function ChildrentDetailScreen() {
   } = useGuardianChildren(guardianId);
 
   const { data: submissions = [], isLoading: submissionsLoading } =
-    useMySubmission();
+    useGetSubmissionsByCompetitorId(childId);
 
   const { data: achievementData, isLoading: achievementsLoading } =
     useGetAchivementByUserId(childId);
 
   const achievements = achievementData?.achievements ?? [];
+  const [openSubmission, setOpenSubmission] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState<Painting | null>(
+    null
+  );
 
   const [activeTab, setActiveTab] = useState<"achievements" | "submissions">(
     "submissions"
@@ -299,18 +312,27 @@ export default function ChildrentDetailScreen() {
               </View>
             ) : submissions.length ? (
               <View style={{ gap: 10 }}>
-                {submissions.map((sub: any) => (
-                  <View key={sub.submissionId} style={s.subItem}>
-                    <FileText size={16} color={C.primary} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.subTitle}>
-                        {sub.title || "Bài dự thi"}
-                      </Text>
-                      <Text style={s.subMeta}>
-                        Nộp: {fmtDateTime(sub.createdAt) ?? "—"}
-                      </Text>
-                    </View>
-                  </View>
+                {submissions.map((sItem) => (
+                  <SubmissionCard
+                    key={sItem.paintingId}
+                    item={
+                      {
+                        paintingId: sItem.paintingId,
+                        title: sItem.title,
+                        contestTitle: sItem.contest.title,
+                        date: formatDateDisplay(sItem.submissionDate),
+                        status: sItem.status,
+                        imageUrl: sItem.imageUrl,
+                      } as SubmissionItem
+                    }
+                    pickGrad={pickGrad}
+                    borderColor={C.border}
+                    mutedFg={C.mutedForeground}
+                    onPress={() => {
+                      setSelectedSubmission(sItem);
+                      setOpenSubmission(true);
+                    }}
+                  />
                 ))}
               </View>
             ) : (
@@ -365,6 +387,14 @@ export default function ChildrentDetailScreen() {
             />
           )}
         </View>
+        {selectedSubmission && (
+          <SubmissionDetailsModal
+            visible={openSubmission}
+            onClose={() => setOpenSubmission(false)}
+            submission={selectedSubmission}
+            scheme={scheme}
+          />
+        )}
         <AchievementModal
           visible={openAchModal}
           onClose={() => setOpenAchModal(false)}
