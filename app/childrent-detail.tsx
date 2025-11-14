@@ -1,14 +1,10 @@
 // app/childrent-detail.tsx
 import { useWhoAmI } from "@/apis/auth";
 import { useGuardianChildren } from "@/apis/guardian";
-<<<<<<< HEAD
-import { useGetAchievementByUserId, useGetSubmissionsByCompetitorId, useMySubmission } from "@/apis/painting";
-=======
 import {
-  useGetAchivementByUserId,
+  useGetAchievementByUserId,
   useGetSubmissionsByCompetitorId,
 } from "@/apis/painting";
->>>>>>> 75bd45cae03a87f7cb140fc29e68c1d96d20c63b
 import AppHeader from "@/components/AppHeader";
 import AchievementCard from "@/components/cards/competitor/AchievementCard";
 import EmptyState from "@/components/cards/competitor/EmptyState";
@@ -20,8 +16,8 @@ import SubmissionDetailsModal from "@/components/modals/SubmissionDetailsModal";
 import SegmentedTabsProfile from "@/components/tabs/SegmentedTabsProfile";
 import { Colors, withOpacity } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import type { AchievementItem } from "@/types/achievements";
 import { Painting } from "@/types";
+import type { AchievementItem } from "@/types/achievements";
 import { formatDateDisplay } from "@/utils/date";
 import { router, useLocalSearchParams } from "expo-router";
 import {
@@ -371,7 +367,6 @@ export default function ChildrentDetailScreen() {
                     item={{
                       id: a.paintingId,
                       title: `${a.award.name} - ${a.contest.title}`,
-                      place: fmtDateOnly(a.achievedDate),
                       achievedDate: fmtDateOnly(a.achievedDate),
                     }}
                     pickGrad={pickGrad}

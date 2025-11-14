@@ -17,10 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useWhoAmI } from "@/apis/auth";
 import { useGetAchievementByUserId, useMySubmission } from "@/apis/painting";
@@ -261,7 +258,7 @@ export default function CompetitorProfileComponent() {
   }
 
   return (
-    <SafeAreaProvider style={{ backgroundColor: C.newbackground, flex: 1 }}>
+    <View style={{ backgroundColor: C.newbackground, flex: 1 }}>
       <TopBar title="Hồ sơ thí sinh" withActions />
 
       <Animated.ScrollView
@@ -493,7 +490,7 @@ export default function CompetitorProfileComponent() {
         onClose={() => setOpenAchModal(false)}
         item={selectedAch}
       />
-    </SafeAreaProvider>
+    </View>
   );
 }
 

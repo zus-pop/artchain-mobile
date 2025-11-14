@@ -1,4 +1,5 @@
 import { useWhoAmI } from "@/apis/auth";
+import { useAddPushToken } from "@/apis/notification";
 import { usePosts } from "@/apis/post";
 import PostCard from "@/components/cards/PostCard";
 import CollapsibleHeader, {
@@ -10,6 +11,7 @@ import themedStyles from "@/components/styleSheet/themeSheet";
 import ImageCard from "@/components/ui/imageCard";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useNotification } from "@/providers";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -24,11 +26,11 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNotification } from "../../providers";
 
 /* =================== Screen =================== */
 export default function Home() {
   const { data, refetch: refetchMe } = useWhoAmI();
+  const addPushToken = useAddPushToken();
   const { data: postsData, refetch: refetchPosts } = usePosts({ limit: 5 });
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
   const { requestPushToken } = useNotification();
@@ -54,6 +56,11 @@ export default function Home() {
     if (data) {
       requestPushToken().then((token) => {
         console.log(`Push token: [${token}]`);
+        if (token) {
+          addPushToken.mutate({
+            token_value: token,
+          });
+        }
       });
     }
   }, [data]);
