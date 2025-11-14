@@ -2,13 +2,11 @@
 import { useWhoAmI } from "@/apis/auth";
 import { useGuardianChildren } from "@/apis/guardian";
 import {
-  useGetAchivementByUserId,
+  useGetAchievementByUserId,
   useGetSubmissionsByCompetitorId,
 } from "@/apis/painting";
 import AppHeader from "@/components/AppHeader";
-import AchievementCard, {
-  AchievementItem,
-} from "@/components/cards/competitor/AchievementCard";
+import AchievementCard from "@/components/cards/competitor/AchievementCard";
 import EmptyState from "@/components/cards/competitor/EmptyState";
 import SubmissionCard, {
   SubmissionItem,
@@ -19,6 +17,7 @@ import SegmentedTabsProfile from "@/components/tabs/SegmentedTabsProfile";
 import { Colors, withOpacity } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Painting } from "@/types";
+import type { AchievementItem } from "@/types/achievements";
 import { formatDateDisplay } from "@/utils/date";
 import { router, useLocalSearchParams } from "expo-router";
 import {
@@ -119,7 +118,7 @@ export default function ChildrentDetailScreen() {
     useGetSubmissionsByCompetitorId(childId);
 
   const { data: achievementData, isLoading: achievementsLoading } =
-    useGetAchivementByUserId(childId);
+    useGetAchievementByUserId(childId);
 
   const achievements = achievementData?.achievements ?? [];
   const [openSubmission, setOpenSubmission] = useState(false);
@@ -368,7 +367,6 @@ export default function ChildrentDetailScreen() {
                     item={{
                       id: a.paintingId,
                       title: `${a.award.name} - ${a.contest.title}`,
-                      place: fmtDateOnly(a.achievedDate),
                       achievedDate: fmtDateOnly(a.achievedDate),
                     }}
                     pickGrad={pickGrad}

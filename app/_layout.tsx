@@ -42,8 +42,8 @@ export default function RootLayout() {
   };
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
+    <SafeAreaProvider style={{ flex: 1 }}>
+      <GestureHandlerRootView>
         <BottomSheetModalProvider>
           <View
             pointerEvents="none"
@@ -157,7 +157,7 @@ export default function RootLayout() {
             </NotificationProvider>
           </QueryClientProvider>
         </BottomSheetModalProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

@@ -11,25 +11,22 @@ import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useWhoAmI } from "@/apis/auth";
+import { useGetAchievementByUserId, useMySubmission } from "@/apis/painting";
 import { useAuthStore } from "@/store/auth-store";
+import { Painting } from "@/types";
+import type { AchievementItem as ApiAchievementItem } from "@/types/achievements";
 import type { ColorTokens, KPIProps } from "@/types/tabkey";
 import { formatDateDisplay } from "@/utils/date";
-import { useGetAchivementByUserId, useMySubmission } from "../apis/painting";
-import { Painting } from "../types";
-import AchievementCard, {
-  AchievementItem,
-} from "./cards/competitor/AchievementCard";
+import AchievementCard from "./cards/competitor/AchievementCard";
 import EmptyState from "./cards/competitor/EmptyState";
 import SubmissionCard, {
   SubmissionItem,
@@ -79,14 +76,23 @@ export default function CompetitorProfileComponent() {
   };
 
   const [openAchModal, setOpenAchModal] = useState(false);
-  const [selectedAch, setSelectedAch] = useState<AchievementItem | null>(null);
+  const [selectedAch, setSelectedAch] = useState<ApiAchievementItem | null>(
+    null
+  );
+  const [refreshing, setRefreshing] = useState(false);
 
   const accessToken = useAuthStore((s) => s.accessToken);
   const { data: user, isLoading, refetch: reloadMe } = useWhoAmI();
-  const { data: submissions = [], isLoading: submissionsLoading } =
-    useMySubmission();
-  const { data: achievementData, isLoading: achievementsLoading } =
-    useGetAchivementByUserId(user?.userId || "");
+  const {
+    data: submissions = [],
+    isLoading: submissionsLoading,
+    refetch: refetchSubmissions,
+  } = useMySubmission();
+  const {
+    data: achievementData,
+    isLoading: achievementsLoading,
+    refetch: refetchAchievements,
+  } = useGetAchievementByUserId(user?.userId || "");
 
   const [openDetails, setOpenDetails] = useState(false);
   const [openSubmission, setOpenSubmission] = useState(false);
@@ -120,6 +126,22 @@ export default function CompetitorProfileComponent() {
       reloadMe();
     }, [])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        reloadMe(),
+        refetchSubmissions(),
+        refetchAchievements(),
+      ]);
+    } catch (error) {
+      console.error("Refresh failed:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [reloadMe, refetchSubmissions, refetchAchievements]);
+
   const scrollY = useRef(new Animated.Value(0)).current;
 
   function TopBar({
@@ -236,7 +258,7 @@ export default function CompetitorProfileComponent() {
   }
 
   return (
-    <SafeAreaProvider style={{ backgroundColor: C.newbackground, flex: 1 }}>
+    <View style={{ backgroundColor: C.newbackground, flex: 1 }}>
       <TopBar title="Hồ sơ thí sinh" withActions />
 
       <Animated.ScrollView
@@ -248,6 +270,14 @@ export default function CompetitorProfileComponent() {
         )}
         scrollEventThrottle={16}
         contentInsetAdjustmentBehavior="automatic"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[C.primary]}
+            tintColor={C.primary}
+          />
+        }
       >
         {/* header compact */}
         <View style={[s.headerWrap, { marginBottom: SP.sectionGap }]}>
@@ -360,7 +390,9 @@ export default function CompetitorProfileComponent() {
                           paintingId: sItem.paintingId,
                           title: sItem.title,
                           contestTitle: sItem.contest.title,
-                          date: formatDateDisplay(sItem.submissionDate),
+                          date: sItem.submissionDate
+                            ? formatDateDisplay(sItem.submissionDate)
+                            : null,
                           status: sItem.status,
                           imageUrl: sItem.imageUrl,
                         } as SubmissionItem
@@ -410,7 +442,6 @@ export default function CompetitorProfileComponent() {
                         item={{
                           id: a.paintingId,
                           title: `${a.award.name} - ${a.contest.title}`,
-                          place: a.achievedDate,
                           achievedDate: fmtDateOnly(a.achievedDate),
                         }}
                         pickGrad={pickGrad}
@@ -459,7 +490,7 @@ export default function CompetitorProfileComponent() {
         onClose={() => setOpenAchModal(false)}
         item={selectedAch}
       />
-    </SafeAreaProvider>
+    </View>
   );
 }
 

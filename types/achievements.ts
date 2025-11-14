@@ -1,5 +1,3 @@
-
-
 export interface AchievementsApiResponse {
   success: boolean;
   data: AchievementsData;
@@ -19,10 +17,10 @@ export interface AchievementUser {
 export interface AchievementItem {
   paintingId: string;
   paintingTitle: string;
-  paintingImage: string; 
+  paintingImage: string;
   award: AchievementAward;
   contest: AchievementContest;
-  achievedDate: string; 
+  achievedDate: string;
 }
 
 export interface AchievementAward {
@@ -30,12 +28,12 @@ export interface AchievementAward {
   name: string;
   description: string;
   rank: number;
-  prize: number; // VND
+  prize: string; // VND
 }
 
 export interface AchievementContest {
   contestId: number;
   title: string;
-  startDate: string; 
-  endDate: string;   
+  startDate: string;
+  endDate: string;
 }

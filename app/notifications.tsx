@@ -1,3 +1,7 @@
+import {
+  useGetNotificationsForUser,
+  useUpdateNotificationReadStatus,
+} from "@/apis/notification";
 import NotificationCard, {
   NotificationItem,
 } from "@/components/cards/NotificationCard";
@@ -8,6 +12,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import {
+  ActivityIndicator,
+  RefreshControl,
   SectionList,
   StatusBar,
   StyleSheet,
@@ -20,52 +26,22 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
-/* demo data */
-const seed: NotificationItem[] = [
-  {
-    id: "1",
-    title: 'Kết quả cuộc thi "Vẽ Sài Gòn Xanh"',
-    message:
-      'Chúc mừng! Tác phẩm "Sài Gòn Trong Mắt Tôi" của bạn đã giành giải Nhất.',
-    type: "result",
-    isRead: false,
-    date: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    title: 'Cuộc thi mới: "Thiên Nhiên Việt Nam"',
-    message: "Cuộc thi mới đã được công bố. Hạn chót tham gia: 28/02/2025.",
-    type: "contest",
-    isRead: false,
-    date: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: "3",
-    title: "Tác phẩm đã được chấp nhận",
-    message:
-      'Tác phẩm "Nghệ Thuật Đường Phố" đã được ban tổ chức chấp nhận tham gia cuộc thi.',
-    type: "submission",
-    isRead: true,
-    date: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: "4",
-    title: "Nhắc nhở hạn chót",
-    message:
-      'Cuộc thi "Nghệ Thuật Đường Phố" sẽ kết thúc trong 3 ngày. Hãy nộp bài ngay!',
-    type: "contest",
-    isRead: true,
-    date: new Date(Date.now() - 6 * 24 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: "5",
-    title: "Cập nhật hệ thống",
-    message: "Ứng dụng đã được cập nhật với tính năng bình chọn mới.",
-    type: "system",
-    isRead: true,
-    date: new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString(),
-  },
-];
+// Helper functions to extract title and type from message
+const getNotificationTitle = (message: string): string => {
+  // Extract title from message - this is a simple implementation
+  // You might want to make this more sophisticated based on your message format
+  const parts = message.split(":");
+  return parts.length > 1 ? parts[0].trim() : "Notification";
+};
+
+const getNotificationType = (message: string): string => {
+  // Determine type based on message content
+  const lowerMessage = message.toLowerCase();
+  if (lowerMessage.includes("result")) return "result";
+  if (lowerMessage.includes("contest")) return "contest";
+  if (lowerMessage.includes("submission")) return "submission";
+  return "system";
+};
 
 /* nền orbs */
 function Orbs({ scheme }: { scheme: "light" | "dark" }) {
@@ -74,19 +50,16 @@ function Orbs({ scheme }: { scheme: "light" | "dark" }) {
     scheme === "dark"
       ? [
           [
-            withOpacity(C.primary, 0.13),
-            withOpacity(C.secondary, 0.27),
+            withOpacity(C.primary, 0.08),
+            withOpacity(C.secondary, 0.15),
           ] as const,
-          [withOpacity(C.accent, 0.13), withOpacity(C.muted, 0.27)] as const,
-          [withOpacity(C.border, 0.13), withOpacity(C.card, 0.27)] as const,
+          [withOpacity(C.accent, 0.08), withOpacity(C.muted, 0.15)] as const,
+          [withOpacity(C.border, 0.08), withOpacity(C.card, 0.15)] as const,
         ]
       : [
-          [
-            withOpacity(C.primary, 0.2),
-            withOpacity(C.secondary, 0.33),
-          ] as const,
-          [withOpacity(C.accent, 0.2), withOpacity(C.muted, 0.33)] as const,
-          [withOpacity(C.border, 0.2), withOpacity(C.card, 0.33)] as const,
+          [withOpacity(C.primary, 0.1), withOpacity(C.secondary, 0.2)] as const,
+          [withOpacity(C.accent, 0.1), withOpacity(C.muted, 0.2)] as const,
+          [withOpacity(C.border, 0.1), withOpacity(C.card, 0.2)] as const,
         ];
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -94,36 +67,75 @@ function Orbs({ scheme }: { scheme: "light" | "dark" }) {
         colors={orbs[0]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.orb, { top: -70, left: -60, width: 220, height: 220 }]}
+        style={[styles.orb, { top: -100, left: -80, width: 200, height: 200 }]}
       />
       <LinearGradient
         colors={orbs[1]}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={[styles.orb, { top: 120, right: -70, width: 240, height: 240 }]}
+        style={[styles.orb, { top: 80, right: -90, width: 220, height: 220 }]}
       />
       <LinearGradient
         colors={orbs[2]}
         start={{ x: 0, y: 1 }}
         end={{ x: 1, y: 0 }}
-        style={[styles.orb, { top: 340, left: -40, width: 180, height: 180 }]}
+        style={[
+          styles.orb,
+          { bottom: -50, left: -60, width: 160, height: 160 },
+        ]}
       />
     </View>
   );
 }
 
 export default function NotificationsScreen() {
-  const [list, setList] = useState<NotificationItem[]>(seed);
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const C = Colors[scheme];
   const insets = useSafeAreaInsets();
 
-  const unreadCount = list.filter((x) => !x.isRead).length;
+  // API hooks
+  const {
+    data: notificationsData,
+    isLoading,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+    refetch,
+    isRefetching,
+  } = useGetNotificationsForUser();
+
+  const updateReadStatus = useUpdateNotificationReadStatus();
+
+  // Flatten all pages of notifications
+  const allNotifications = useMemo(() => {
+    return notificationsData?.pages.flatMap((page) => page.data) ?? [];
+  }, [notificationsData]);
+
+  const unreadCount = allNotifications.filter((x) => !x.isRead).length;
 
   const [tab, setTab] = useState<"all" | "unread">("all");
+  // Transform API data to match NotificationItem interface
+  const transformedNotifications = useMemo(() => {
+    return allNotifications.map((notification) => ({
+      id: notification.notificationId,
+      title: getNotificationTitle(notification.message),
+      message: notification.message,
+      type: getNotificationType(notification.message) as
+        | "result"
+        | "contest"
+        | "submission"
+        | "system",
+      isRead: notification.isRead,
+      date: notification.createdAt,
+    }));
+  }, [allNotifications]);
+
   const filtered = useMemo(
-    () => (tab === "unread" ? list.filter((x) => !x.isRead) : list),
-    [list, tab]
+    () =>
+      tab === "unread"
+        ? transformedNotifications.filter((x) => !x.isRead)
+        : transformedNotifications,
+    [transformedNotifications, tab]
   );
 
   const sections = useMemo(() => {
@@ -152,17 +164,20 @@ export default function NotificationsScreen() {
     if (today.length) s.push({ title: "Hôm nay", data: today });
     if (week.length) s.push({ title: "Tuần này", data: week });
     if (earlier.length) s.push({ title: "Trước đó", data: earlier });
-    if (!s.length) s.push({ title: "—", data: [] });
     return s;
   }, [filtered]);
 
-  const markAllAsRead = () =>
-    setList((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  const markAllAsRead = () => {
+    // Mark all unread notifications as read
+    const unreadNotifications = allNotifications.filter((n) => !n.isRead);
+    unreadNotifications.forEach((notification) => {
+      updateReadStatus.mutate(notification.notificationId);
+    });
+  };
 
-  const markOneAsRead = (id: string) =>
-    setList((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+  const markOneAsRead = (id: string) => {
+    updateReadStatus.mutate(id);
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: C.background }]}>
@@ -286,30 +301,57 @@ export default function NotificationsScreen() {
             onLongPress={() => markOneAsRead(item.id)}
           />
         )}
-        renderSectionHeader={({ section }) =>
-          section.title !== "—" ? (
-            <Text style={[styles.sectionTitle, { color: C.mutedForeground }]}>
-              {section.title}
-            </Text>
-          ) : null
-        }
+        renderSectionHeader={({ section }) => (
+          <Text style={[styles.sectionTitle, { color: C.mutedForeground }]}>
+            {section.title}
+          </Text>
+        )}
         contentContainerStyle={{ paddingBottom: insets.bottom + 12 }}
         stickySectionHeadersEnabled={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor={C.primary}
+            colors={[C.primary]}
+          />
+        }
+        onEndReached={() => {
+          if (hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <View style={styles.loadingFooter}>
+              <ActivityIndicator size="small" color={C.primary} />
+              <Text style={[styles.loadingText, { color: C.mutedForeground }]}>
+                Đang tải thêm...
+              </Text>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons
-              name="notifications-off-outline"
-              size={48}
-              color={C.muted}
-            />
-            <Text style={[styles.emptyTitle, { color: C.muted }]}>
-              Chưa có thông báo
-            </Text>
-            <Text style={[styles.emptyMsg, { color: C.mutedForeground }]}>
-              Khi có cuộc thi mới, kết quả, hay cập nhật hệ thống, mình sẽ báo
-              ngay tại đây.
-            </Text>
-          </View>
+          isLoading ? (
+            <View style={styles.empty}>
+              <ActivityIndicator size="large" color={C.primary} />
+              <Text style={[styles.emptyTitle, { color: C.muted }]}>
+                Đang tải thông báo...
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.empty}>
+              <Ionicons
+                name="notifications-off-outline"
+                size={48}
+                color={C.mutedForeground}
+              />
+              <Text style={[styles.emptyTitle, { color: C.mutedForeground }]}>
+                Chưa có thông báo
+              </Text>
+            </View>
+          )
         }
         showsVerticalScrollIndicator={false}
       />
@@ -385,5 +427,15 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     lineHeight: 20,
     textAlign: "center",
+  },
+
+  loadingFooter: {
+    paddingVertical: 20,
+    alignItems: "center",
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 13,
+    fontWeight: "600",
   },
 });

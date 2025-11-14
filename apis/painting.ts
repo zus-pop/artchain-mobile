@@ -207,7 +207,7 @@ export function usePaintingEvaluations(paintingId: string) {
   });
 }
 
-export function useGetAchivementByUserId(userId: string) {
+export function useGetAchievementByUserId(userId: string) {
   return useQuery({
     queryKey: ["achievements", userId],
     enabled: !!userId,

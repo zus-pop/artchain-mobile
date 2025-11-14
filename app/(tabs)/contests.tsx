@@ -143,6 +143,18 @@ export default function ContestsScreen() {
     return null;
   }, [isFetchingNextPage, C, s]);
 
+  const listEmptyComponent = useCallback(() => {
+    if (isPending) return null; // Don't show empty state while loading
+    return (
+      <View style={s.emptyWrap}>
+        <Text style={s.emptyTitle}>Không có cuộc thi nào</Text>
+        <Text style={s.emptySubtitle}>
+          Hiện tại chưa có cuộc thi nào phù hợp với bộ lọc của bạn.
+        </Text>
+      </View>
+    );
+  }, [isPending, s]);
+
   /* ======================== UI ======================== */
   const TOP_PADDING = headerHeight + HEADER_EXTRA_GAP + TOP_INSET;
 
@@ -203,10 +215,19 @@ export default function ContestsScreen() {
             />
           }
           ListFooterComponent={listFooterComponent}
+          ListEmptyComponent={listEmptyComponent}
         />
       )}
 
-      {/* Remove old footer component since we use ListFooterComponent */}
+      {/* Footer loading indicator */}
+      {isFetchingNextPage && !isPending && (
+        <View style={s.fetchingFoot}>
+          <ActivityIndicator color={C.primary} size="small" />
+          <Text style={[s.footerText, { marginLeft: 8 }]}>
+            Đang tải thêm...
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -241,6 +262,26 @@ const styles = (scheme: "light" | "dark") => {
       marginTop: 8,
       color: C.mutedForeground,
       fontSize: 14,
+    },
+    emptyWrap: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingTop: 100,
+      paddingHorizontal: 24,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: "900",
+      color: C.foreground,
+      textAlign: "center",
+      marginBottom: 8,
+    },
+    emptySubtitle: {
+      fontSize: 14,
+      color: C.mutedForeground,
+      textAlign: "center",
+      lineHeight: 20,
     },
   });
 };
