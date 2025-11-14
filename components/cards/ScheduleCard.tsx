@@ -1,9 +1,11 @@
+// components/cards/ScheduleCardRainbow.tsx
 import type { Schedule } from "@/types";
 import type { ColorTokens } from "@/types/tabkey";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { memo } from "react";
+import React, { memo, useMemo, useRef } from "react";
 import {
+  Animated,
   Platform,
   Pressable,
   StyleSheet,
@@ -22,17 +24,6 @@ type Props = {
 };
 
 /* -------------------- Helpers -------------------- */
-function formatDateParts(isoDate: string) {
-  const [y, m, d] = (isoDate || "").split("-").map(Number);
-  const date = new Date(y || 1970, (m || 1) - 1, d || 1);
-  const day = String(date.getDate()).padStart(2, "0");
-  const monthShort = date
-    .toLocaleString("vi-VN", { month: "short" })
-    .replace(".", "");
-  const weekdayShort = date.toLocaleString("vi-VN", { weekday: "short" });
-  return { day, monthShort, weekdayShort };
-}
-
 const vividPools: [string, string][] = [
   ["#FF6B6B", "#FFD166"],
   ["#06B6D4", "#3B82F6"],
@@ -61,6 +52,18 @@ function getStatusMeta(status: Schedule["status"], baseGrad: [string, string]) {
       icon: "play-circle-outline" as const,
       grad: baseGrad,
     };
+  if (status === "UPCOMING")
+    return {
+      label: "Sắp diễn ra",
+      icon: "alarm-outline" as const,
+      grad: baseGrad,
+    };
+  if (status === "ENDED")
+    return {
+      label: "Đã kết thúc",
+      icon: "checkmark-done-circle-outline" as const,
+      grad: baseGrad,
+    };
   return {
     label: String(status || "Khác"),
     icon: "sparkles-outline" as const,
@@ -76,204 +79,257 @@ function ScheduleCardRainbow({
   titleStyle,
   onPress,
 }: Props) {
-  const date = new Date(schedule.date); // Convert date string to Date object
-  const baseGrad = pickGradById(String(schedule.scheduleId), schedule.task);
-  const status = getStatusMeta(schedule.status, baseGrad);
-  const timeString = date.toLocaleTimeString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const date = useMemo(() => new Date(schedule.date), [schedule.date]);
+  const baseGrad = useMemo(
+    () => pickGradById(String(schedule.scheduleId ?? ""), schedule.task ?? ""),
+    [schedule.scheduleId, schedule.task]
+  );
+  const status = useMemo(
+    () => getStatusMeta(schedule.status, baseGrad),
+    [schedule.status, baseGrad]
+  );
+  const timeString = useMemo(
+    () =>
+      date.toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    [date]
+  );
+
+  // Press scale animation (use ONE spring param group)
+  const scale = useRef(new Animated.Value(1)).current;
+  const animateTo = (v: number) => {
+    scale.stopAnimation();
+    Animated.spring(scale, {
+      toValue: v,
+      stiffness: 260,
+      damping: 24,
+      mass: 1,
+      useNativeDriver: true,
+    }).start();
+  };
 
   return (
-    <Pressable
-      onPress={onPress}
-      android_ripple={{ color: C.muted + "55" }}
-      style={({ pressed }) => [
-        styles.wrapper,
-        { shadowColor: "#000" },
-        pressed && { transform: [{ scale: 0.996 }] },
-        style,
-      ]}
-    >
-      <LinearGradient
-        colors={[status.grad[0] + "20", status.grad[1] + "15"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.card}
+    <Animated.View style={[{ transform: [{ scale }] }]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => animateTo(0.985)}
+        onPressOut={() => animateTo(1)}
+        android_ripple={{ color: C.muted + "33", borderless: false }}
+        accessibilityRole="button"
+        style={[
+          styles.wrapper,
+          {
+            backgroundColor: C.card,
+            borderColor: C.border,
+            shadowColor: "#000",
+          },
+          style,
+        ]}
       >
-        <View style={styles.left}>
-          <View style={[styles.dateBox, { backgroundColor: status.grad[0] }]}>
-            <Text style={[styles.day, { color: "#FFFFFF" }]}>
-              {date.getDate()}
-            </Text>
-            <Text style={[styles.month, { color: "#FFFFFFCC" }]}>
-              {date
-                .toLocaleString("vi-VN", { month: "short" })
-                .replace(".", "")}
-            </Text>
-          </View>
-          {/* <View style={styles.timeBox}>
-            <Ionicons name="time-outline" size={14} color={status.grad[0]} />
-            <Text style={[styles.time, { color: C.foreground }]}>
-              {timeString}
-            </Text>
-          </View> */}
-        </View>
+        {/* Accent gradient strip */}
+        <LinearGradient
+          colors={status.grad}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.accent}
+        />
 
-        <View style={styles.right}>
-          <Text
-            style={[styles.title, { color: C.foreground }, titleStyle]}
-            numberOfLines={2}
-          >
-            {schedule.task}
-          </Text>
-          <View style={styles.meta}>
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: status.grad[0] + "25" },
-              ]}
+        {/* Glass inner border */}
+        <View
+          pointerEvents="none"
+          style={[
+            styles.glass,
+            { borderColor: C.border + "66", backgroundColor: C.card + "00" },
+          ]}
+        />
+
+        {/* Decorative blobs */}
+        <LinearGradient
+          colors={[status.grad[0] + "1A", status.grad[1] + "00"]}
+          start={{ x: 0.2, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.blobTL}
+        />
+        <LinearGradient
+          colors={[status.grad[1] + "26", status.grad[0] + "00"]}
+          start={{ x: 1, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.blobBR}
+        />
+
+        {/* Content */}
+        <View style={styles.card}>
+          {/* Left – Date + Time */}
+          <View style={styles.left}>
+            <LinearGradient
+              colors={status.grad}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.dateBox}
             >
-              <Ionicons name={status.icon} size={12} color={status.grad[0]} />
-              <Text style={[styles.statusText, { color: status.grad[0] }]}>
-                {status.label}
+              <Text style={[styles.day, { color: "#FFFFFF" }]}>
+                {String(date.getDate()).padStart(2, "0")}
+              </Text>
+              <Text style={[styles.month, { color: "#FFFFFFCC" }]}>
+                {date
+                  .toLocaleString("vi-VN", { month: "short" })
+                  .replace(".", "")}
+              </Text>
+            </LinearGradient>
+
+            <View style={styles.timeBox}>
+              <Ionicons name="time-outline" size={14} color={status.grad[0]} />
+              <Text style={[styles.time, { color: C.foreground }]}>
+                {timeString}
               </Text>
             </View>
-            <Text style={[styles.contestId, { color: C.mutedForeground }]}>
-              Cuộc thi #{schedule.contestId}
+          </View>
+
+          {/* Right – Title + Meta */}
+          <View style={styles.right}>
+            <Text
+              style={[styles.title, { color: C.foreground }, titleStyle]}
+              numberOfLines={2}
+            >
+              {schedule.task}
             </Text>
+
+            <View style={styles.meta}>
+              <View
+                style={
+                  styles.statusBadge && {
+                    backgroundColor: "#E8F5E8",
+                    borderColor: "#4CAF50",
+                    borderWidth: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    paddingVertical: 7,
+                    paddingHorizontal: 12,
+                    borderRadius: 4,
+                  }
+                }
+              >
+                <Ionicons name={status.icon} size={12} color={"#4CAF50"} />
+                <Text style={[styles.statusText, { color: "#4CAF50" }]}>
+                  {status.label}
+                </Text>
+              </View>
+
+              {/* Contest id */}
+              <View
+                style={[
+                  styles.idPill,
+                  {
+                    backgroundColor: C.muted + "26",
+                    borderColor: C.border + "66",
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="trophy-outline"
+                  size={12}
+                  color={C.mutedForeground}
+                />
+                <Text style={[styles.contestId, { color: C.mutedForeground }]}>
+                  Cuộc thi #{schedule.contestId}
+                </Text>
+              </View>
+            </View>
           </View>
         </View>
-      </LinearGradient>
-    </Pressable>
+      </Pressable>
+    </Animated.View>
   );
 }
 
 export default memo(ScheduleCardRainbow);
 
 /* -------------------- Styles -------------------- */
-const R = 22;
+const R = 12;
 
 const styles = StyleSheet.create({
   wrapper: {
     borderRadius: R,
     overflow: Platform.select({ android: "hidden", ios: "visible" }),
+    borderWidth: StyleSheet.hairlineWidth,
+    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
   },
   card: {
     borderRadius: R,
-    backgroundColor: "transparent",
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
-    minHeight: 120,
+    minHeight: 118,
+    paddingLeft: 12, // space for accent
   },
+
   glass: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: R,
     borderWidth: StyleSheet.hairlineWidth,
   },
+
   accent: {
     position: "absolute",
     left: 0,
     top: 0,
     bottom: 0,
     width: 6,
+    borderTopLeftRadius: R,
+    borderBottomLeftRadius: R,
   },
+
   blobTL: {
     position: "absolute",
-    top: -20,
-    right: -16,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    opacity: 0.6,
+    top: -24,
+    right: -18,
+    width: 140,
+    height: 140,
+    borderRadius: 24,
+    opacity: 0.7,
     transform: [{ rotate: "25deg" }],
   },
   blobBR: {
     position: "absolute",
-    bottom: -24,
-    left: -18,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    opacity: 0.45,
+    bottom: -28,
+    left: -20,
+    width: 160,
+    height: 160,
+    borderRadius: 28,
+    opacity: 0.55,
     transform: [{ rotate: "-15deg" }],
   },
-
-  topRow: { flexDirection: "row", alignItems: "stretch" },
-
-  dateBox: {
-    width: 70,
-    height: 70,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
-  weekday: { fontSize: 11, fontWeight: "700", opacity: 0.9 },
-  day: { fontSize: 28, fontWeight: "900", lineHeight: 32, marginVertical: 2 },
-  month: { fontSize: 12, fontWeight: "700", textTransform: "capitalize" },
-
-  titleCol: { flex: 1 },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: 0.2,
-    lineHeight: 20,
-  },
-
-  statusPill: {
-    flexShrink: 0,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  statusTextWhite: { fontSize: 12, fontWeight: "800", color: "#fff" },
-
-  metaRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
-
-  /* Chip với viền gradient (fake border) */
-  chipWrap: { position: "relative", borderRadius: 999 },
-  chipBorder: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 999,
-  },
-  chip: {
-    position: "relative",
-    margin: 1.5, // lộ viền gradient
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  chipText: { fontSize: 13, fontWeight: "700" },
 
   left: {
     padding: 16,
     paddingRight: 12,
     alignItems: "center",
-    minWidth: 90,
+    minWidth: 94,
   },
-  right: {
-    flex: 1,
-    padding: 16,
-    paddingLeft: 12,
+  dateBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 10,
+    alignItems: "center",
     justifyContent: "center",
+    marginBottom: 6,
+  },
+  day: {
+    fontSize: 28,
+    fontWeight: "900",
+    lineHeight: 32,
+    marginVertical: 2,
+  },
+  month: {
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "capitalize",
   },
   timeBox: {
     flexDirection: "row",
@@ -283,31 +339,57 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 14,
-    fontWeight: "500",
-    marginLeft: 4,
+    fontWeight: "600",
+    marginLeft: 6,
+    letterSpacing: 0.2,
+  },
+
+  right: {
+    flex: 1,
+    padding: 16,
+    paddingLeft: 12,
+    justifyContent: "center",
+    gap: 10,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: "900",
+    letterSpacing: 0.2,
+    lineHeight: 22,
   },
 
   meta: {
-    marginTop: 12,
-    flexDirection: "column",
-    alignItems: "flex-start",
-    gap: 6,
-  },
-  statusBadge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 12,
+    gap: 10,
+    flexWrap: "wrap",
+  },
+
+  statusBadge: {
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   statusText: {
     fontSize: 12,
-    fontWeight: "700",
-    marginLeft: 4,
+    fontWeight: "800",
+  },
+
+  idPill: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   contestId: {
     fontSize: 12,
-    fontWeight: "500",
-    opacity: 0.8,
+    fontWeight: "600",
+    opacity: 0.95,
   },
 });

@@ -220,3 +220,16 @@ export function useGetAchievementByUserId(userId: string) {
     staleTime: 30_000,
   });
 }
+
+export function useGetSubmissionsByCompetitorId(competitorId?: string) {
+  return useQuery({
+    queryKey: ["guardian/competitor/submissions", competitorId],
+    enabled: !!competitorId,
+    queryFn: async () => {
+      const res = await myAxios.get<Painting[]>(
+        `/guardians/competitor/${competitorId}/submissions`
+      );
+      return res.data;
+    },
+  });
+}

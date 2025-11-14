@@ -1,5 +1,4 @@
 // app/.../PaintingEvaluationScreen.tsx
-import BrushButton from "@/components/buttons/BrushButton";
 // import ArtworkViewer from "@/components/media/ArtworkViewer"; // <- bỏ
 import EvaluationSubmitModal from "@/components/modals/EvaluationSubmitModal"; // <-- NEW
 import { ThemedText } from "@/components/themed-text";
@@ -22,7 +21,9 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { toast } from "sonner-native";
@@ -32,6 +33,10 @@ import { useEvaluatePaintingRound1 } from "../apis/painting";
 
 import { Zoomable } from "@likashefqet/react-native-image-zoom";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 /* ---------- Color helpers ---------- */
 const POOLS: [string, string][] = [
@@ -208,6 +213,8 @@ export default function PaintingEvaluationScreen() {
   const glassBgStrong =
     scheme === "dark" ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.06)";
 
+  const insets = useSafeAreaInsets();
+
   const {
     control,
     handleSubmit,
@@ -296,32 +303,58 @@ export default function PaintingEvaluationScreen() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: colors.newbackground }}
+      edges={["top", "left", "right"]}
+    >
       <ThemedView
         style={[styles(colors).container, { backgroundColor: "transparent" }]}
       >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+          keyboardVerticalOffset={0}
         >
-          {/* Header kính + nút tròn */}
           <View
-            style={[styles(colors).header, { backgroundColor: glassBgStrong }]}
+            style={[
+              styles(colors).header,
+              {
+                backgroundColor: "hsl(15 85% 55%)",
+                height:60
+              },
+            ]}
           >
-            <PressableScale
-              onPress={handleBack}
-              style={styles(colors).circleBtn}
+            <View
+              style={{
+                position: "absolute",
+                left: 10,
+              }}
             >
-              <Ionicons name="chevron-back" size={18} color={colors.primary} />
-            </PressableScale>
-
-            <ThemedText style={styles(colors).headerTitle}>
+              <PressableScale
+                onPress={handleBack}
+                style={styles(colors).circleBtn}
+              >
+                <Ionicons
+                  name="chevron-back"
+                  size={18}
+                  color={colors.primary}
+                />
+              </PressableScale>
+            </View>
+            <ThemedText
+              style={{
+                color: "#fff",
+                fontWeight: "800",
+                alignItems: "center",
+                flex: 1,
+                textAlign: "center",
+                justifyContent: "center",
+              }}
+            >
               Đánh giá Tranh
             </ThemedText>
           </View>
 
-          {/* Nội dung */}
           <ScrollView
             contentContainerStyle={[
               styles(colors).scrollContent,
@@ -330,9 +363,7 @@ export default function PaintingEvaluationScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* 1) Ảnh + meta + details */}
             <View style={styles(colors).section}>
-              {/* Khung ảnh viền gradient — use app colors */}
               <View style={styles(colors).frameWrap}>
                 <LinearGradient
                   colors={[colors.border, colors.border]}
@@ -421,7 +452,7 @@ export default function PaintingEvaluationScreen() {
               style={[
                 styles(colors).card,
                 styles(colors).section,
-                { backgroundColor: glassBg },
+                { backgroundColor: colors.background },
               ]}
             >
               <ThemedText type="subtitle" style={styles(colors).sectionTitle}>
@@ -503,12 +534,11 @@ export default function PaintingEvaluationScreen() {
               )}
             </View>
 
-            {/* 3) QUICK FEEDBACK */}
             <View
               style={[
                 styles(colors).card,
                 styles(colors).section,
-                { backgroundColor: glassBg },
+                { backgroundColor: colors.background },
               ]}
             >
               <ThemedText type="subtitle" style={styles(colors).sectionTitle}>
@@ -682,18 +712,30 @@ export default function PaintingEvaluationScreen() {
               )}
             </View>
 
-            {/* 5) Submit */}
-            <View
-              style={{ alignItems: "center", marginTop: 6, marginBottom: 36 }}
-            >
-              <View style={{ width: 230 }}>
-                <BrushButton
-                  title={isPending ? "Đang gửi..." : "Nộp đánh giá"}
-                  onPress={handleSubmit(onSubmit)}
-                  disabled={isPending || !isValid}
-                  palette="pastel"
-                  size="md"
-                />
+            <View style={{ alignItems: "center", marginTop: 6 }}>
+              <View style={{ width: 150 }}>
+                <TouchableOpacity onPress={handleSubmit(onSubmit)} style={{}}>
+                  <View
+                    style={{
+                      backgroundColor: "hsl(15 85% 55%)",
+                      borderRadius: 10,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      height: 50,
+                      width: 150,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontWeight: "bold",
+                        fontSize: 16,
+                      }}
+                    >
+                      Gửi đánh giá
+                    </Text>
+                  </View>
+                </TouchableOpacity>
               </View>
             </View>
           </ScrollView>
@@ -745,7 +787,7 @@ export default function PaintingEvaluationScreen() {
           }}
         />
       </ThemedView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -758,22 +800,19 @@ const styles = (colors: typeof Colors.light) =>
     header: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: 18,
-      paddingVertical: 14,
-      paddingTop: Platform.OS === "ios" ? 52 : 18,
+
+      paddingVertical: 12,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
       gap: 10,
+      justifyContent: "space-between",
     },
     headerTitle: {
       fontSize: 20,
       fontWeight: "900",
       color: colors.foreground,
-      flex: 1,
-      textAlign: "center",
-      letterSpacing: 0.4,
     },
-    headerRight: { width: 48, alignItems: "flex-end" },
+    headerRight: {},
 
     /* Circles */
     circleBtn: {
@@ -807,15 +846,15 @@ const styles = (colors: typeof Colors.light) =>
     section: { marginBottom: 16 },
 
     /* Frame + image */
-    frameWrap: { position: "relative", borderRadius: 16 },
+    frameWrap: { position: "relative", borderRadius: 4 },
     frameBorder: {
       position: "absolute",
       inset: 0,
-      borderRadius: 16,
+      borderRadius: 4,
       opacity: 0.85,
     },
     paintingCard: {
-      borderRadius: 16,
+      borderRadius: 4,
       overflow: "hidden",
       borderWidth: 0.8,
       borderColor: "rgba(148, 163, 184, 0.35)",

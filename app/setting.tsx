@@ -1,3 +1,4 @@
+// app/setting.tsx
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
@@ -13,6 +14,8 @@ import {
   Text,
   TouchableOpacity,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -26,82 +29,16 @@ const languages = [
   { label: "English", value: "en" },
 ] as const;
 
-/* =============== Decorative background =============== */
-const OrbsBackground = memo(function OrbsBackground({
-  scheme,
-}: {
-  scheme: "light" | "dark";
-}) {
-  // màu mềm cho light/dark
-  const orbs =
-    scheme === "dark"
-      ? [
-          ["#0EA5E922", "#6366F144"],
-          ["#22D3EE22", "#06B6D444"],
-          ["#A78BFA22", "#8B5CF644"],
-        ]
-      : [
-          ["#60A5FA33", "#7C3AED55"],
-          ["#F472B633", "#EC489955"],
-          ["#34D39933", "#10B98155"],
-        ];
-
-  return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {/* Orb 1 */}
-      <LinearGradient
-        colors={orbs[0]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[
-          styles.orb,
-          {
-            top: -80,
-            left: -60,
-            width: 220,
-            height: 220,
-          },
-        ]}
-      />
-      {/* Orb 2 */}
-      <LinearGradient
-        colors={orbs[1]}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={[
-          styles.orb,
-          {
-            top: 120,
-            right: -70,
-            width: 240,
-            height: 240,
-          },
-        ]}
-      />
-      {/* Orb 3 */}
-      <LinearGradient
-        colors={orbs[2]}
-        start={{ x: 0, y: 1 }}
-        end={{ x: 1, y: 0 }}
-        style={[
-          styles.orb,
-          {
-            top: 340,
-            left: -40,
-            width: 180,
-            height: 180,
-          },
-        ]}
-      />
-    </View>
-  );
-});
+/* =============== Decorative background (muted, orange-first) =============== */
 
 /* ================== Setting Screen ================== */
 const Setting = () => {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const C = Colors[scheme];
   const insets = useSafeAreaInsets();
+
+  const ORANGE = C?.primary ?? "#F59E0B"; // accent cam chủ đạo
+  const ORANGE_DIM = (C?.primary ?? "#F59E0B") + "1F"; // cam mờ
 
   const [isDark, setIsDark] = useState(scheme === "dark");
   const [language, setLanguage] = useState<"vi" | "en">("vi");
@@ -117,27 +54,23 @@ const Setting = () => {
     router.replace("/login");
   };
 
-  const sectionCardStyle = [
+  const sectionCardStyle: StyleProp<ViewStyle> = [
     styles.sectionCard,
     {
       backgroundColor: C.card,
       borderColor: C.border,
       shadowColor: scheme === "dark" ? "#000" : "#111827",
-    },
-  ] as const;
+    } as ViewStyle,
+  ];
 
   return (
-    <View style={[styles.container, { backgroundColor: C.background }]}>
+    <View style={[styles.container, { backgroundColor: C.newbackground }]}>
       <StatusBar
         barStyle={scheme === "dark" ? "light-content" : "dark-content"}
         backgroundColor="transparent"
         translucent
       />
 
-      {/* Orbs background */}
-      <OrbsBackground scheme={scheme} />
-
-      {/* Header (fix tràn: paddingTop = insets.top) */}
       <View
         style={[
           styles.header,
@@ -153,26 +86,33 @@ const Setting = () => {
           style={styles.backBtn}
           hitSlop={{ top: 8, left: 8, right: 8, bottom: 8 }}
         >
-          <View style={styles.backPill}>
-            <Ionicons name="chevron-back" size={20} color="#fff" />
+          <View
+            style={[
+              styles.backPill,
+              {
+                backgroundColor: "#00000033",
+                borderColor: "#FFFFFF33",
+                borderWidth: StyleSheet.hairlineWidth,
+                borderRadius: 12,
+              },
+            ]}
+          >
+            <Ionicons name="chevron-back" size={18} color="#fff" />
             <Text style={styles.backTxt}>Quay lại</Text>
           </View>
         </TouchableOpacity>
 
         <View style={{ flex: 1 }} />
 
-        {/* Badge tiêu đề trong pill gradient nhỏ gọn */}
-        <LinearGradient
-          colors={
-            scheme === "dark" ? ["#0EA5E9", "#6366F1"] : ["#60A5FA", "#A78BFA"]
-          }
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.headerBadge}
+        <View
+          style={[
+            styles.headerBadge,
+            { backgroundColor: ORANGE, borderRadius: 10 },
+          ]}
         >
           <Ionicons name="settings-outline" size={14} color="#fff" />
           <Text style={styles.headerBadgeTxt}>Cài đặt</Text>
-        </LinearGradient>
+        </View>
       </View>
 
       {/* Content */}
@@ -196,20 +136,21 @@ const Setting = () => {
               <Switch
                 value={isDark}
                 onValueChange={setIsDark}
-                thumbColor={isDark ? Colors.dark.primary : Colors.light.primary}
+                thumbColor={isDark ? ORANGE : C.muted}
                 trackColor={{
-                  false: Colors.light.muted,
-                  true: Colors.dark.muted,
+                  false: C.muted,
+                  true: ORANGE_DIM,
                 }}
               />
             }
             scheme={scheme}
+            accent={ORANGE}
           />
 
           <Divider color={C.border} />
 
           <View style={styles.rowHorizontal}>
-            <SettingIcon name="language" scheme={scheme} />
+            <SettingIcon name="language" scheme={scheme} accent={ORANGE} />
             <View style={styles.rowTexts}>
               <Text style={[styles.rowTitle, { color: C.foreground }]}>
                 Ngôn ngữ
@@ -231,20 +172,21 @@ const Setting = () => {
                   style={[
                     styles.langChip,
                     {
-                      backgroundColor: active ? C.primary : C.muted,
-                      borderColor: active ? C.primary : C.border,
+                      backgroundColor: active ? ORANGE : C.muted,
+                      borderColor: active ? ORANGE : C.border,
+                      borderRadius: 10,
                     },
                   ]}
                 >
                   <Ionicons
                     name={active ? "checkmark-circle" : "ellipse-outline"}
                     size={16}
-                    color={active ? C.primaryForeground : C.foreground}
+                    color={active ? "#fff" : C.foreground}
                     style={{ marginRight: 6 }}
                   />
                   <Text
                     style={{
-                      color: active ? C.primaryForeground : C.foreground,
+                      color: active ? "#fff" : C.foreground,
                       fontWeight: "700",
                     }}
                   >
@@ -268,11 +210,12 @@ const Setting = () => {
               <Switch
                 value={notifications}
                 onValueChange={setNotifications}
-                thumbColor={notifications ? C.primary : C.muted}
-                trackColor={{ false: C.muted, true: C.primary }}
+                thumbColor={notifications ? ORANGE : C.muted}
+                trackColor={{ false: C.muted, true: ORANGE_DIM }}
               />
             }
             scheme={scheme}
+            accent={ORANGE}
           />
 
           <Divider color={C.border} />
@@ -283,6 +226,7 @@ const Setting = () => {
             subtitle="Một bản tóm lược vào thứ Hai"
             right={<Chevron />}
             scheme={scheme}
+            accent={ORANGE}
             onPress={() => {}}
           />
         </View>
@@ -297,6 +241,7 @@ const Setting = () => {
             subtitle="Tên, ảnh đại diện, giới thiệu"
             right={<Chevron />}
             scheme={scheme}
+            accent={ORANGE}
             onPress={() => router.push("/profile")}
           />
 
@@ -308,18 +253,17 @@ const Setting = () => {
             subtitle="Đăng nhập & quyền truy cập"
             right={<Chevron />}
             scheme={scheme}
-            onPress={() => router.push("/privacy")}
+            accent={ORANGE}
+            // onPress={() => router.push("/privacy")}
           />
         </View>
 
-        {/* ===== Danger / Sign out ===== */}
+        {/* ===== Sign out (cam, ít rực) ===== */}
         <LinearGradient
-          colors={
-            scheme === "dark" ? ["#FB7185", "#EF4444"] : ["#FCA5A5", "#EF4444"]
-          }
+          colors={[ORANGE + "E6", ORANGE]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.signoutWrap}
+          style={[styles.signoutWrap, { borderRadius: 10 }]}
         >
           <TouchableOpacity
             activeOpacity={0.9}
@@ -373,6 +317,7 @@ const Chevron = memo(function Chevron() {
 const SettingIcon = memo(function SettingIcon({
   name,
   scheme,
+  accent,
 }: {
   name:
     | "moon"
@@ -382,11 +327,14 @@ const SettingIcon = memo(function SettingIcon({
     | "person-circle"
     | "shield-checkmark";
   scheme: "light" | "dark";
+  accent: string;
 }) {
-  const tint = scheme === "dark" ? "#93C5FD" : "#3B82F6";
+  const bg = scheme === "dark" ? "#FFFFFF0F" : "#0000000D";
   return (
-    <View style={styles.leadingIcon}>
-      <Ionicons name={name as any} size={18} color={tint} />
+    <View
+      style={[styles.leadingIcon, { backgroundColor: bg, borderRadius: 10 }]}
+    >
+      <Ionicons name={name as any} size={18} color={accent} />
     </View>
   );
 });
@@ -398,6 +346,7 @@ const SettingRow = memo(function SettingRow({
   right,
   onPress,
   scheme,
+  accent,
 }: {
   icon:
     | "moon"
@@ -411,6 +360,7 @@ const SettingRow = memo(function SettingRow({
   right?: React.ReactNode;
   onPress?: () => void;
   scheme: "light" | "dark";
+  accent: string;
 }) {
   const C = Colors[scheme];
   return (
@@ -419,7 +369,7 @@ const SettingRow = memo(function SettingRow({
       android_ripple={{ color: C.muted }}
       style={styles.rowHorizontal}
     >
-      <SettingIcon name={icon} scheme={scheme} />
+      <SettingIcon name={icon} scheme={scheme} accent={accent} />
       <View style={styles.rowTexts}>
         <Text style={[styles.rowTitle, { color: C.foreground }]}>{title}</Text>
         {!!subtitle && (
@@ -445,18 +395,14 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   backBtn: {
-    borderRadius: 999,
+    borderRadius: 10,
   },
   backPill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    borderColor: "rgba(255,255,255,0.35)",
-    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 999,
   },
   backTxt: { color: "#fff", fontWeight: "800", fontSize: 12.5 },
 
@@ -466,31 +412,29 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 999,
   },
   headerBadgeTxt: { color: "#fff", fontWeight: "800", fontSize: 12.5 },
 
   /* Content */
   content: { flex: 1 },
 
-  /* Orbs */
+  /* Orbs (muted) */
   orb: {
     position: "absolute",
     borderRadius: 9999,
-    filter: Platform.OS === "web" ? ("blur(40px)" as any) : undefined,
-    opacity: 1,
+    filter: Platform.OS === "web" ? ("blur(36px)" as any) : undefined,
   },
 
   /* Cards */
   sectionCard: {
-    borderRadius: 14,
+    borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
     padding: 14,
     marginBottom: 14,
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
   },
 
   rowHorizontal: {
@@ -499,13 +443,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   leadingIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
-    backgroundColor: "rgba(99,102,241,0.10)",
   },
   rowTexts: { flex: 1 },
   rowTitle: { fontSize: 15, fontWeight: "700" },
@@ -522,7 +464,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
   },
 
@@ -532,15 +473,15 @@ const styles = StyleSheet.create({
   },
 
   chevron: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
 
   signoutWrap: {
-    borderRadius: 12,
+    borderRadius: 10,
     marginTop: 6,
     overflow: "hidden",
   },

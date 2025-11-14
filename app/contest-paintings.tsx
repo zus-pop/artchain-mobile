@@ -1,4 +1,3 @@
-// app/.../ContestPaintingsScreen.tsx — FULL DROP‑IN FILE (VIP Gradient Card)
 import { useGetPaintings } from "@/apis/painting";
 import { useUserById } from "@/apis/user";
 import { Colors } from "@/constants/theme";
@@ -20,17 +19,32 @@ import {
 } from "react-native";
 import { useWhoAmI } from "../apis/auth";
 
-/* ============================ Utils ============================ */
 function toAlpha(hex: string, a: number) {
-  if (!hex) return `rgba(0,0,0,${a})`;
-  const h = hex.replace("#", "");
+  // Nếu không phải dạng #RRGGBB thì fallback luôn cho chắc
+  if (!hex || !hex.startsWith("#") || (hex.length !== 7 && hex.length !== 4)) {
+    return `rgba(0,0,0,${a})`;
+  }
+
+  let h = hex.replace("#", "");
+  // Hỗ trợ #RGB
+  if (h.length === 3) {
+    h = h
+      .split("")
+      .map((c) => c + c)
+      .join("");
+  }
+
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
   const b = parseInt(h.slice(4, 6), 16);
+
+  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
+    return `rgba(0,0,0,${a})`;
+  }
+
   return `rgba(${r},${g},${b},${a})`;
 }
 
-/* Nhấn mượt: scale khi press */
 const PressableScale: React.FC<
   React.PropsWithChildren<{
     onPress?: () => void;
@@ -65,7 +79,7 @@ const PressableScale: React.FC<
 function Monogram({
   name,
   size = 28,
-  bg = "#111827",
+
   fg = "#fff",
 }: {
   name?: string;
@@ -84,7 +98,7 @@ function Monogram({
         borderRadius: size / 2,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: bg,
+        backgroundColor: " hsl(15 85% 55%)",
       }}
     >
       <Text
@@ -109,8 +123,9 @@ export default function ContestPaintingsScreen() {
 
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const C = Colors[scheme];
-  const s = styles(Colors[scheme]);
+  const s = styles(C);
   const { data: user } = useWhoAmI();
+
   /* API */
   const {
     data: paintings,
@@ -128,14 +143,13 @@ export default function ContestPaintingsScreen() {
     examinerId: user?.userId,
   });
 
-  /* =============== NAV-LOCK chống double push =============== */
   const navLockRef = useRef(false);
   const openWithLock = useCallback(
     (painting: Painting, artist?: string) => {
       if (navLockRef.current) return;
       navLockRef.current = true;
 
-      let pathname: any = "/painting-evaluation-round2"; // default
+      let pathname: any = "/painting-evaluation-round2";
 
       switch (examinerRole) {
         case "ROUND_1":
@@ -167,35 +181,66 @@ export default function ContestPaintingsScreen() {
   const PaintingItem = ({ painting }: { painting: Painting }) => {
     const { data: user } = useUserById(painting.competitorId);
 
+    const roundLabel =
+      examinerRole === "ROUND_1"
+        ? "Vòng 1 · Sơ loại"
+        : examinerRole === "ROUND_2"
+        ? "Vòng 2 · Chung kết"
+        : "Tranh dự thi";
+
     return (
       <PressableScale
         onPress={() => openWithLock(painting, user?.fullName)}
         style={s.paintingCard}
       >
-        <View style={s.imageContainer}>
-          <Image
-            source={{ uri: painting.imageUrl }}
-            style={s.paintingImage}
-            placeholder={require("@/assets/images/partial-react-logo.png")}
-            contentFit="cover"
-            transition={200}
-          />
-
-          {/* Overlay text above image */}
+        <View style={s.cardGradientWrapper}>
           <LinearGradient
-            colors={["rgba(0, 0, 0, 0.7)", "rgba(0, 0, 0, 0.3)", "transparent"]}
-            locations={[0, 0.4, 1]}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-            style={s.overlayGradient}
+            colors={[
+              toAlpha(C.primary, 0.7),
+              toAlpha(C.primary, 0.1),
+              toAlpha(C.card, 0.95),
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.cardInner}
           >
-            <View style={s.overlayText}>
-              <Text numberOfLines={2} style={s.paintingTitle}>
-                {painting.title}
-              </Text>
-              <Text style={s.artistName}>
-                {user?.fullName || `Artist ${painting.competitorId}`}
-              </Text>
+            <View style={s.imageContainer}>
+              <Image
+                source={{ uri: painting.imageUrl }}
+                style={s.paintingImage}
+                placeholder={require("@/assets/images/partial-react-logo.png")}
+                contentFit="cover"
+                transition={200}
+              />
+
+              {/* Overlay text above image */}
+              <View style={s.overlayGradient}>
+                <View style={s.overlayText}>
+                  <View style={s.chipRow}>
+                    <View style={s.chip}>
+                      <Ionicons
+                        name="color-palette-outline"
+                        size={14}
+                        color="#fff"
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text style={s.chipText}>{roundLabel}</Text>
+                    </View>
+                  </View>
+
+                  <View style={s.overlayBottom}>
+                    <Text numberOfLines={2} style={s.paintingTitle}>
+                      {painting.title}
+                    </Text>
+                    <View style={s.artistRow}>
+                      <Monogram name={user?.fullName} size={22} />
+                      <Text numberOfLines={1} style={s.artistName}>
+                        {user?.fullName || `Artist ${painting.competitorId}`}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
             </View>
           </LinearGradient>
         </View>
@@ -209,12 +254,12 @@ export default function ContestPaintingsScreen() {
       <View style={s.container}>
         <View style={s.header}>
           <Pressable onPress={() => router.back()} style={s.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={C.foreground} />
+            <Ionicons name="arrow-back" size={22} color={C.primaryForeground} />
           </Pressable>
           <Text style={s.headerTitle}>Tranh</Text>
         </View>
         <View style={s.loading}>
-          <ActivityIndicator size="large" color={C.primary} />
+          <ActivityIndicator size="large" color={C.primaryForeground} />
           <Text style={s.loadingText}>Đang tải tranh...</Text>
         </View>
       </View>
@@ -226,7 +271,7 @@ export default function ContestPaintingsScreen() {
       <View style={s.container}>
         <View style={s.header}>
           <Pressable onPress={() => router.back()} style={s.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={C.foreground} />
+            <Ionicons name="arrow-back" size={22} color={C.primaryForeground} />
           </Pressable>
           <Text style={s.headerTitle}>Tranh</Text>
         </View>
@@ -250,7 +295,7 @@ export default function ContestPaintingsScreen() {
       {/* Header */}
       <View style={s.header}>
         <Pressable onPress={() => router.back()} style={s.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={C.foreground} />
+          <Ionicons name="arrow-back" size={22} color={C.primaryForeground} />
         </Pressable>
         <Text style={s.headerTitle} numberOfLines={1}>
           {contestTitle ? `${contestTitle} — Tranh` : "Tranh cuộc thi"}
@@ -276,12 +321,12 @@ export default function ContestPaintingsScreen() {
 }
 
 /* ============================ Styles ============================ */
-const styles = (C: typeof Colors.light) =>
+const styles = (C: any) =>
   StyleSheet.create({
     /* Container */
     container: {
       flex: 1,
-      backgroundColor: C.background,
+      backgroundColor: C.newbackground, // nền tổng thể
     },
 
     /* Header */
@@ -290,15 +335,25 @@ const styles = (C: typeof Colors.light) =>
       alignItems: "center",
       paddingHorizontal: 14,
       paddingVertical: 14,
-      backgroundColor: C.background,
+      backgroundColor: C.primary, // header dùng C.primary
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: toAlpha(C.border, 0.7),
+      borderBottomColor: toAlpha("#000000", 0.12),
+      shadowColor: "#000",
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
     },
-    backBtn: { padding: 6, marginRight: 8, borderRadius: 10 },
+    backBtn: {
+      padding: 8,
+      marginRight: 8,
+      borderRadius: 999,
+      backgroundColor: toAlpha("#000000", 0.16),
+    },
     headerTitle: {
       fontSize: 18,
       fontWeight: "800",
-      color: C.foreground,
+      color: C.primaryForeground,
       flex: 1,
     },
 
@@ -323,29 +378,40 @@ const styles = (C: typeof Colors.light) =>
       backgroundColor: C.primary,
       paddingHorizontal: 20,
       paddingVertical: 10,
-      borderRadius: 10,
+      borderRadius: 999,
     },
     retryText: { color: C.primaryForeground, fontWeight: "800" },
 
-    /* List padding */
-    list: { padding: 16 },
+    list: {
+      padding: 16,
+      paddingBottom: 32,
+    },
 
-    /* ========== MINIMALIST PAINTING CARD styles ========== */
     paintingCard: {
-      borderRadius: 16,
-      overflow: "hidden",
-      marginBottom: 16,
-      backgroundColor: C.card,
+      borderRadius: 22,
+      marginBottom: 18,
       shadowColor: "#000",
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 3,
+      shadowOpacity: 0.16,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 4,
+      overflow: "visible",
+    },
+    cardGradientWrapper: {
+      borderRadius: 22,
+      overflow: "hidden",
+    },
+    cardInner: {
+      borderRadius: 22,
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: toAlpha(C.border, 0.5),
     },
     imageContainer: {
       position: "relative",
       width: "100%",
       aspectRatio: 4 / 3,
+      overflow: "hidden",
     },
     paintingImage: {
       width: "100%",
@@ -357,27 +423,55 @@ const styles = (C: typeof Colors.light) =>
       left: 0,
       right: 0,
       bottom: 0,
+      justifyContent: "flex-start",
     },
     overlayText: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      padding: 16,
+      flex: 1,
+      paddingHorizontal: 14,
+      paddingTop: 10,
+      paddingBottom: 12,
+      justifyContent: "space-between",
+    },
+    chipRow: {
+      flexDirection: "row",
+      justifyContent: "flex-start",
+    },
+    chip: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderRadius: 12,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      backgroundColor: C.primary,
+    },
+    chipText: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: "#ffffff",
+      letterSpacing: 0.3,
+    },
+    overlayBottom: {
+      marginTop: 18,
     },
     paintingTitle: {
       fontSize: 18,
       fontWeight: "900",
       color: "#ffffff",
-      marginBottom: 4,
-      textShadowColor: "rgba(0,0,0,0.5)",
-      textShadowRadius: 4,
-      textShadowOffset: { width: 0, height: 2 },
+      marginBottom: 6,
+      textShadowColor: "rgba(0,0,0,0.6)",
+      textShadowRadius: 6,
+      textShadowOffset: { width: 0, height: 3 },
+    },
+    artistRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
     },
     artistName: {
+      flex: 1,
       fontSize: 14,
       fontWeight: "600",
-      color: "rgba(255, 255, 255, 0.9)",
+      color: "rgba(255, 255, 255, 0.92)",
     },
 
     emptyText: {

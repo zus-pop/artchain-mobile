@@ -1,11 +1,7 @@
 // screens/GuardianProfileComponent.tsx
 import PillButton from "@/components/buttons/PillButton";
 import ChildCard from "@/components/cards/guardian/ChildrentCard";
-import AchievementModal from "@/components/modals/AchievementModal";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
-
-// ⚡ dùng GuardianTabs phiên bản mới (slider dưới, không bọc nền)
-import { GuardianTabKey } from "@/components/tabs/GuardianTabs";
 
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -14,6 +10,7 @@ import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Platform,
   RefreshControl,
   StyleSheet,
   Text,
@@ -21,42 +18,13 @@ import {
   View,
 } from "react-native";
 
+// ===== Types / APIs =====
 import { useWhoAmI } from "@/apis/auth";
 import { useGuardianChildren } from "@/apis/guardian";
-import { useGetAchievementByUserId } from "@/apis/painting";
 import { useAuthStore } from "@/store/auth-store";
-import type { AchievementItem } from "@/types/achievements";
 import type { ColorTokens, KPIProps } from "@/types/tabkey";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
-import AchievementCard from "./cards/competitor/AchievementCard";
-import EmptyState from "./cards/competitor/EmptyState";
-import SegmentedTabsProfile from "./tabs/SegmentedTabsProfile";
-
-/* -------------------- API types (tối thiểu các field đang dùng) -------------------- */
-type ApiAchievementAward = {
-  awardId: number;
-  name: string;
-  description?: string;
-  rank?: number;
-  prize?: number;
-};
-
-type ApiAchievementContest = {
-  contestId: number;
-  title: string;
-  startDate?: string;
-  endDate?: string;
-};
-
-type ApiAchievementsData = {
-  user: { userId: string; fullName: string };
-  achievements: AchievementItem[];
-  totalAchievements: number;
-};
+import { SafeAreaView } from "react-native-safe-area-context";
 
 /* -------------------- Color helpers -------------------- */
 const VIVID_POOLS: [string, string][] = [
@@ -70,21 +38,12 @@ const VIVID_POOLS: [string, string][] = [
   ["#F43F5E", "#FB7185"],
 ];
 
-const fmtDateOnly = (v?: string | Date | null) => {
-  if (!v) return "—";
-  const d = new Date(v);
-  return d.toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-};
-
 const hashStr = (s: string) => {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
   return Math.abs(h);
 };
+
 const pickGrad = (seed?: string): [string, string] => {
   const i = hashStr(seed || Math.random().toString()) % VIVID_POOLS.length;
   return VIVID_POOLS[i];
@@ -92,6 +51,7 @@ const pickGrad = (seed?: string): [string, string] => {
 
 /** Header brand color */
 const BRAND = "#dd504b";
+const isIOS = Platform.OS === "ios";
 
 export default function GuardianProfileComponent() {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
@@ -100,20 +60,12 @@ export default function GuardianProfileComponent() {
   const C = Colors[scheme];
   const s = styles(C);
 
-  const { data: children, refetch: refetchChildren } = useGuardianChildren(
-    user?.userId
-  );
-  const [openDetails, setOpenDetails] = useState(false);
-  const [activeTab, setActiveTab] = useState<GuardianTabKey>("children");
-  const [refreshing, setRefreshing] = useState(false);
+  const guardianId = user?.userId ?? "";
+  const { data: children, refetch: refetchChildren } =
+    useGuardianChildren(guardianId);
 
-  const insets = useSafeAreaInsets();
-  const SP = {
-    pagePB: Math.max(24, insets.bottom + 16), // paddingBottom cuối ScrollView
-    sectionGap: 18, // khoảng cách giữa các khối lớn
-    blockGap: 12, // khoảng cách giữa các card trong 1 section
-    kpiCardRadius: 18,
-  };
+  const [openDetails, setOpenDetails] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const childAvatars = useMemo(
     () => [
@@ -130,25 +82,15 @@ export default function GuardianProfileComponent() {
     ],
     []
   );
+
   const getChildAvatar = (index: number) =>
     childAvatars[index % childAvatars.length];
-
-  const [openAchModal, setOpenAchModal] = useState(false);
-  const [selectedAch, setSelectedAch] = useState<AchievementItem | null>(null);
-
-  const { data: achievementData, isLoading: achievementsLoading } =
-    useGetAchievementByUserId(user?.userId || "");
 
   useFocusEffect(
     useCallback(() => {
       reloadMe();
     }, [reloadMe])
   );
-
-  // Ép kiểu sang API data; KHÔNG đổi logic
-  const achievements: AchievementItem[] =
-    (achievementData as unknown as ApiAchievementsData | undefined)
-      ?.achievements ?? [];
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -186,191 +128,246 @@ export default function GuardianProfileComponent() {
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
+  // ================= LOADING =================
   if (isLoading) {
     return (
-      <SafeAreaView style={s.container}>
-        {/* Solid brand header (loading) */}
+      <SafeAreaView
+        style={[
+          s.safeArea,
+          { backgroundColor: BRAND, paddingTop: isIOS ? 20 : 0 },
+        ]}
+        edges={["top"]}
+      >
+        <View style={s.container}>
+          {/* Solid brand header (loading) */}
+          <View
+            style={[
+              s.topbar,
+              { backgroundColor: BRAND, borderBottomColor: C.border },
+            ]}
+          >
+            <Text style={s.headerTitle}>Hồ sơ</Text>
+            <View style={{ flexDirection: "row" }}>
+              <TouchableOpacity style={s.iconBtn}>
+                <Ionicons name="notifications-outline" size={22} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={s.loaderWrap}>
+            <Ionicons name="person-circle-outline" size={80} color={C.muted} />
+            <Text style={s.loaderText}>Đang tải hồ sơ...</Text>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ================= NOT LOGGED IN =================
+  if (!accessToken || !user) {
+    return (
+      <SafeAreaView
+        style={[
+          s.safeArea,
+          { backgroundColor: BRAND, paddingTop: isIOS ? 20 : 0 },
+        ]}
+        edges={["top"]}
+      >
+        <View style={s.container}>
+          {/* Solid brand header (unauth) */}
+          <View
+            style={[
+              s.topbar,
+              { backgroundColor: BRAND, borderBottomColor: C.border },
+            ]}
+          >
+            <Text style={s.headerTitle}>Hồ sơ</Text>
+          </View>
+
+          <View style={s.authWrap}>
+            <Ionicons name="person-circle-outline" size={80} color={C.muted} />
+            <Text style={s.authTitle}>Bạn chưa đăng nhập</Text>
+            <Text style={s.authDesc}>
+              Đăng nhập để quản lý hồ sơ, theo dõi thành tích và tham gia các
+              cuộc thi nghệ thuật hấp dẫn trên ArtChain.
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push("/login")}
+              style={s.authBtn}
+            >
+              <Text style={s.authBtnText}>Đăng nhập / Đăng ký</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ================= MAIN =================
+  return (
+    <SafeAreaView
+      style={[
+        s.safeArea,
+        { backgroundColor: C.foreground80, paddingTop: isIOS ? 8 : 0 },
+      ]}
+      edges={["top"]}
+    >
+      <View style={s.container}>
+        {/* Solid brand header (main) */}
         <View
           style={[
             s.topbar,
-            { backgroundColor: BRAND, borderBottomColor: C.border },
+            { backgroundColor: C.foreground80, borderBottomColor: C.border },
           ]}
         >
-          <Text style={s.headerTitle}>Hồ sơ</Text>
+          <Text style={s.headerTitle}>Hồ sơ phụ huynh</Text>
           <View style={{ flexDirection: "row" }}>
-            <TouchableOpacity style={s.iconBtn}>
-              <Ionicons name="notifications-outline" size={22} color="#fff" />
+            <TouchableOpacity
+              onPress={() => router.push("/notifications")}
+              style={s.iconBtn}
+            >
+              <Ionicons name="notifications-outline" size={25} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/setting")}
+              style={s.iconBtn}
+            >
+              <Ionicons name="settings-outline" size={25} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={s.loaderWrap}>
-          <Ionicons name="person-circle-outline" size={80} color={C.muted} />
-          <Text style={s.loaderText}>Đang tải hồ sơ...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (!accessToken || !user) {
-    return (
-      <SafeAreaView style={s.container}>
-        {/* Solid brand header (unauth) */}
-        <View
-          style={[
-            s.topbar,
-            { backgroundColor: BRAND, borderBottomColor: C.border },
-          ]}
+        <Animated.ScrollView
+          contentContainerStyle={{ paddingBottom: 110 }}
+          showsVerticalScrollIndicator={false}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true }
+          )}
+          scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl
+              colors={[C.primary]}
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+            />
+          }
         >
-          <Text style={s.headerTitle}>Hồ sơ</Text>
-        </View>
-
-        <View style={s.authWrap}>
-          <Ionicons name="person-circle-outline" size={80} color={C.muted} />
-          <Text style={s.authTitle}>Bạn chưa đăng nhập</Text>
-          <Text style={s.authDesc}>
-            Đăng nhập để quản lý hồ sơ, theo dõi thành tích và tham gia các cuộc
-            thi nghệ thuật hấp dẫn trên ArtChain.
-          </Text>
-          <TouchableOpacity
-            onPress={() => router.push("/login")}
-            style={s.authBtn}
-          >
-            <Text style={s.authBtnText}>Đăng nhập / Đăng ký</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={s.container}>
-      {/* Solid brand header (main) */}
-      <View
-        style={[
-          s.topbar,
-          { backgroundColor: C.foreground80, borderBottomColor: C.border },
-        ]}
-      >
-        <Text style={s.headerTitle}>Hồ sơ phụ huynh</Text>
-        <View style={{ flexDirection: "row" }}>
-          <TouchableOpacity
-            onPress={() => router.push("/notifications")}
-            style={s.iconBtn}
-          >
-            <Ionicons name="notifications-outline" size={25} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push("/setting")}
-            style={s.iconBtn}
-          >
-            <Ionicons name="settings-outline" size={25} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <Animated.ScrollView
-        contentContainerStyle={{ paddingBottom: 110 }}
-        showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl
-            colors={[C.primary]}
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-          />
-        }
-      >
-        {/* Header compact */}
-        <View style={s.headerWrap}>
-          <TouchableOpacity
-            onPress={() => setOpenDetails(true)}
-            activeOpacity={0.9}
-            style={{ padding: 8, margin: -8 }} // Expand touch area
-          >
-            <View>
-              <Avatar />
-              {/* Badge cọ vẽ gradient */}
-              <LinearGradient
-                colors={pickGrad("brush")}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[s.addBadge, { borderColor: C.background }]}
-              >
-                <Ionicons name="brush" size={12} color={C.primaryForeground} />
-              </LinearGradient>
+          {/* Header compact */}
+          <View style={s.headerWrap}>
+            <TouchableOpacity
+              onPress={() => setOpenDetails(true)}
+              activeOpacity={0.9}
+              style={{ padding: 8, margin: -8 }} // Expand touch area
+            >
+              <View>
+                <Avatar />
+                {/* Badge cọ vẽ gradient */}
+                <LinearGradient
+                  colors={pickGrad("brush")}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[s.addBadge, { borderColor: C.background }]}
+                >
+                  <Ionicons
+                    name="brush"
+                    size={12}
+                    color={C.primaryForeground}
+                  />
+                </LinearGradient>
+              </View>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={s.name}>{user.fullName}</Text>
+              <Text style={s.handle}>{user.email}</Text>
             </View>
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={s.name}>{user.fullName}</Text>
-            <Text style={s.handle}>{user.email}</Text>
-          </View>
 
-          <PillButton
-            label="Hồ sơ"
-            icon="person-outline"
-            colors={C}
-            variant="ghost"
-            onPress={() => router.push("/profile-detail")}
-          />
-        </View>
-        <View
-          style={{
-            width: "95%",
-            height: 1,
-            backgroundColor: "gray",
-
-            marginVertical: 10,
-
-            alignSelf: "center",
-          }}
-        />
-        {/* KPI */}
-        <View style={s.kpiCard}>
-          <View style={{ flex: 1, flexDirection: "row", gap: 12 }}>
-            <KPI
-              icon="people-outline"
-              label="Con em"
-              value={String(children?.length || 0)}
-              C={C}
-            />
-            <KPI
-              icon="trophy-outline"
-              label="Thành tích"
-              value={String(achievements.length)}
-              C={C}
+            <PillButton
+              label="Hồ sơ"
+              icon="person-outline"
+              colors={C}
+              variant="ghost"
+              onPress={() => router.push("/profile-detail")}
             />
           </View>
-        </View>
 
-        <View style={{}}>
-          <SegmentedTabsProfile
-            tabs={[
-              {
-                key: "children",
-                label: "Con em",
-                icon: "people-outline",
-              },
-              {
-                key: "achievements",
-                label: "Thành tích",
-                icon: "trophy-outline",
-              },
-            ]}
-            activeKey={activeTab}
-            onChange={(k) => setActiveTab(k as any)}
-            activeFg={C.primary}
-            mutedFg={C.mutedForeground}
+          <View
+            style={{
+              width: "92%",
+              height: 2,
+              backgroundColor: C.primary,
+              opacity: 0.6,
+              marginTop: 10,
+              alignSelf: "center",
+              borderRadius: 999,
+              marginBottom: 10,
+            }}
           />
-        </View>
 
-        {/* Tab Content */}
-        <View style={s.tabContent}>
-          {activeTab === "children" && (
+          {/* KPI – chỉ giữ KPI Con em */}
+          <View style={s.kpiCard}>
+            <View style={{ flex: 1, flexDirection: "row", gap: 12 }}>
+              <KPI
+                icon="people-outline"
+                label="Con em"
+                value={String(children?.length || 0)}
+                C={C}
+              />
+            </View>
+          </View>
+
+          <View style={{ marginTop: 12, marginBottom: 4 }}>
+            {/* Title chip */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingHorizontal: 16,
+                  paddingVertical: 6,
+                  borderRadius: 4,
+                  backgroundColor: C.card,
+                  borderWidth: 1,
+                  borderColor: C.primary,
+                  gap: 8,
+                }}
+              >
+                <Ionicons name="people-outline" size={18} color={C.primary} />
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontFamily: "Be Vietnam Pro",
+                    fontWeight: "700",
+                    color: C.primary,
+                  }}
+                >
+                  Danh sách con em
+                </Text>
+              </View>
+            </View>
+
+            {/* Underline */}
+            <View
+              style={{
+                width: "92%",
+                height: 2,
+                backgroundColor: C.primary,
+                opacity: 0.6,
+                marginTop: 10,
+                alignSelf: "center",
+                borderRadius: 999,
+                marginBottom: 10,
+              }}
+            />
+          </View>
+
+          <View style={s.tabContent}>
             <View style={s.tabScrollContent}>
               {children && children.length > 0 ? (
                 <View style={s.childrenGrid}>
@@ -413,68 +410,22 @@ export default function GuardianProfileComponent() {
                 </View>
               )}
             </View>
-          )}
+          </View>
+        </Animated.ScrollView>
 
-          {activeTab === "achievements" && (
-            <View style={[s.tabScrollContent, { gap: SP.blockGap }]}>
-              {achievementsLoading ? (
-                <EmptyState
-                  C={C}
-                  icon="sync"
-                  title="Đang tải thành tích..."
-                  compact
-                />
-              ) : achievements.length > 0 ? (
-                <View style={{ gap: SP.blockGap, marginBottom: SP.sectionGap }}>
-                  {achievements.map((a) => (
-                    <TouchableOpacity
-                      key={a.paintingId}
-                      activeOpacity={0.9}
-                      onPress={() => {
-                        setSelectedAch(a);
-                        setOpenAchModal(true);
-                      }}
-                    >
-                      <AchievementCard
-                        item={{
-                          id: a.paintingId,
-                          title: `${a.award.name} - ${a.contest.title}`,
-                          achievedDate: fmtDateOnly(a.achievedDate),
-                        }}
-                        pickGrad={pickGrad}
-                        borderColor={C.border}
-                      />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              ) : (
-                <EmptyState
-                  C={C}
-                  icon="trophy-outline"
-                  title="Chưa có thành tích nào"
-                  action="Tham gia cuộc thi"
-                  compact
-                />
-              )}
-            </View>
-          )}
-        </View>
-      </Animated.ScrollView>
+        <ProfileDetailsModal
+          visible={openDetails}
+          onClose={() => setOpenDetails(false)}
+          scheme={scheme}
+          user={{
+            userId: user.userId,
+            fullname: user.fullName,
+            email: user.email,
+            phone: user.phone || "",
+          }}
+        />
 
-      <ProfileDetailsModal
-        visible={openDetails}
-        onClose={() => setOpenDetails(false)}
-        scheme={scheme}
-        user={{
-          userId: user.userId,
-          fullname: user.fullName,
-          email: user.email,
-          phone: user.phone || "",
-        }}
-      />
-
-      {/* Floating Add Child Button */}
-      {activeTab === "children" && (
+        {/* Floating Add Child Button – luôn hiện vì chỉ còn tab Con em */}
         <TouchableOpacity
           style={s.fabButton}
           onPress={() => router.push("/add-child")}
@@ -489,14 +440,7 @@ export default function GuardianProfileComponent() {
             <Ionicons name="add" size={28} color={C.primaryForeground} />
           </LinearGradient>
         </TouchableOpacity>
-      )}
-
-      {/* Modal thành tích (nhận item kiểu API) */}
-      <AchievementModal
-        visible={openAchModal}
-        onClose={() => setOpenAchModal(false)}
-        item={selectedAch}
-      />
+      </View>
     </SafeAreaView>
   );
 }
@@ -528,6 +472,11 @@ const sKpi = StyleSheet.create({
 
 const styles = (C: ColorTokens) =>
   StyleSheet.create({
+    // Safe area wrapper, màu override inline theo từng state
+    safeArea: {
+      flex: 1,
+    },
+
     container: { flex: 1, backgroundColor: C.background },
 
     /** New solid topbar (replaces topbarGrad) */
@@ -583,7 +532,7 @@ const styles = (C: ColorTokens) =>
       elevation: 2,
     },
 
-    // Tabs container spacing
+    // Content spacing
     tabContent: { flex: 1, minHeight: 400 },
     tabScrollContent: { paddingHorizontal: 16, paddingBottom: 20 },
 

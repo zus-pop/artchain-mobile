@@ -9,14 +9,7 @@ import {
   BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import {
-  Dimensions,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import ArtworkPlaceholder from "../ArtworkPlaceholder";
 
 /* ================= Helpers ================= */
@@ -25,7 +18,6 @@ const ACCENT = "hsl(15 85% 55%)";
 /** Chỉ lấy ngày từ chuỗi ISO → "DD/MM/YYYY", không tạo new Date để tránh lệch TZ */
 const fmtDateOnlyISO = (v?: string | null) => {
   if (!v) return "—";
-  // Kỳ vọng dạng 2025-11-04T17:12:20.737Z
   const iso = String(v);
   const ymd = iso.split("T")[0]; // "YYYY-MM-DD"
   const [y, m, d] = ymd.split("-");
@@ -33,7 +25,7 @@ const fmtDateOnlyISO = (v?: string | null) => {
   return `${d}/${m}/${y}`;
 };
 
-const fmtPrize = (p: string) => {
+const fmtPrize = (p: number | string) => {
   const n = typeof p === "string" ? parseFloat(p) : p;
   return Number.isFinite(n) ? n.toLocaleString("vi-VN") + "₫" : String(p);
 };
@@ -42,8 +34,8 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   item?: AchievementItem | null;
-  maxHeightPct?: number;
-  disableBackdropClose?: boolean;
+  maxHeightPct?: number; // dùng để tính snapPoint %
+  disableBackdropClose?: boolean; // (không dùng nhiều, nhưng vẫn giữ prop cho tương thích)
   showClose?: boolean;
 };
 
@@ -58,41 +50,34 @@ export default function AchievementModal({
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const C = Colors[scheme];
 
-  const screenH = useMemo(() => Dimensions.get("window").height, []);
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-  // Snap points for the bottom sheet
-  const snapPoints = useMemo(() => ["90%"], []);
+  const snapPoints = useMemo(
+    () => [`${Math.round(maxHeightPct * 100)}%`],
+    [maxHeightPct]
+  );
 
-  // Control modal visibility
+  // mở / đóng sheet theo visible
   useEffect(() => {
+    if (!item) {
+      bottomSheetModalRef.current?.dismiss();
+      return;
+    }
     if (visible) {
       bottomSheetModalRef.current?.present();
     } else {
       bottomSheetModalRef.current?.dismiss();
     }
-  }, [visible]);
+  }, [visible, item]);
 
   const handleSheetChanges = useCallback(
     (index: number) => {
+      // index === -1 => sheet đã đóng (swipe xuống / backdrop)
       if (index === -1) {
-        onClose();
+        onClose?.();
       }
     },
     [onClose]
-  );
-
-  // Render backdrop
-  const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        pressBehavior={disableBackdropClose ? "none" : "close"}
-      />
-    ),
-    [disableBackdropClose]
   );
 
   if (!item) return null;
@@ -104,15 +89,18 @@ export default function AchievementModal({
       onChange={handleSheetChanges}
       backgroundStyle={{ backgroundColor: C.card }}
       handleIndicatorStyle={{ backgroundColor: C.mutedForeground }}
-      enablePanDownToClose={!disableBackdropClose}
-      backdropComponent={renderBackdrop}
+      enablePanDownToClose
+      backdropComponent={(props) => (
+        <BottomSheetBackdrop
+          {...props}
+          disappearsOnIndex={-1}
+          appearsOnIndex={0}
+          pressBehavior={disableBackdropClose ? "none" : "close"}
+        />
+      )}
     >
-      <BottomSheetScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Header */}
+      <BottomSheetScrollView style={{ flex: 1 }}>
+        {/* Header giống bản cũ */}
         <View style={styles.topChrome}>
           <View style={[styles.header, { borderBottomColor: C.border }]}>
             <View style={styles.headerLeft}>
@@ -147,135 +135,147 @@ export default function AchievementModal({
           </View>
         </View>
 
-        {/* Ảnh / Placeholder */}
-        {item.paintingImage ? (
-          <View style={[styles.imageWrap, { borderColor: C.border }]}>
-            <Image
-              source={{ uri: item.paintingImage }}
-              style={styles.image}
-              resizeMode="cover"
-            />
-            {!!item.award?.rank && (
-              <View style={[styles.badge, { backgroundColor: ACCENT }]}>
-                <Ionicons name="ribbon" size={14} color="#fff" />
-                <Text style={styles.badgeTxt}>Top {item.award.rank}</Text>
-              </View>
-            )}
-          </View>
-        ) : (
-          <View style={[styles.imageWrap, { borderColor: C.border }]}>
-            <ArtworkPlaceholder
-              solidBorder
-              height={180}
-              rounded={12}
-              message="Tranh sẽ được chúng tôi cập nhật sớm nhất có thể"
-              style={{ height: "100%", width: "100%" }}
-            />
-            {!!item.award?.rank && (
-              <View style={[styles.badge, { backgroundColor: ACCENT }]}>
-                <Ionicons name="ribbon" size={14} color="#fff" />
-                <Text style={styles.badgeTxt}>Top {item.award.rank}</Text>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Thông tin chi tiết */}
-        <View style={{ gap: 12 }}>
-          {!!item.paintingTitle && (
-            <>
-              <Text
-                style={{
-                  fontSize: 19,
-                  color: C.foreground,
-                  fontFamily: "Be Vietnam Pro",
-                  fontWeight: "700",
-                  textAlign: "center",
-                }}
-              >
-                {item.paintingTitle}
-              </Text>
-              <View style={{ height: 1, backgroundColor: C.border }} />
-            </>
+        {/* Nội dung scroll được */}
+        <BottomSheetScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces
+        >
+          {/* Ảnh / Placeholder */}
+          {item.paintingImage ? (
+            <View style={[styles.imageWrap, { borderColor: C.border }]}>
+              <Image
+                source={{ uri: item.paintingImage }}
+                style={styles.image}
+                resizeMode="cover"
+              />
+              {!!item.award?.rank && (
+                <View style={[styles.badge, { backgroundColor: ACCENT }]}>
+                  <Ionicons name="ribbon" size={14} color="#fff" />
+                  <Text style={styles.badgeTxt}>Top {item.award.rank}</Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <View style={[styles.imageWrap, { borderColor: C.border }]}>
+              <ArtworkPlaceholder
+                solidBorder
+                height={180}
+                rounded={12}
+                message="Tranh sẽ được chúng tôi cập nhật sớm nhất có thể"
+                style={{ height: "100%", width: "100%" }}
+              />
+              {!!item.award?.rank && (
+                <View style={[styles.badge, { backgroundColor: ACCENT }]}>
+                  <Ionicons name="ribbon" size={14} color="#fff" />
+                  <Text style={styles.badgeTxt}>Top {item.award.rank}</Text>
+                </View>
+              )}
+            </View>
           )}
 
-          <Row
-            C={C}
-            icon="flag-outline"
-            label="Cuộc thi"
-            value={item.contest?.title || "—"}
-            accent={ACCENT}
-          />
-          <Row
-            C={C}
-            icon="time-outline"
-            label="Thời gian"
-            value={
-              item.contest?.startDate && item.contest?.endDate
-                ? `${fmtDateOnlyISO(item.contest.startDate)} → ${fmtDateOnlyISO(
-                    item.contest.endDate
-                  )}`
-                : "—"
-            }
-            accent={ACCENT}
-          />
-          <View style={{ height: 1, backgroundColor: C.border }} />
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              gap: 16,
-            }}
-          >
+          {/* Thông tin chi tiết */}
+          <View style={{ gap: 12 }}>
+            {!!item.paintingTitle && (
+              <>
+                <Text
+                  style={{
+                    fontSize: 19,
+                    color: C.foreground,
+                    fontFamily: "Be Vietnam Pro",
+                    fontWeight: "700",
+                    textAlign: "center",
+                  }}
+                >
+                  {item.paintingTitle}
+                </Text>
+                <View style={{ height: 1, backgroundColor: C.border }} />
+              </>
+            )}
+
             <Row
               C={C}
-              icon="ribbon-outline"
-              label="Xếp hạng"
-              value={item.award?.rank ? `Hạng ${item.award.rank}` : "—"}
+              icon="flag-outline"
+              label="Cuộc thi"
+              value={item.contest?.title || "—"}
               accent={ACCENT}
             />
             <Row
               C={C}
-              icon="cash-outline"
-              label="Giải thưởng"
+              icon="time-outline"
+              label="Thời gian"
               value={
-                item.award?.prize != null ? fmtPrize(item.award.prize) : "—"
+                item.contest?.startDate && item.contest?.endDate
+                  ? `${fmtDateOnlyISO(
+                      item.contest.startDate
+                    )} → ${fmtDateOnlyISO(item.contest.endDate)}`
+                  : "—"
               }
               accent={ACCENT}
             />
-          </View>
+            <View style={{ height: 1, backgroundColor: C.border }} />
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                gap: 16,
+              }}
+            >
+              <Row
+                C={C}
+                icon="ribbon-outline"
+                label="Xếp hạng"
+                value={item.award?.rank ? `Hạng ${item.award.rank}` : "—"}
+                accent={ACCENT}
+              />
+              <Row
+                C={C}
+                icon="cash-outline"
+                label="Giải thưởng"
+                value={
+                  item.award?.prize != null
+                    ? fmtPrize(item.award.prize as any)
+                    : "—"
+                }
+                accent={ACCENT}
+              />
+            </View>
 
-          {/* Ngày đạt */}
-          <Row
-            C={C}
-            icon="calendar-outline"
-            label="Ngày đạt"
-            value={fmtDateOnlyISO(item.achievedDate)}
-            accent={ACCENT}
-          />
-
-          {/* Mô tả giải */}
-          {!!item.award?.description && (
+            {/* Ngày đạt */}
             <Row
               C={C}
-              icon="document-text-outline"
-              label="Mô tả giải"
-              value={item.award.description}
-              multiline
+              icon="calendar-outline"
+              label="Ngày đạt"
+              value={fmtDateOnlyISO(item.achievedDate)}
               accent={ACCENT}
             />
-          )}
-        </View>
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <TouchableOpacity
-            onPress={onClose}
-            style={[styles.primaryBtn, { backgroundColor: ACCENT }]}
-          >
-            <Text style={styles.primaryBtnTxt}>Đóng</Text>
-          </TouchableOpacity>
-        </View>
+            {/* Mô tả giải */}
+            {!!item.award?.description && (
+              <Row
+                C={C}
+                icon="document-text-outline"
+                label="Mô tả giải"
+                value={item.award.description}
+                multiline
+                accent={ACCENT}
+              />
+            )}
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={[styles.primaryBtn, { backgroundColor: ACCENT }]}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.primaryBtnTxt}>Đóng</Text>
+            </TouchableOpacity>
+          </View>
+        </BottomSheetScrollView>
       </BottomSheetScrollView>
     </BottomSheetModal>
   );
@@ -333,7 +333,7 @@ function Row({
 }
 
 const styles = StyleSheet.create({
-  topChrome: { paddingTop: 6 },
+  topChrome: { paddingTop: 2 },
   dragZone: {
     alignItems: "center",
     justifyContent: "center",

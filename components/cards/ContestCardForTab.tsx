@@ -159,7 +159,7 @@ function ContestCardColorful({
         style,
       ]}
     >
-      {/* Layer 1: gradient nền kính */}
+     
       <LinearGradient
         colors={[C.card, C.card]}
         start={{ x: 0.1, y: 0 }}
@@ -172,20 +172,6 @@ function ContestCardColorful({
             styles.glass,
             { backgroundColor: C.muted + "20", borderColor: C.muted + "30" },
           ]}
-        />
-
-        {/* blob trang trí */}
-        <LinearGradient
-          colors={[st.grad[0] + "66", st.grad[1] + "33"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.blobTL}
-        />
-        <LinearGradient
-          colors={[C.muted + "40", C.border + "40"]}
-          start={{ x: 1, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.blobBR}
         />
 
         {/* Nội dung */}
@@ -208,7 +194,7 @@ function ContestCardColorful({
               <Ionicons
                 name={st.icon}
                 size={14}
-                color="#ffffff"
+                color="#fff"
                 style={{ marginRight: 6 }}
               />
               <Text style={styles.pillTextWhite}>{st.label}</Text>
@@ -372,7 +358,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 999,
+    borderRadius: 4,
     flexDirection: "row",
     alignItems: "center",
   },
@@ -436,17 +422,20 @@ const styles = StyleSheet.create({
   },
   roleChip: {
     flex: 1,
-    borderRadius: 999,
-    paddingHorizontal: 12,
+    borderRadius: 4,
+
     paddingVertical: 8,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    textAlign: "center",
+    alignContent: "center",
+    justifyContent: "center",
   },
   roleText: { fontSize: 12, fontWeight: "800" },
 
   evaluateBtn: {
-    borderRadius: 999,
+    borderRadius: 4,
     shadowOpacity: 0.12,
     shadowRadius: 9,
     shadowOffset: { width: 0, height: 5 },
@@ -454,9 +443,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   evaluateBtnFill: {
-    borderRadius: 999,
+    borderRadius: 4,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 7,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,

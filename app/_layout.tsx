@@ -96,7 +96,7 @@ export default function RootLayout() {
                   />
                   <Stack.Screen
                     name="profile-detail"
-                    options={{ title: "Chi tiết hồ sơ", headerShown: true }}
+                    options={{ title: "Chi tiết hồ sơ", headerShown: false }}
                   />
                   <Stack.Screen
                     name="contest-detail"
