@@ -50,19 +50,16 @@ function Orbs({ scheme }: { scheme: "light" | "dark" }) {
     scheme === "dark"
       ? [
           [
-            withOpacity(C.primary, 0.13),
-            withOpacity(C.secondary, 0.27),
+            withOpacity(C.primary, 0.08),
+            withOpacity(C.secondary, 0.15),
           ] as const,
-          [withOpacity(C.accent, 0.13), withOpacity(C.muted, 0.27)] as const,
-          [withOpacity(C.border, 0.13), withOpacity(C.card, 0.27)] as const,
+          [withOpacity(C.accent, 0.08), withOpacity(C.muted, 0.15)] as const,
+          [withOpacity(C.border, 0.08), withOpacity(C.card, 0.15)] as const,
         ]
       : [
-          [
-            withOpacity(C.primary, 0.2),
-            withOpacity(C.secondary, 0.33),
-          ] as const,
-          [withOpacity(C.accent, 0.2), withOpacity(C.muted, 0.33)] as const,
-          [withOpacity(C.border, 0.2), withOpacity(C.card, 0.33)] as const,
+          [withOpacity(C.primary, 0.1), withOpacity(C.secondary, 0.2)] as const,
+          [withOpacity(C.accent, 0.1), withOpacity(C.muted, 0.2)] as const,
+          [withOpacity(C.border, 0.1), withOpacity(C.card, 0.2)] as const,
         ];
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -70,19 +67,22 @@ function Orbs({ scheme }: { scheme: "light" | "dark" }) {
         colors={orbs[0]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.orb, { top: -70, left: -60, width: 220, height: 220 }]}
+        style={[styles.orb, { top: -100, left: -80, width: 200, height: 200 }]}
       />
       <LinearGradient
         colors={orbs[1]}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={[styles.orb, { top: 120, right: -70, width: 240, height: 240 }]}
+        style={[styles.orb, { top: 80, right: -90, width: 220, height: 220 }]}
       />
       <LinearGradient
         colors={orbs[2]}
         start={{ x: 0, y: 1 }}
         end={{ x: 1, y: 0 }}
-        style={[styles.orb, { top: 340, left: -40, width: 180, height: 180 }]}
+        style={[
+          styles.orb,
+          { bottom: -50, left: -60, width: 160, height: 160 },
+        ]}
       />
     </View>
   );
@@ -164,7 +164,6 @@ export default function NotificationsScreen() {
     if (today.length) s.push({ title: "Hôm nay", data: today });
     if (week.length) s.push({ title: "Tuần này", data: week });
     if (earlier.length) s.push({ title: "Trước đó", data: earlier });
-    if (!s.length) s.push({ title: "—", data: [] });
     return s;
   }, [filtered]);
 
@@ -302,13 +301,11 @@ export default function NotificationsScreen() {
             onLongPress={() => markOneAsRead(item.id)}
           />
         )}
-        renderSectionHeader={({ section }) =>
-          section.title !== "—" ? (
-            <Text style={[styles.sectionTitle, { color: C.mutedForeground }]}>
-              {section.title}
-            </Text>
-          ) : null
-        }
+        renderSectionHeader={({ section }) => (
+          <Text style={[styles.sectionTitle, { color: C.mutedForeground }]}>
+            {section.title}
+          </Text>
+        )}
         contentContainerStyle={{ paddingBottom: insets.bottom + 12 }}
         stickySectionHeadersEnabled={false}
         refreshControl={
@@ -348,14 +345,10 @@ export default function NotificationsScreen() {
               <Ionicons
                 name="notifications-off-outline"
                 size={48}
-                color={C.muted}
+                color={C.mutedForeground}
               />
-              <Text style={[styles.emptyTitle, { color: C.muted }]}>
+              <Text style={[styles.emptyTitle, { color: C.mutedForeground }]}>
                 Chưa có thông báo
-              </Text>
-              <Text style={[styles.emptyMsg, { color: C.mutedForeground }]}>
-                Khi có cuộc thi mới, kết quả, hay cập nhật hệ thống, mình sẽ báo
-                ngay tại đây.
               </Text>
             </View>
           )

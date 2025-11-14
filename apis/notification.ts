@@ -29,7 +29,7 @@ export function useGetNotificationsForUser() {
         {
           params: {
             page: pageParam,
-            limit: 2,
+            limit: 8,
           },
         }
       );
