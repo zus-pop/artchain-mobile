@@ -13,129 +13,170 @@ export default function SignupScreen() {
     <View
       style={{
         flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 24,
         backgroundColor: Colors[colorScheme].background,
       }}
     >
-      <Text
+      {/* Back Button */}
+      <View
         style={{
-          fontSize: 28,
-          fontWeight: "bold",
-          color: Colors[colorScheme].primary,
-          marginBottom: 8,
+          paddingTop: 38,
+          paddingHorizontal: 16,
+          paddingBottom: 8,
         }}
       >
-        ARTCHAIN
-      </Text>
-      <Text
-        style={{
-          fontSize: 18,
-          color: Colors[colorScheme].foreground,
-          marginBottom: 32,
-          textAlign: "center",
-        }}
-      >
-        Chọn loại tài khoản để đăng ký
-      </Text>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: Colors[colorScheme].card,
+            alignItems: "center",
+            justifyContent: "center",
+            shadowColor: "#000",
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 2,
+          }}
+        >
+          <Ionicons
+            name="arrow-back"
+            size={24}
+            color={Colors[colorScheme].foreground}
+          />
+        </TouchableOpacity>
+      </View>
 
-      <TouchableOpacity
-        onPress={() => router.push("/competitor-signup")}
+      {/* Content */}
+      <View
         style={{
-          width: "100%",
-          backgroundColor: Colors[colorScheme].primary,
-          borderRadius: 12,
-          paddingVertical: 20,
+          flex: 1,
+          justifyContent: "center",
           alignItems: "center",
-          marginBottom: 16,
-          shadowColor: "#000",
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 4,
+          padding: 24,
         }}
       >
-        <Ionicons
-          name="trophy-outline"
-          size={32}
-          color={Colors[colorScheme].primaryForeground}
-          style={{ marginBottom: 8 }}
-        />
-        <Text
-          style={{
-            color: Colors[colorScheme].primaryForeground,
-            fontSize: 18,
-            fontWeight: "bold",
-          }}
-        >
-          Thí sinh
-        </Text>
-        <Text
-          style={{
-            color: Colors[colorScheme].primaryForeground,
-            fontSize: 14,
-            opacity: 0.9,
-            textAlign: "center",
-            marginTop: 4,
-          }}
-        >
-          Cá nhân tham gia dự thi
-        </Text>
-      </TouchableOpacity>
+        <View style={{ marginTop: 28, alignItems: "center" }}>
+          <Text
+            style={{
+              fontSize: 28,
+              fontWeight: "bold",
+              color: Colors[colorScheme].primary,
+              marginBottom: 8,
+            }}
+          >
+            ARTCHAIN
+          </Text>
+          <Text
+            style={{
+              fontSize: 18,
+              color: Colors[colorScheme].foreground,
+              marginBottom: 32,
+              textAlign: "center",
+            }}
+          >
+            Chọn loại tài khoản để đăng ký
+          </Text>
+        </View>
 
-      <TouchableOpacity
-        onPress={() => router.push("/guard-signup")}
-        style={{
-          width: "100%",
-          backgroundColor: Colors[colorScheme].secondary,
-          borderRadius: 12,
-          paddingVertical: 20,
-          alignItems: "center",
-          marginBottom: 32,
-          shadowColor: "#000",
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 4,
-        }}
-      >
-        <Ionicons
-          name="shield-checkmark-outline"
-          size={32}
-          color={Colors[colorScheme].secondaryForeground}
-          style={{ marginBottom: 8 }}
-        />
-        <Text
+        <TouchableOpacity
+          onPress={() => router.push("/competitor-signup")}
           style={{
-            color: Colors[colorScheme].secondaryForeground,
-            fontSize: 18,
-            fontWeight: "bold",
+            width: "100%",
+            backgroundColor: Colors[colorScheme].primary,
+            borderRadius: 12,
+            paddingVertical: 20,
+            alignItems: "center",
+            marginBottom: 16,
+            shadowColor: "#000",
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 4,
           }}
         >
-          Người đại diện
-        </Text>
-        <Text
-          style={{
-            color: Colors[colorScheme].secondaryForeground,
-            fontSize: 14,
-            opacity: 0.9,
-            textAlign: "center",
-            marginTop: 4,
-          }}
-        >
-          Quản lí các thí sinh của mình
-        </Text>
-      </TouchableOpacity>
+          <Ionicons
+            name="trophy-outline"
+            size={32}
+            color={Colors[colorScheme].primaryForeground}
+            style={{ marginBottom: 8 }}
+          />
+          <Text
+            style={{
+              color: Colors[colorScheme].primaryForeground,
+              fontSize: 18,
+              fontWeight: "bold",
+            }}
+          >
+            Thí sinh
+          </Text>
+          <Text
+            style={{
+              color: Colors[colorScheme].primaryForeground,
+              fontSize: 14,
+              opacity: 0.9,
+              textAlign: "center",
+              marginTop: 4,
+            }}
+          >
+            Cá nhân tham gia dự thi
+          </Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        onPress={() => router.replace("/login")}
-        style={{ marginTop: 8 }}
-      >
-        <Text style={{ color: Colors[colorScheme].primary, fontSize: 15 }}>
-          Đã có tài khoản? Đăng nhập
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => router.push("/guard-signup")}
+          style={{
+            width: "100%",
+            backgroundColor: Colors[colorScheme].secondary,
+            borderRadius: 12,
+            paddingVertical: 20,
+            alignItems: "center",
+            marginBottom: 32,
+            shadowColor: "#000",
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 4,
+          }}
+        >
+          <Ionicons
+            name="shield-checkmark-outline"
+            size={32}
+            color={Colors[colorScheme].secondaryForeground}
+            style={{ marginBottom: 8 }}
+          />
+          <Text
+            style={{
+              color: Colors[colorScheme].secondaryForeground,
+              fontSize: 18,
+              fontWeight: "bold",
+            }}
+          >
+            Người đại diện
+          </Text>
+          <Text
+            style={{
+              color: Colors[colorScheme].secondaryForeground,
+              fontSize: 14,
+              opacity: 0.9,
+              textAlign: "center",
+              marginTop: 4,
+            }}
+          >
+            Quản lí các thí sinh của mình
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => router.replace("/login")}
+          style={{ marginTop: 8 }}
+        >
+          <Text style={{ color: Colors[colorScheme].primary, fontSize: 15 }}>
+            Đã có tài khoản? Đăng nhập
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }

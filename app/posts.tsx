@@ -1,14 +1,13 @@
-import { usePosts } from "@/apis/post";
+import { useGetPostTags, usePosts } from "@/apis/post";
 import PostCard from "@/components/cards/PostCard";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, router } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   RefreshControl,
   StatusBar,
   StyleSheet,
@@ -17,19 +16,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { FlatList } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-/* ---------- Rainbow tokens ---------- */
-const RAINBOW = [
-  ["#60A5FA", "#7C3AED"],
-  ["#22D3EE", "#06B6D4"],
-  ["#34D399", "#10B981"],
-  ["#FBBF24", "#F59E0B"],
-  ["#F472B6", "#EC4899"],
-  ["#F87171", "#EF4444"],
-  ["#A78BFA", "#8B5CF6"],
-] as const;
-const pickGrad = (i: number) => RAINBOW[i % RAINBOW.length];
 
 type FilterType = "all" | "tag";
 
@@ -37,6 +25,9 @@ export default function PostsScreen() {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const C = Colors[scheme];
   const insets = useSafeAreaInsets();
+
+  /* ---------- Theme-based gradients ---------- */
+  const getPrimaryGradient = () => [C.primary, C.primary50] as const;
 
   // ------- STATES -------
   const [searchInput, setSearchInput] = useState("");
@@ -53,36 +44,32 @@ export default function PostsScreen() {
   }, [searchInput]);
 
   // ------- API -------
-  const {
-    data: postsData,
-    isLoading,
-    refetch,
-  } = usePosts({
-    search: searchQuery || undefined,
-    tag_id: selectedTagId,
-  });
-  const posts = postsData?.data || [];
+  const { data, isPending, fetchNextPage, isFetchingNextPage, refetch } =
+    usePosts({
+      search: searchQuery || undefined,
+      tag_id: selectedTagId,
+    });
 
-  // ------- HELPERS -------
-  const getTagId = (tagName: string, list: any[]): number | undefined => {
-    for (const post of list) {
-      const t = post.postTags?.find((pt: any) => pt.tag.tag_name === tagName);
-      if (t) return t.tag.tag_id;
-    }
-    return undefined;
+  const { data: tagsData } = useGetPostTags();
+
+  // Get flattened posts data
+  const posts = data?.pages?.flatMap((page) => page.data) ?? [];
+
+  // Get tags from API
+  const allTags = (tagsData?.data || []).map((tag: any) => tag.tag_name).sort();
+
+  const getTagId = (tagName: string) => {
+    const tag = (tagsData?.data || []).find((t: any) => t.tag_name === tagName);
+    return tag ? parseInt(tag.tag_id) : undefined;
   };
 
-  const allTags = useMemo(() => {
-    const set = new Set<string>();
-    posts.forEach((p: any) =>
-      p.postTags?.forEach((pt: any) => set.add(pt.tag.tag_name))
-    );
-    return Array.from(set).sort();
-  }, [posts]);
-
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    Promise.resolve(refetch?.()).finally(() => setRefreshing(false));
+  const onRefresh = React.useCallback(async () => {
+    try {
+      setRefreshing(true);
+      await refetch?.();
+    } finally {
+      setRefreshing(false);
+    }
   }, [refetch]);
 
   const clearFilters = () => {
@@ -94,24 +81,112 @@ export default function PostsScreen() {
   };
 
   // ------- RENDERERS -------
-  const renderPostItem = ({ item }: { item: any }) => (
-    <PostCard
-      item={item}
-      thumbSize={120}
-      showDivider={false}
-      onPress={(post) =>
-        router.push({
-          pathname: "/post-detail",
-          params: { post: JSON.stringify(post) },
-        })
-      }
-    />
+  const renderPostItem = React.useCallback(
+    ({ item }: { item: any }) => (
+      <PostCard
+        item={item}
+        showDivider={true}
+        onPress={(post) =>
+          router.push({
+            pathname: "/post-detail",
+            params: {
+              post: JSON.stringify({
+                ...post,
+                image_url: encodeURIComponent(post.image_url),
+              }),
+            },
+          })
+        }
+      />
+    ),
+    []
+  );
+
+  const renderFilterTab = React.useCallback(
+    (filterType: FilterType) => {
+      const active = selectedFilter === filterType;
+      const colors = getPrimaryGradient();
+      return (
+        <TouchableOpacity
+          key={filterType}
+          activeOpacity={0.9}
+          onPress={() => {
+            setSelectedFilter(filterType);
+            if (filterType === "all") {
+              setSelectedTag(null);
+              setSelectedTagId(undefined);
+            }
+          }}
+          style={styles.tabBtnOuter}
+        >
+          <LinearGradient
+            colors={
+              active
+                ? colors
+                : ["rgba(255,255,255,0.15)", "rgba(255,255,255,0.12)"]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.tabBtn}
+          >
+            <Text style={[styles.tabText, { color: "#fff" }]}>
+              {filterType === "all" ? "Tất cả" : "Theo thẻ"}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      );
+    },
+    [selectedFilter]
+  );
+
+  const renderTagItem = React.useCallback(
+    (tagName: string) => {
+      const active = selectedTag === tagName;
+      const grad = getPrimaryGradient();
+      return (
+        <TouchableOpacity
+          key={tagName}
+          activeOpacity={0.9}
+          onPress={() => {
+            if (active) {
+              setSelectedTag(null);
+              setSelectedTagId(undefined);
+            } else {
+              const id = getTagId(tagName);
+              setSelectedTag(tagName);
+              setSelectedTagId(id);
+            }
+          }}
+          style={styles.tagChipOuter}
+        >
+          <LinearGradient
+            colors={
+              active
+                ? grad
+                : ["rgba(255,255,255,0.14)", "rgba(255,255,255,0.1)"]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.tagChip}
+          >
+            <Ionicons
+              name="pricetag-outline"
+              size={12}
+              color="#fff"
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.tagText}>{tagName}</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      );
+    },
+    [selectedTag, getTagId]
   );
 
   const Loading = () => (
     <View style={styles.loadingContainer}>
       <LinearGradient
-        colors={pickGrad(0)}
+        colors={getPrimaryGradient()}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.loadingBadge}
@@ -125,7 +200,7 @@ export default function PostsScreen() {
   const Empty = () => (
     <View style={styles.emptyContainer}>
       <LinearGradient
-        colors={pickGrad(4)}
+        colors={getPrimaryGradient()}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.emptyBadge}
@@ -162,40 +237,28 @@ export default function PostsScreen() {
 
   // ------- UI -------
   return (
-    <View style={[styles.container, { backgroundColor: C.background }]}>
-      {/* ẨN HEADER HỆ THỐNG */}
+    <View style={[styles.container]}>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar barStyle="light-content" />
-
-      {/* BACK BUTTON trắng (trên cùng, trái) */}
-      <View
-        style={[styles.backWrap, { top: insets.top + 8 }]}
-        pointerEvents="box-none"
-      >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel="Quay lại"
-          style={styles.backBtn}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="chevron-back" size={20} color="#fff" />
-          <Text style={styles.backTxt}>Back</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Hero gradient header mềm mượt, nghệ thuật */}
       <LinearGradient
-        colors={
-          scheme === "dark" ? ["#0EA5E9", "#6366F1"] : ["#60A5FA", "#A78BFA"]
-        }
+        colors={getPrimaryGradient()}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.hero, { paddingTop: insets.top + 52 }]} // chừa chỗ back
+        style={[styles.hero, { paddingTop: insets.top + 16 }]}
       >
-        <Text style={styles.heroTitle}>Khám phá bài viết</Text>
-        <Text style={styles.heroSub}>Cảm hứng mỗi ngày từ cộng đồng</Text>
+        <View style={styles.backWrap} pointerEvents="box-none">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Quay lại"
+            style={styles.backBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="chevron-back" size={20} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.heroTitle}>Khám phá các bài viết</Text>
+        </View>
 
         {/* Search pill */}
         <View style={styles.searchWrap}>
@@ -207,6 +270,7 @@ export default function PostsScreen() {
               placeholder="Tìm kiếm bài viết..."
               placeholderTextColor="rgba(255,255,255,0.75)"
               style={styles.searchInput}
+              cursorColor={"white"}
               returnKeyType="search"
             />
             {searchInput ? (
@@ -225,89 +289,14 @@ export default function PostsScreen() {
 
           {/* Filter tabs */}
           <View style={styles.tabRow}>
-            {(["all", "tag"] as FilterType[]).map((ft, idx) => {
-              const active = selectedFilter === ft;
-              const colors = pickGrad(idx + 1);
-              return (
-                <TouchableOpacity
-                  key={ft}
-                  activeOpacity={0.9}
-                  onPress={() => {
-                    setSelectedFilter(ft);
-                    if (ft === "all") {
-                      setSelectedTag(null);
-                      setSelectedTagId(undefined);
-                    }
-                  }}
-                  style={styles.tabBtnOuter}
-                >
-                  <LinearGradient
-                    colors={
-                      active
-                        ? colors
-                        : ["rgba(255,255,255,0.15)", "rgba(255,255,255,0.12)"]
-                    }
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.tabBtn}
-                  >
-                    <Text style={[styles.tabText, { color: "#fff" }]}>
-                      {ft === "all" ? "Tất cả" : "Theo thẻ"}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              );
-            })}
+            {(["all", "tag"] as FilterType[]).map((ft) => renderFilterTab(ft))}
           </View>
 
           {/* Tag chips */}
           {selectedFilter === "tag" && (
-            <FlatList
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              data={allTags}
-              keyExtractor={(t) => t}
-              contentContainerStyle={styles.tagRow}
-              renderItem={({ item, index }) => {
-                const active = selectedTag === item;
-                const grad = pickGrad(index + 2);
-                return (
-                  <TouchableOpacity
-                    activeOpacity={0.9}
-                    onPress={() => {
-                      if (active) {
-                        setSelectedTag(null);
-                        setSelectedTagId(undefined);
-                      } else {
-                        const id = getTagId(item, posts);
-                        setSelectedTag(item);
-                        setSelectedTagId(id);
-                      }
-                    }}
-                    style={styles.tagChipOuter}
-                  >
-                    <LinearGradient
-                      colors={
-                        active
-                          ? grad
-                          : ["rgba(255,255,255,0.14)", "rgba(255,255,255,0.1)"]
-                      }
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.tagChip}
-                    >
-                      <Ionicons
-                        name="pricetag-outline"
-                        size={12}
-                        color="#fff"
-                        style={{ marginRight: 6 }}
-                      />
-                      <Text style={styles.tagText}>{item}</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                );
-              }}
-            />
+            <View style={styles.tagRow}>
+              {allTags.map((item) => renderTagItem(item))}
+            </View>
           )}
         </View>
       </LinearGradient>
@@ -315,14 +304,14 @@ export default function PostsScreen() {
       {/* Result summary bar */}
       <View style={styles.summaryRow}>
         <LinearGradient
-          colors={pickGrad(6)}
+          colors={getPrimaryGradient()}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.summaryPill}
         >
           <Text style={styles.summaryText}>
             {posts.length} bài viết
-            {searchQuery ? ` • “${searchQuery}”` : ""}
+            {searchQuery ? ` • "${searchQuery}"` : ""}
             {selectedTag ? ` • #${selectedTag}` : ""}
           </Text>
         </LinearGradient>
@@ -344,7 +333,37 @@ export default function PostsScreen() {
         data={posts}
         keyExtractor={(item) => item.post_id.toString()}
         renderItem={renderPostItem}
-        ListEmptyComponent={isLoading ? <Loading /> : <Empty />}
+        getItemLayout={(data, index) => ({
+          length: 200, // Approximate height of each item
+          offset: 200 * index,
+          index,
+        })}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        removeClippedSubviews={true}
+        ListEmptyComponent={
+          isPending && posts.length === 0 ? <Loading /> : <Empty />
+        }
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <View style={styles.loadingContainer}>
+              <LinearGradient
+                colors={getPrimaryGradient()}
+                style={styles.loadingBadge}
+              >
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={styles.loadingText}>Loading more posts...</Text>
+              </LinearGradient>
+            </View>
+          ) : null
+        }
+        onEndReached={() => {
+          if (!isFetchingNextPage) {
+            fetchNextPage();
+          }
+        }}
+        onEndReachedThreshold={0.5}
         contentContainerStyle={[
           styles.listContainer,
           { paddingBottom: insets.bottom + 24 },
@@ -354,7 +373,7 @@ export default function PostsScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor="#fff"
-            colors={["#fff"]}
+            colors={[C.primary]}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -366,22 +385,19 @@ export default function PostsScreen() {
 /* ====================== STYLES ====================== */
 const styles = StyleSheet.create({
   container: { flex: 1 },
-
-  /* Back button (ẩn header hệ thống, tự render) */
   backWrap: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    zIndex: 20,
-    alignItems: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
   },
   backBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     backgroundColor: "rgba(255,255,255,0.16)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.35)",
@@ -392,33 +408,34 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     letterSpacing: 0.3,
   },
-
   /* Hero */
   hero: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 12,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
   heroTitle: {
     color: "#fff",
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "900",
     letterSpacing: 0.2,
+    textAlign: "center",
+    flex: 1,
   },
   heroSub: {
     color: "rgba(255,255,255,0.9)",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
-    marginTop: 4,
-    marginBottom: 12,
+    marginTop: 2,
+    marginBottom: 8,
   },
 
   /* Search pill */
   searchWrap: {
     backgroundColor: "rgba(255,255,255,0.08)",
     borderRadius: 16,
-    padding: 12,
+    padding: 10,
   },
   searchBar: {
     flexDirection: "row",
@@ -438,7 +455,7 @@ const styles = StyleSheet.create({
   },
 
   /* Tabs */
-  tabRow: { flexDirection: "row", gap: 10, marginTop: 10 },
+  tabRow: { flexDirection: "row", gap: 10, marginTop: 8 },
   tabBtnOuter: { borderRadius: 999 },
   tabBtn: {
     paddingHorizontal: 16,
@@ -457,8 +474,14 @@ const styles = StyleSheet.create({
   },
 
   /* Tag chips */
-  tagRow: { paddingTop: 10, paddingBottom: 4 },
-  tagChipOuter: { marginRight: 8, borderRadius: 999 },
+  tagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingTop: 12,
+    paddingBottom: 8,
+    paddingHorizontal: 4,
+  },
+  tagChipOuter: { marginRight: 12, marginBottom: 8, borderRadius: 999 },
   tagChip: {
     flexDirection: "row",
     alignItems: "center",
@@ -496,7 +519,7 @@ const styles = StyleSheet.create({
   summaryResetText: { color: "#64748B", fontSize: 12.5, fontWeight: "900" },
 
   /* List */
-  listContainer: { paddingHorizontal: 16, paddingTop: 8 },
+  listContainer: { padding: 8 }, // ⬅️ SMALLER padding for grid
 
   /* Loading */
   loadingContainer: {

@@ -1,5 +1,8 @@
 // app/painting-review-round1.tsx
-import { useGetPaintings, useReviewEvaluationRound1 } from "@/apis/painting";
+import {
+  useGetPaintings,
+  useReviewEvaluationRound1Drop,
+} from "@/apis/painting";
 import { useUserById } from "@/apis/user";
 import BrushButton from "@/components/buttons/BrushButton";
 import EvaluationSubmitModal from "@/components/modals/EvaluationSubmitModal";
@@ -219,7 +222,7 @@ export default function PaintingReviewRound1Screen() {
   });
 
   const { mutate: reviewMutate, isPending: isReviewPending } =
-    useReviewEvaluationRound1();
+    useReviewEvaluationRound1Drop();
 
   // State to track which paintings are selected (temporarily changed isPassed status)
   const [selectedPaintings, setSelectedPaintings] = useState<Set<string>>(

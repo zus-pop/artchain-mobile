@@ -139,28 +139,28 @@ const themedStyles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.5)",
   },
   activeIndicator: {
-    backgroundColor: Colors[colorScheme].primaryForeground,
+    backgroundColor: Colors[colorScheme].background,
   },
   section: {
-    backgroundColor: Colors[colorScheme].card,
-    marginVertical: 8,
+    backgroundColor: Colors[colorScheme].newbackground,
+
     marginHorizontal: 4,
     borderRadius: 6,
     paddingVertical: 18,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
+    fontSize: 16,
+    fontWeight: "800",
     color: Colors[colorScheme].primary,
-    marginBottom: 12,
+
     paddingHorizontal: 20,
     letterSpacing: 0.5,
+    fontFamily: "Be Vietnam Pro",
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
   },
   categoriesContainer: {
     paddingLeft: 20,
@@ -275,7 +275,6 @@ const themedStyles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: Colors[colorScheme].muted,
   },
   seeAllText: {
     marginRight: 4,
@@ -353,6 +352,9 @@ const themedStyles = StyleSheet.create({
     color: "#fff",
     letterSpacing: 0.2,
   },
+
+  // Grid container for post lists
+  listContainer: { padding: 8 },
 });
 
 export default themedStyles;

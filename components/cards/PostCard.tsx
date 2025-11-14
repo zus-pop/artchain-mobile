@@ -1,11 +1,5 @@
-import {
-  elevation,
-  gradients,
-  palette,
-  radius,
-  spacing,
-  type,
-} from "@/components/ui/design";
+// ✅ PostCard — phiên bản card ngang
+import { gradients, palette, radius } from "@/components/ui/design";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Post } from "@/types/post";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,7 +11,6 @@ type Props = {
   item: Post;
   onPress?: (item: Post) => void;
   showDivider?: boolean;
-  thumbSize?: number; // ↔️ bề ngang ảnh (cũng là bề cao vì ảnh vuông)
   radiusOverride?: number;
 };
 
@@ -38,7 +31,6 @@ export default function PostCard({
   item,
   onPress,
   showDivider = true,
-  thumbSize = 132, // ⬅️ LỚN HƠN (trước là 96)
   radiusOverride,
 }: Props) {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
@@ -51,255 +43,184 @@ export default function PostCard({
   const firstTag = item.postTags?.[0]?.tag?.tag_name;
 
   return (
-    <View style={{ backgroundColor: C.surfaceAlt }}>
+    <View style={[styles.container]}>
       <Pressable
         onPress={() => onPress?.(item)}
         android_ripple={{
           color:
             scheme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
         }}
-        style={styles.touch}
+        style={[styles.cardRow, {}]}
       >
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: C.surface,
-              borderColor: C.border,
-              borderRadius: R,
-              ...elevation.card,
-            },
-          ]}
-        >
-          {/* Thumbnail (TO HƠN) + tag */}
-          <View style={[styles.thumbCol, { width: thumbSize }]}>
-            <View
-              style={[
-                styles.thumbWrap,
-                {
-                  height: thumbSize, // ảnh vuông: to theo thumbSize
-                  borderRadius: R - 4,
-                  backgroundColor: C.surfaceAlt,
-                },
-              ]}
-            >
-              {item.image_url ? (
-                <Image
-                  source={{ uri: item.image_url }}
-                  style={{ width: "100%", height: "100%", borderRadius: R - 4 }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <LinearGradient
-                  colors={gradients.softIndigo}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[
-                    StyleSheet.absoluteFill,
-                    {
-                      borderRadius: R - 4,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    },
-                  ]}
-                >
-                  <Ionicons name="image-outline" size={28} color="#fff" />
-                </LinearGradient>
-              )}
-
-              {firstTag ? (
-                <View
-                  style={[
-                    styles.tagChip,
-                    {
-                      backgroundColor:
-                        scheme === "dark"
-                          ? "rgba(0,0,0,0.35)"
-                          : "rgba(255,255,255,0.78)",
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="pricetag-outline"
-                    size={12}
-                    color={scheme === "dark" ? "#fff" : C.text}
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text
-                    numberOfLines={1}
-                    style={{
-                      fontSize: 11,
-                      fontWeight: "800",
-                      color: scheme === "dark" ? "#fff" : C.text,
-                    }}
-                  >
-                    {firstTag}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-          </View>
-
-          {/* Content */}
-          <View style={styles.contentCol}>
-            <Text numberOfLines={2} style={[type.title, { color: C.text }]}>
-              {item.title}
-            </Text>
-
-            {!!item.content && (
-              <Text
-                numberOfLines={2}
+        {/* Ảnh bên trái */}
+        <View style={[styles.thumbBox, { borderRadius: R }]}>
+          <View style={[styles.thumbClip, { borderRadius: R }]}>
+            {item.image_url ? (
+              <Image
+                source={{ uri: item.image_url }}
+                style={[styles.thumbnail, { borderRadius: R }]}
+                resizeMode="cover"
+              />
+            ) : (
+              <LinearGradient
+                colors={gradients.softIndigo}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={[
-                  type.body,
-                  { color: C.textMuted, marginTop: spacing.xs },
+                  styles.thumbnail,
+                  {
+                    borderRadius: R,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  },
                 ]}
               >
-                {String(item.content).replace(/\s+/g, " ").trim()}
-              </Text>
+                <Ionicons name="image-outline" size={24} color="#fff" />
+              </LinearGradient>
             )}
 
-            {/* Chips (≤3 + “+n”) */}
-            {!!item.postTags?.length && (
-              <View style={styles.chipsRow}>
-                {item.postTags.slice(0, 3).map((pt, i) => (
-                  <View
-                    key={`${pt.tag?.tag_id ?? i}`}
-                    style={[
-                      styles.smallChip,
-                      {
-                        borderColor: C.border,
-                        backgroundColor:
-                          scheme === "dark" ? "#0F172A" : "#F9FAFB",
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={{ fontSize: 11, fontWeight: "700", color: C.text }}
-                    >
-                      {pt.tag?.tag_name}
-                    </Text>
-                  </View>
-                ))}
-                {item.postTags.length > 3 && (
-                  <View
-                    style={[
-                      styles.smallChip,
-                      { borderColor: C.border, backgroundColor: C.surfaceAlt },
-                    ]}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        fontWeight: "800",
-                        color: C.textMuted,
-                      }}
-                    >
-                      +{item.postTags.length - 3}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
-
-            {/* Meta */}
-            <View style={styles.metaRow}>
-              {dateStr ? (
-                <View
-                  style={[
-                    styles.metaPill,
-                    { borderColor: C.border, backgroundColor: C.surfaceAlt },
-                  ]}
+            {firstTag ? (
+              <View
+                style={[
+                  styles.tagChip,
+                  {
+                    backgroundColor:
+                      scheme === "dark" ? "hsl(15 85% 50%)" : "hsl(15 85% 50%)",
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="pricetag-outline"
+                  size={10}
+                  color="#fff"
+                  style={{ marginRight: 3 }}
+                />
+                <Text
+                  numberOfLines={1}
+                  style={{ fontSize: 9, fontWeight: "800", color: "#fff" }}
                 >
+                  {firstTag}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        <View style={styles.contentBox}>
+          <Text numberOfLines={2} style={[styles.title, { color: C.text }]}>
+            {item.title}
+          </Text>
+
+          <Text numberOfLines={1} style={[{ color: C.text }]}>
+            {item.content}
+          </Text>
+
+          <View style={styles.footerRow}>
+            <View>
+              {!!dateStr && (
+                <View style={styles.dateRow}>
                   <Ionicons
                     name="calendar-outline"
                     size={12}
-                    color={C.textMuted}
+                    color={scheme === "dark" ? "#bbb" : "#666"}
                   />
-                  <Text style={[type.meta, { color: C.textMuted }]}>
+                  <Text
+                    style={[
+                      styles.dateText,
+                      { color: scheme === "dark" ? "#bbb" : "#666" },
+                    ]}
+                  >
                     {dateStr}
                   </Text>
                 </View>
-              ) : (
-                <View />
               )}
-
-              <LinearGradient
-                colors={gradients.softBlue}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.cta}
-              >
-                <Ionicons name="chevron-forward" size={16} color="#fff" />
-              </LinearGradient>
             </View>
+            <Pressable style={styles.ctaBtn}>
+              <Text style={{ color: "white", fontWeight: "600", fontSize: 10 }}>
+                Chi tiết
+              </Text>
+              <Ionicons name="arrow-forward" size={14} color="#fff" />
+            </Pressable>
           </View>
+
+          {showDivider && (
+            <View style={[styles.divider, { backgroundColor: "#9CA3AF" }]} />
+          )}
         </View>
       </Pressable>
-
-      {showDivider && (
-        <View style={[styles.divider, { backgroundColor: C.border }]} />
-      )}
     </View>
   );
 }
 
+const THUMB_W = 97;
+const THUMB_H = 97;
+
 const styles = StyleSheet.create({
-  touch: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
-  card: {
+  container: { flex: 1, marginBottom: 16 },
+
+  cardRow: {
     flexDirection: "row",
-    padding: spacing.md,
-    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "stretch",
+    gap: 12,
+
+    borderRadius: 12,
+
+    shadowOpacity: 0.12,
   },
-  thumbCol: { marginRight: spacing.md },
-  thumbWrap: { overflow: "hidden", width: "100%" },
+
+  thumbBox: {
+    width: THUMB_W,
+    height: THUMB_H,
+    overflow: "hidden",
+  },
+  thumbClip: {
+    flex: 1,
+    position: "relative",
+    overflow: "hidden",
+  },
+  thumbnail: {
+    width: "100%",
+    height: "100%",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.15)",
+  },
   tagChip: {
     position: "absolute",
-    left: 8,
-    top: 8,
+    left: 6,
+    top: 6,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
     borderRadius: 999,
   },
-  contentCol: { flex: 1 },
-  chipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginTop: spacing.sm,
-  },
-  smallChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  metaRow: {
+
+  contentBox: { flex: 1, justifyContent: "space-between" },
+  title: { fontSize: 14, fontWeight: "800", lineHeight: 18 },
+
+  footerRow: {
     flexDirection: "row",
     alignItems: "center",
+    marginTop: 10,
     justifyContent: "space-between",
-    marginTop: spacing.sm,
   },
-  metaPill: {
+  dateRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  dateText: { fontSize: 11, fontWeight: "600" },
+  spacer: { flex: 1, justifyContent: "space-between" },
+
+  ctaBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    borderWidth: StyleSheet.hairlineWidth,
+    gap: 1,
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
+    paddingVertical: 6,
+    backgroundColor: "hsl(15 85% 55%)",
+    borderRadius: 8,
   },
-  cta: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.md,
+    marginHorizontal: 8,
+    marginTop: 10,
   },
 });

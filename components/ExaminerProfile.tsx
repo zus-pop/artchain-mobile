@@ -11,6 +11,7 @@ import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -24,16 +25,12 @@ import {
 import { useWhoAmI } from "@/apis/auth";
 import { useExaminerContest } from "@/apis/contest";
 import { useAuthStore } from "@/store/auth-store";
-import type { Contest, Schedule } from "@/types";
+import type { ExaminerContest, Schedule } from "@/types";
 import type { ColorTokens, KPIProps } from "@/types/tabkey";
 import { useSchedules } from "../apis/schedule";
 import ContestCardForTab from "./cards/ContestCardForTab";
 import ScheduleCard from "./cards/ScheduleCard";
 import EmptyTab from "./tabs/EmptyTab";
-
-/* -------------------- BRAND COLOR -------------------- */
-const BRAND = "#E25752";
-const BRAND_DARK = "#C94742";
 
 /* -------------------- Color helpers -------------------- */
 const VIVID_POOLS: [string, string][] = [
@@ -60,14 +57,37 @@ export default function ExaminerProfileScreen() {
   const C = Colors[scheme];
   const insets = useSafeAreaInsets();
 
+  /* -------------------- BRAND COLOR -------------------- */
+  const BRAND = C.primary;
+  const BRAND_DARK = C.primary;
+
   const accessToken = useAuthStore((s) => s.accessToken);
   const { data: user, isLoading, refetch: reloadMe } = useWhoAmI();
-  const { data: ongoingContests } = useExaminerContest(user?.userId);
+  const { data: ongoingContests, refetch: reloadContest } = useExaminerContest(
+    user?.userId
+  );
 
   const [openDetails, setOpenDetails] = useState(false);
   const [activeTab, setActiveTab] = useState<"contests" | "schedules">(
     "contests"
   );
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Schedules
+  const { data: schedules, refetch: reloadSchedules } = useSchedules(
+    user?.userId
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await reloadMe();
+      await reloadContest();
+      await reloadSchedules();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [reloadMe, reloadContest, reloadSchedules]);
 
   // Header animation
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -77,7 +97,6 @@ export default function ExaminerProfileScreen() {
     extrapolate: "clamp",
   });
 
-  // Đo chiều cao header để cộng paddingTop cho nội dung
   const [headerH, setHeaderH] = useState(0);
   const onHeaderLayout = useCallback(
     (e: any) => {
@@ -96,8 +115,8 @@ export default function ExaminerProfileScreen() {
   // KPIs
   const examinerStats = useMemo(() => {
     const activeContests =
-      ongoingContests?.filter((c: Contest) => c.status === "ACTIVE").length ??
-      0;
+      ongoingContests?.filter((c: ExaminerContest) => c.status === "ACTIVE")
+        .length ?? 0;
     return { activeContests };
   }, [ongoingContests]);
 
@@ -121,8 +140,19 @@ export default function ExaminerProfileScreen() {
     []
   );
 
-  // Schedules
-  const { data: schedules } = useSchedules(user?.userId);
+  // Dynamic styles that use theme colors
+  const dynamicStyles = {
+    topbarGrad: {
+      flexDirection: "row" as const,
+      justifyContent: "space-between" as const,
+      alignItems: "center" as const,
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+      // bỏ đường kẻ để tránh "vệt trắng"
+      // borderBottomWidth: StyleSheet.hairlineWidth,
+      // borderBottomColor: C.primary + "55",
+    },
+  };
 
   /* ---------- Inline components ---------- */
   function TopBar({
@@ -138,8 +168,10 @@ export default function ExaminerProfileScreen() {
         colors={[BRAND, BRAND_DARK]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
-        // Absolute + zIndex để “ăn” trên nội dung, tôn trọng safe area
-        style={[t.topbarGrad, { paddingTop: insets.top, zIndex: 20 }]}
+        style={[
+          dynamicStyles.topbarGrad,
+          { paddingTop: insets.top, zIndex: 20 },
+        ]}
         onLayout={onHeaderLayout}
       >
         <Text
@@ -234,7 +266,7 @@ export default function ExaminerProfileScreen() {
   /* ---------- Loading / Auth states ---------- */
   if (isLoading) {
     return (
-      <SafeAreaView style={s.container}>
+      <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
         <TopBar C={C} title="Hồ sơ" />
         <CenteredState
           C={C}
@@ -247,7 +279,7 @@ export default function ExaminerProfileScreen() {
 
   if (!accessToken || !user) {
     return (
-      <SafeAreaView style={s.container}>
+      <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
         <TopBar C={C} title="Hồ sơ" />
         <CenteredState
           C={C}
@@ -263,156 +295,145 @@ export default function ExaminerProfileScreen() {
     );
   }
 
-  /* ---------- Main render ---------- */
-  // Đệm nội dung = chiều cao header đã đo
-  const TOP_PAD = Math.max(headerH, insets.top + 56); // fallback an toàn
+  const TOP_PAD = Math.max(headerH, insets.top + 54); 
 
   return (
-    <SafeAreaView style={s.container}>
-      {/* Header nổi */}
-      <View style={t.topbarHolder}>
+    <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
+      
+      <View style={t.topbarHolder} pointerEvents="box-none">
         <TopBar C={C} title="Hồ sơ giám khảo" withActions />
       </View>
 
-      {/* Background blobs */}
-      <LinearGradient
-        colors={["#a78bfa22", "#60a5fa16"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={bg.blobTL}
-      />
-      <LinearGradient
-        colors={["#fda4af1f", "#fde68a1f"]}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={bg.blobBR}
-      />
-
-      <Animated.ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 110, paddingTop: TOP_PAD }}
-        showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
-        // iOS: tự kiểm soát inset, tránh header bị “ăn”
-        contentInsetAdjustmentBehavior="never"
-        automaticallyAdjustContentInsets={false as any}
-        scrollIndicatorInsets={{ top: TOP_PAD, bottom: 0, left: 0, right: 0 }}
-      >
-        {/* Header compact (nằm trong content bên dưới header nổi) */}
-        <Animated.View
-          style={[
-            s.headerWrap,
+      
+      <View style={{ flex: 1, marginTop: TOP_PAD }}>
+        <Animated.ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 110 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#FF6B6B"
+              colors={["#FF6B6B"]}
+            />
+          }
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
             {
-              transform: [{ translateY: headerTranslateY }],
-              borderBottomWidth: StyleSheet.hairlineWidth,
-              borderBottomColor: C.border,
-            },
-          ]}
+              useNativeDriver: true,
+            }
+          )}
+          scrollEventThrottle={16}
         >
-          <TouchableOpacity
-            onPress={() => setOpenDetails(true)}
-            activeOpacity={0.9}
+         
+          <Animated.View
+            style={[
+              s.headerWrap,
+              {
+                transform: [{ translateY: headerTranslateY }],
+                borderBottomWidth: StyleSheet.hairlineWidth,
+                borderBottomColor: C.border,
+              },
+            ]}
           >
-            <View>
-              <Avatar />
-              {/* Badge cọ vẽ gradient */}
-              <View style={[s.addBadge, { borderColor: C.background }]}>
-                {(() => {
-                  const [b0, b1] = pickGrad("badge");
-                  return (
-                    <LinearGradient
-                      colors={[b0, b1]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={{ padding: 4, borderRadius: 12 }}
-                    >
-                      <Ionicons
-                        name="brush"
-                        size={12}
-                        color={C.primaryForeground}
-                      />
-                    </LinearGradient>
-                  );
-                })()}
+            <TouchableOpacity
+              onPress={() => setOpenDetails(true)}
+              activeOpacity={0.9}
+              style={{ padding: 8, margin: -8 }}
+            >
+              <View>
+                <Avatar />
+                
+                <View style={[s.addBadge, { borderColor: C.background }]}>
+                  {(() => {
+                    const [b0, b1] = pickGrad("badge");
+                    return (
+                      <LinearGradient
+                        colors={[b0, b1]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{ padding: 4, borderRadius: 12 }}
+                      >
+                        <Ionicons
+                          name="brush"
+                          size={12}
+                          color={C.primaryForeground}
+                        />
+                      </LinearGradient>
+                    );
+                  })()}
+                </View>
               </View>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
 
-          <View style={{ flex: 1 }}>
-            <Text style={[s.name, { color: C.foreground }]}>
-              {user.fullName}
-            </Text>
-            <Text style={[s.handle, { color: C.mutedForeground }]}>
-              {user.email}
-            </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.name, { color: C.foreground }]}>
+                {user.fullName}
+              </Text>
+              <Text style={[s.handle, { color: C.mutedForeground }]}>
+                {user.email}
+              </Text>
+            </View>
+
+            <PillButton
+              label="Hồ sơ"
+              icon="person-outline"
+              colors={C}
+              variant="ghost"
+              onPress={() => router.push("/profile-detail")}
+            />
+          </Animated.View>
+
+          {/* KPI row */}
+          <View
+            style={[
+              s.kpiCard,
+              {
+                backgroundColor: C.card,
+                shadowColor: "#000",
+                borderColor: BRAND + "44",
+                borderWidth: StyleSheet.hairlineWidth,
+              },
+            ]}
+          >
+            {kpis.map((k, i) => (
+              <React.Fragment key={k.label}>
+                <KPI
+                  icon={k.icon as any}
+                  label={k.label}
+                  value={k.value}
+                  C={C}
+                />
+                {i < kpis.length - 1 && (
+                  <View style={[s.kpiDivider, { backgroundColor: C.border }]} />
+                )}
+              </React.Fragment>
+            ))}
           </View>
 
-          <PillButton
-            label="Hồ sơ"
-            icon="person-outline"
-            colors={C}
-            variant="ghost"
-            onPress={() => router.push("/profile-detail")}
+          {/* Tabs */}
+          <SegmentedTabsForExaminer
+            tabs={tabs}
+            activeKey={activeTab}
+            onChange={(k) => setActiveTab(k as any)}
+            C={C}
+            rounded={14}
+            height={52}
+            softBg
           />
-        </Animated.View>
 
-        {/* KPI row */}
-        <View
-          style={[
-            s.kpiCard,
-            {
-              backgroundColor: C.card,
-              shadowColor: "#000",
-              borderColor: BRAND + "44",
-              borderWidth: StyleSheet.hairlineWidth,
-            },
-          ]}
-        >
-          {kpis.map((k, i) => (
-            <React.Fragment key={k.label}>
-              <KPI icon={k.icon as any} label={k.label} value={k.value} C={C} />
-              {i < kpis.length - 1 && (
-                <View style={[s.kpiDivider, { backgroundColor: C.border }]} />
-              )}
-            </React.Fragment>
-          ))}
-        </View>
-
-        {/* Tabs */}
-        <SegmentedTabsForExaminer
-          tabs={tabs}
-          activeKey={activeTab}
-          onChange={(k) => setActiveTab(k as any)}
-          C={C}
-          rounded={14}
-          height={52}
-          softBg
-        />
-
-        {/* Tab content */}
-        <View style={{ paddingHorizontal: 16 }}>
-          {activeTab === "contests" ? (
-            ongoingContests && ongoingContests.length > 0 ? (
-              <View style={{ gap: 12 }}>
-                {ongoingContests.map((contest: Contest) => (
-                  <ContestCardForTab
-                    key={contest.contestId}
-                    C={C}
-                    contest={contest as any}
-                    onEvaluate={(c) => {
-                      if (c.examinerRole === "REVIEW_ROUND_1") {
-                        router.push({
-                          pathname: "/painting-review-round1",
-                          params: {
-                            contestId: c.contestId,
-                            contestTitle: c.title,
-                          },
-                        });
-                      } else {
+          {/* Tab content */}
+          <View style={{ paddingHorizontal: 16 }}>
+            {activeTab === "contests" ? (
+              ongoingContests && ongoingContests.length > 0 ? (
+                <View style={{ gap: 30 }}>
+                  {ongoingContests.map((contest: ExaminerContest) => (
+                    <ContestCardForTab
+                      key={contest.contestId}
+                      C={C}
+                      contest={contest}
+                      onEvaluate={(c) => {
                         router.push({
                           pathname: "/contest-paintings",
                           params: {
@@ -421,109 +442,110 @@ export default function ExaminerProfileScreen() {
                             examinerRole: c.examinerRole,
                           },
                         });
-                      }
-                    }}
-                  />
-                ))}
-              </View>
-            ) : (
-              <EmptyTab
-                C={C}
-                icon="time-outline"
-                text="Chưa có cuộc thi nào được giao"
-              />
-            )
-          ) : (
-            <>
-              {schedules?.data && schedules.data.length > 0 ? (
-                Object.entries(
-                  schedules.data.reduce((groups, schedule) => {
-                    const dateKey = schedule.date.toString().split("T")[0];
-                    if (!groups[dateKey]) groups[dateKey] = [];
-                    groups[dateKey].push(schedule);
-                    return groups;
-                  }, {} as Record<string, Schedule[]>)
-                )
-                  .sort(
-                    ([a], [b]) => new Date(a).getTime() - new Date(b).getTime()
-                  )
-                  .map(([dateKey, daySchedules]) => {
-                    const [g0, g1] = pickGrad(dateKey);
-                    return (
-                      <View key={dateKey} style={{ marginBottom: 24 }}>
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            marginBottom: 12,
-                          }}
-                        >
-                          <LinearGradient
-                            colors={[g0, g1]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={{
-                              width: 10,
-                              height: 10,
-                              borderRadius: 5,
-                              marginRight: 8,
-                            }}
-                          />
-                          <Text
-                            style={{
-                              fontSize: 16,
-                              fontWeight: "800",
-                              color: C.foreground,
-                            }}
-                          >
-                            {new Date(dateKey).toLocaleDateString("vi-VN", {
-                              weekday: "long",
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })}
-                          </Text>
-                          <Text
-                            style={{
-                              fontSize: 12,
-                              color: C.mutedForeground,
-                              marginLeft: 8,
-                            }}
-                          >
-                            ({daySchedules.length} lịch trình)
-                          </Text>
-                        </View>
-
-                        <View style={{ gap: 12 }}>
-                          {daySchedules
-                            .sort(
-                              (a, b) =>
-                                a.createdAt.getTime() - b.createdAt.getTime()
-                            )
-                            .map((schedule) => (
-                              <ScheduleCard
-                                key={schedule.scheduleId}
-                                schedule={schedule}
-                                C={C}
-                              />
-                            ))}
-                        </View>
-                      </View>
-                    );
-                  })
+                      }}
+                    />
+                  ))}
+                </View>
               ) : (
                 <EmptyTab
                   C={C}
-                  icon="calendar-outline"
-                  text="Chưa có lịch trình nào"
+                  icon="time-outline"
+                  text="Chưa có cuộc thi nào được giao"
                 />
-              )}
-            </>
-          )}
-        </View>
-      </Animated.ScrollView>
+              )
+            ) : (
+              <>
+                {schedules?.data && schedules.data.length > 0 ? (
+                  Object.entries(
+                    schedules.data.reduce((groups, schedule) => {
+                      const dateKey = schedule.date.toString().split("T")[0];
+                      if (!groups[dateKey]) groups[dateKey] = [];
+                      groups[dateKey].push(schedule);
+                      return groups;
+                    }, {} as Record<string, Schedule[]>)
+                  )
+                    .sort(
+                      ([a], [b]) =>
+                        new Date(a).getTime() - new Date(b).getTime()
+                    )
+                    .map(([dateKey, daySchedules]) => {
+                      const [g0, g1] = pickGrad(dateKey);
+                      return (
+                        <View key={dateKey} style={{ marginBottom: 24 }}>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              marginBottom: 12,
+                            }}
+                          >
+                            <LinearGradient
+                              colors={[g0, g1]}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 1 }}
+                              style={{
+                                width: 10,
+                                height: 10,
+                                borderRadius: 5,
+                                marginRight: 8,
+                              }}
+                            />
+                            <Text
+                              style={{
+                                fontSize: 16,
+                                fontWeight: "800",
+                                color: C.foreground,
+                              }}
+                            >
+                              {new Date(dateKey).toLocaleDateString("vi-VN", {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
+                            </Text>
+                            <Text
+                              style={{
+                                fontSize: 12,
+                                color: C.mutedForeground,
+                                marginLeft: 8,
+                              }}
+                            >
+                              ({daySchedules.length} lịch trình)
+                            </Text>
+                          </View>
 
-      {/* Modal hồ sơ cá nhân */}
+                          <View style={{ gap: 12 }}>
+                            {daySchedules
+                              .sort(
+                                (a, b) =>
+                                  a.createdAt.getTime() - b.createdAt.getTime()
+                              )
+                              .map((schedule) => (
+                                <ScheduleCard
+                                  key={schedule.scheduleId}
+                                  schedule={schedule}
+                                  C={C}
+                                />
+                              ))}
+                          </View>
+                        </View>
+                      );
+                    })
+                ) : (
+                  <EmptyTab
+                    C={C}
+                    icon="calendar-outline"
+                    text="Chưa có lịch trình nào"
+                  />
+                )}
+              </>
+            )}
+          </View>
+        </Animated.ScrollView>
+      </View>
+
+      {/* Modal hồ sơ cá nhân - moved outside ScrollView */}
       <ProfileDetailsModal
         visible={openDetails}
         onClose={() => setOpenDetails(false)}
@@ -613,12 +635,11 @@ function CenteredState({
 
 /* ---------- Styles ---------- */
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "transparent" },
+  container: { flex: 1 },
   headerWrap: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 14,
     paddingBottom: 10,
     gap: 10,
     backgroundColor: "transparent",
@@ -651,37 +672,13 @@ const s = StyleSheet.create({
 
 const t = StyleSheet.create({
   // Holder để header absolute chiếm chỗ ở top (zIndex cao)
-  topbarHolder: { position: "absolute", top: 0, left: 0, right: 0 },
-  topbarGrad: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: BRAND_DARK + "55",
+  topbarHolder: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
   },
   headerTitle: { fontSize: 24, fontWeight: "600" },
   iconBtn: { padding: 8, marginLeft: 4 },
-});
-
-const bg = StyleSheet.create({
-  blobTL: {
-    position: "absolute",
-    top: 120,
-    right: -40,
-    width: 200,
-    height: 200,
-    borderRadius: 120,
-    transform: [{ rotate: "25deg" }],
-  },
-  blobBR: {
-    position: "absolute",
-    bottom: 60,
-    left: -50,
-    width: 240,
-    height: 240,
-    borderRadius: 140,
-    transform: [{ rotate: "-15deg" }],
-  },
 });

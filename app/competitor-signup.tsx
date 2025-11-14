@@ -1,13 +1,18 @@
+// app/.../CompetitorSignupScreen.tsx
 import { useSignInMutation } from "@/apis/auth";
 import { useWards } from "@/apis/wards";
+import AuthInput from "@/components/form/AuthInput";
+import PressDateField from "@/components/form/PressDateField";
+import PressSelect from "@/components/form/PressSelect";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
+  Dimensions,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -20,7 +25,7 @@ import {
 } from "react-native";
 import z from "zod";
 
-// Competitor Schema
+// ===== Schema =====
 const competitorSchema = z
   .object({
     username: z
@@ -50,9 +55,10 @@ const competitorSchema = z
       .string({ message: "Lớp là bắt buộc" })
       .trim()
       .min(1, "Lớp là bắt buộc")
-      .refine((val) => ["6", "7", "8", "9"].includes(val), {
-        message: "Lớp phải là từ 6 đến 9",
-      }),
+      .refine(
+        (val) => ["1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(val),
+        { message: "Lớp phải là từ 1 đến 9" }
+      ),
     ward: z
       .string({ message: "Khu vực là bắt buộc" })
       .trim()
@@ -73,38 +79,62 @@ const competitorSchema = z
 
 type CompetitorForm = z.infer<typeof competitorSchema>;
 
+const { height: SCREEN_H } = Dimensions.get("window");
+const grades = [6, 7, 8, 9]; // hoặc props/biến của bạn
+
+// Tính chiều cao động
+const HEADER_H = 64;
+const PADDING_V = 20;
+const ITEM_H = 66; // item dạng list
+const CHIP_H = 48; // item dạng chip
+const MAX_RATIO = 0.75; // tối đa 75% chiều cao màn hình
+const GAP = 10;
+
+// Chọn layout: ít item → list; nhiều item → grid
+const USE_GRID = grades.length >= 7;
+const NUM_COLS = 3;
+
+const rows = USE_GRID ? Math.ceil(grades.length / NUM_COLS) : grades.length;
+const contentH = USE_GRID
+  ? rows * (CHIP_H + GAP) + PADDING_V * 2
+  : rows * (ITEM_H + GAP) + PADDING_V * 2;
+
+const SHEET_MAX_H = Math.min(HEADER_H + contentH, SCREEN_H * MAX_RATIO);
+
 export default function CompetitorSignupScreen() {
   const [showWardPicker, setShowWardPicker] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showGradePicker, setShowGradePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const yearScrollRef = useRef<ScrollView>(null);
-  const router = useRouter();
-  const colorScheme = useColorScheme() ?? "light";
-  const { mutate, isPending } = useSignInMutation();
+
+  const [q, setQ] = useState("");
+
   const { data: wards = [], isLoading: wardsLoading } = useWards();
 
-  // Scroll to current year when date picker opens
-  useEffect(() => {
-    if (showDatePicker && yearScrollRef.current) {
-      const currentYear = new Date().getFullYear();
-      const startYear = currentYear - 40; // Show 40 years back
-      const currentYearIndex = currentYear - startYear;
-      // Scroll to position showing current year in the middle
-      const scrollPosition = Math.max(0, (currentYearIndex - 5) * 60); // Approximate button width
-      setTimeout(() => {
-        yearScrollRef.current?.scrollTo({ x: scrollPosition, animated: false });
-      }, 100);
-    }
-  }, [showDatePicker]);
+  const filteredWards = useMemo(() => {
+    const key = q.trim().toLowerCase();
+    if (!key) return wards || [];
+    return (wards || []).filter(
+      (w: any) =>
+        (w.name || "").toLowerCase().includes(key) ||
+        (w.code || "").toLowerCase().includes(key)
+    );
+  }, [q, wards]);
 
-  // Competitor form
+  const router = useRouter();
+  const colorScheme = useColorScheme() ?? "light";
+  const C = Colors[colorScheme];
+  const { mutate, isPending } = useSignInMutation();
+
   const competitorForm = useForm<CompetitorForm>({
     mode: "all",
     resolver: zodResolver(competitorSchema),
   });
+
+  const {
+    control,
+    formState: { errors },
+  } = competitorForm;
 
   const handleSignup = (data: CompetitorForm) => {
     mutate({
@@ -120,14 +150,9 @@ export default function CompetitorSignupScreen() {
     });
   };
 
-  const {
-    control,
-    formState: { errors },
-  } = competitorForm;
-
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: Colors[colorScheme].background }}
+      style={{ flex: 1, backgroundColor: C.background }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
     >
@@ -141,31 +166,21 @@ export default function CompetitorSignupScreen() {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            backgroundColor: Colors[colorScheme].card,
+            backgroundColor: C.card,
             paddingHorizontal: 12,
             paddingTop: 36,
             paddingBottom: 16,
             borderBottomWidth: 1,
-            borderBottomColor: Colors[colorScheme].border,
+            borderBottomColor: C.border,
           }}
         >
           <TouchableOpacity
             onPress={() => router.back()}
             style={{ padding: 8, marginRight: 8 }}
           >
-            <Ionicons
-              name="arrow-back"
-              size={24}
-              color={Colors[colorScheme].primary}
-            />
+            <Ionicons name="arrow-back" size={24} color={C.primary} />
           </TouchableOpacity>
-          <Text
-            style={{
-              fontSize: 22,
-              fontWeight: "bold",
-              color: Colors[colorScheme].primary,
-            }}
-          >
+          <Text style={{ fontSize: 22, fontWeight: "bold", color: C.primary }}>
             Đăng ký Người tham gia
           </Text>
         </View>
@@ -180,20 +195,8 @@ export default function CompetitorSignupScreen() {
         >
           <Text
             style={{
-              fontSize: 20,
-              fontWeight: "bold",
-              color: Colors[colorScheme].foreground,
-              marginBottom: 8,
-              textAlign: "center",
-            }}
-          >
-            Đăng ký Người tham gia
-          </Text>
-
-          <Text
-            style={{
               fontSize: 14,
-              color: Colors[colorScheme].mutedForeground,
+              color: C.mutedForeground,
               marginBottom: 24,
               textAlign: "center",
             }}
@@ -201,459 +204,172 @@ export default function CompetitorSignupScreen() {
             Điền thông tin để tham gia các cuộc thi nghệ thuật
           </Text>
 
+          {/* 1. Họ và tên */}
           <Controller
             control={control}
             name="fullName"
             render={({ field }) => (
-              <TextInput
-                placeholder="Họ và tên"
+              <AuthInput
+                label="Họ và tên"
                 value={field.value}
                 onChangeText={field.onChange}
                 onBlur={field.onBlur}
-                style={{
-                  width: "100%",
-                  borderWidth: 1,
-                  borderColor: errors.fullName
-                    ? Colors[colorScheme].destructive
-                    : Colors[colorScheme].border,
-                  backgroundColor: Colors[colorScheme].input,
-                  color: Colors[colorScheme].foreground,
-                  borderRadius: 12,
-                  marginBottom: 14,
-                  padding: 12,
-                  fontSize: 16,
-                }}
-                placeholderTextColor={Colors[colorScheme].mutedForeground}
+                leftIcon="person-outline"
+                autoCapitalize="words"
+                errorText={errors.fullName?.message}
               />
             )}
           />
-          {errors.fullName && (
-            <Text
-              style={{
-                color: Colors[colorScheme].destructive,
-                fontSize: 14,
-                marginBottom: 8,
-                alignSelf: "flex-start",
-                marginLeft: 4,
-              }}
-            >
-              {errors.fullName.message}
-            </Text>
-          )}
 
+          {/* 2. Email */}
           <Controller
             control={control}
             name="email"
             render={({ field }) => (
-              <TextInput
-                placeholder="Email"
+              <AuthInput
+                label="Email"
                 value={field.value}
                 onChangeText={field.onChange}
                 onBlur={field.onBlur}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                style={{
-                  width: "100%",
-                  borderWidth: 1,
-                  borderColor: errors.email
-                    ? Colors[colorScheme].destructive
-                    : Colors[colorScheme].border,
-                  backgroundColor: Colors[colorScheme].input,
-                  color: Colors[colorScheme].foreground,
-                  borderRadius: 12,
-                  marginBottom: 14,
-                  padding: 12,
-                  fontSize: 16,
-                }}
-                placeholderTextColor={Colors[colorScheme].mutedForeground}
+                leftIcon="mail-outline"
+                errorText={errors.email?.message}
               />
             )}
           />
-          {errors.email && (
-            <Text
-              style={{
-                color: Colors[colorScheme].destructive,
-                fontSize: 14,
-                marginBottom: 8,
-                alignSelf: "flex-start",
-                marginLeft: 4,
-              }}
-            >
-              {errors.email.message}
-            </Text>
-          )}
 
+          {/* 3. Tên đăng nhập */}
           <Controller
             control={control}
             name="username"
             render={({ field }) => (
-              <TextInput
-                placeholder="Tên đăng nhập"
+              <AuthInput
+                label="Tên đăng nhập"
                 value={field.value}
                 onChangeText={field.onChange}
                 onBlur={field.onBlur}
                 autoCapitalize="none"
-                style={{
-                  width: "100%",
-                  borderWidth: 1,
-                  borderColor: errors.username
-                    ? Colors[colorScheme].destructive
-                    : Colors[colorScheme].border,
-                  backgroundColor: Colors[colorScheme].input,
-                  color: Colors[colorScheme].foreground,
-                  borderRadius: 12,
-                  marginBottom: 14,
-                  padding: 12,
-                  fontSize: 16,
-                }}
-                placeholderTextColor={Colors[colorScheme].mutedForeground}
+                leftIcon="at-outline"
+                errorText={errors.username?.message}
               />
             )}
           />
-          {errors.username && (
-            <Text
-              style={{
-                color: Colors[colorScheme].destructive,
-                fontSize: 14,
-                marginBottom: 8,
-                alignSelf: "flex-start",
-                marginLeft: 4,
-              }}
-            >
-              {errors.username.message}
-            </Text>
-          )}
 
+          {/* 4. Tên trường học */}
           <Controller
             control={control}
             name="schoolName"
             render={({ field }) => (
-              <TextInput
-                placeholder="Tên trường học"
+              <AuthInput
+                label="Tên trường học"
                 value={field.value}
                 onChangeText={field.onChange}
                 onBlur={field.onBlur}
-                style={{
-                  width: "100%",
-                  borderWidth: 1,
-                  borderColor: errors.schoolName
-                    ? Colors[colorScheme].destructive
-                    : Colors[colorScheme].border,
-                  backgroundColor: Colors[colorScheme].input,
-                  color: Colors[colorScheme].foreground,
-                  borderRadius: 12,
-                  marginBottom: 14,
-                  padding: 12,
-                  fontSize: 16,
-                }}
-                placeholderTextColor={Colors[colorScheme].mutedForeground}
+                leftIcon="school-outline"
+                errorText={errors.schoolName?.message}
               />
             )}
           />
-          {errors.schoolName && (
-            <Text
-              style={{
-                color: Colors[colorScheme].destructive,
-                fontSize: 14,
-                marginBottom: 8,
-                alignSelf: "flex-start",
-                marginLeft: 4,
-              }}
-            >
-              {errors.schoolName.message}
-            </Text>
-          )}
 
-          <View style={{ flexDirection: "row", gap: 8 }}>
+          <View style={{ flexDirection: "row", gap: 8, width: "100%" }}>
             <Controller
               control={control}
               name="grade"
               render={({ field }) => (
-                <TouchableOpacity
-                  onPress={() => setShowGradePicker(true)}
-                  style={{
-                    flex: 1,
-                    borderWidth: 1,
-                    borderColor: errors.grade
-                      ? Colors[colorScheme].destructive
-                      : Colors[colorScheme].border,
-                    backgroundColor: Colors[colorScheme].input,
-                    borderRadius: 12,
-                    marginBottom: 14,
-                    padding: 12,
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: field.value
-                        ? Colors[colorScheme].foreground
-                        : Colors[colorScheme].mutedForeground,
-                      fontSize: 16,
-                    }}
-                  >
-                    {field.value || "Chọn lớp"}
-                  </Text>
-                  <View style={{ position: "absolute", right: 12 }}>
-                    <Ionicons
-                      name="chevron-down"
-                      size={16}
-                      color={Colors[colorScheme].mutedForeground}
-                    />
-                  </View>
-                </TouchableOpacity>
+                <View style={{ flex: 1 }}>
+                  <PressSelect
+                    label=" Chọn Lớp"
+                    value={field.value}
+                    onPress={() => setShowGradePicker(true)}
+                    leftIcon="layers-outline"
+                    errorText={errors.grade?.message}
+                  />
+                </View>
               )}
             />
             <Controller
               control={control}
               name="ward"
               render={({ field }) => (
-                <TouchableOpacity
-                  onPress={() => setShowWardPicker(true)}
-                  style={{
-                    flex: 1,
-                    borderWidth: 1,
-                    borderColor: errors.ward
-                      ? Colors[colorScheme].destructive
-                      : Colors[colorScheme].border,
-                    backgroundColor: Colors[colorScheme].input,
-                    borderRadius: 12,
-                    marginBottom: 14,
-                    padding: 12,
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: field.value
-                        ? Colors[colorScheme].foreground
-                        : Colors[colorScheme].mutedForeground,
-                      fontSize: 16,
-                    }}
-                  >
-                    {field.value || "Chọn khu vực"}
-                  </Text>
-                  <View style={{ position: "absolute", right: 12 }}>
-                    <Ionicons
-                      name="chevron-down"
-                      size={16}
-                      color={Colors[colorScheme].mutedForeground}
-                    />
-                  </View>
-                </TouchableOpacity>
+                <View style={{ flex: 1 }}>
+                  <PressSelect
+                    label="Khu vực"
+                    value={field.value}
+                    placeholder="Chọn khu vực"
+                    onPress={() => setShowWardPicker(true)}
+                    leftIcon="location-outline"
+                    errorText={errors.ward?.message}
+                  />
+                </View>
               )}
             />
           </View>
-          {(errors.grade || errors.ward) && (
-            <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
-              {errors.grade && (
-                <Text
-                  style={{
-                    color: Colors[colorScheme].destructive,
-                    fontSize: 14,
-                    flex: 1,
-                  }}
-                >
-                  {errors.grade.message}
-                </Text>
-              )}
-              {errors.ward && (
-                <Text
-                  style={{
-                    color: Colors[colorScheme].destructive,
-                    fontSize: 14,
-                    flex: 1,
-                  }}
-                >
-                  {errors.ward.message}
-                </Text>
-              )}
-            </View>
-          )}
 
+          {/* 7. Ngày sinh */}
           <Controller
             control={control}
             name="birthday"
             render={({ field }) => (
-              <TouchableOpacity
-                onPress={() => {
-                  setSelectedDate(new Date());
-                  setShowDatePicker(true);
-                }}
-                style={{
-                  width: "100%",
-                  borderWidth: 1,
-                  borderColor: errors.birthday
-                    ? Colors[colorScheme].destructive
-                    : Colors[colorScheme].border,
-                  backgroundColor: Colors[colorScheme].input,
-                  borderRadius: 12,
-                  marginBottom: 14,
-                  padding: 12,
-                  justifyContent: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    color: field.value
-                      ? Colors[colorScheme].foreground
-                      : Colors[colorScheme].mutedForeground,
-                    fontSize: 16,
-                  }}
-                >
-                  {field.value || "Chọn ngày sinh"}
-                </Text>
-                <View style={{ position: "absolute", right: 12 }}>
-                  <Ionicons
-                    name="calendar-outline"
-                    size={16}
-                    color={Colors[colorScheme].mutedForeground}
-                  />
-                </View>
-              </TouchableOpacity>
+              <PressDateField
+                label="Ngày sinh"
+                value={field.value}
+                onChange={field.onChange}
+                minDate={new Date(1900, 0, 1)}
+                maxDate={new Date()}
+                leftIcon="calendar-outline"
+                errorText={errors.birthday?.message}
+              />
             )}
           />
-          {errors.birthday && (
-            <Text
-              style={{
-                color: Colors[colorScheme].destructive,
-                fontSize: 14,
-                marginBottom: 8,
-                alignSelf: "flex-start",
-                marginLeft: 4,
-              }}
-            >
-              {errors.birthday.message}
-            </Text>
-          )}
 
+          {/* 8. Mật khẩu */}
           <Controller
             control={control}
             name="password"
             render={({ field }) => (
-              <View style={{ width: "100%", position: "relative" }}>
-                <TextInput
-                  placeholder="Mật khẩu"
-                  value={field.value}
-                  onChangeText={field.onChange}
-                  onBlur={field.onBlur}
-                  secureTextEntry={!showPassword}
-                  style={{
-                    width: "100%",
-                    borderWidth: 1,
-                    borderColor: errors.password
-                      ? Colors[colorScheme].destructive
-                      : Colors[colorScheme].border,
-                    backgroundColor: Colors[colorScheme].input,
-                    color: Colors[colorScheme].foreground,
-                    borderRadius: 12,
-                    marginBottom: 14,
-                    padding: 12,
-                    paddingRight: 50,
-                    fontSize: 16,
-                  }}
-                  placeholderTextColor={Colors[colorScheme].mutedForeground}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: "absolute",
-                    right: 12,
-                    top: "50%",
-                    transform: [{ translateY: -20 }],
-                    padding: 4,
-                  }}
-                >
-                  <Ionicons
-                    name={!showPassword ? "eye-off" : "eye"}
-                    size={20}
-                    color={Colors[colorScheme].mutedForeground}
-                  />
-                </TouchableOpacity>
-              </View>
+              <AuthInput
+                label="Mật khẩu"
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                secureTextEntry={!showPassword}
+                leftIcon="lock-closed-outline"
+                rightIcon={showPassword ? "eye" : "eye-off"}
+                onPressRightIcon={() => setShowPassword((v) => !v)}
+                autoCapitalize="none"
+                errorText={errors.password?.message}
+              />
             )}
           />
-          {errors.password && (
-            <Text
-              style={{
-                color: Colors[colorScheme].destructive,
-                fontSize: 14,
-                marginBottom: 8,
-                alignSelf: "flex-start",
-                marginLeft: 4,
-              }}
-            >
-              {errors.password.message}
-            </Text>
-          )}
 
+          {/* 9. Xác nhận mật khẩu */}
           <Controller
             control={control}
             name="confirmPassword"
             render={({ field }) => (
-              <View style={{ width: "100%", position: "relative" }}>
-                <TextInput
-                  placeholder="Xác nhận mật khẩu"
-                  value={field.value}
-                  onChangeText={field.onChange}
-                  onBlur={field.onBlur}
-                  secureTextEntry={!showConfirmPassword}
-                  style={{
-                    width: "100%",
-                    borderWidth: 1,
-                    borderColor: errors.confirmPassword
-                      ? Colors[colorScheme].destructive
-                      : Colors[colorScheme].border,
-                    backgroundColor: Colors[colorScheme].input,
-                    color: Colors[colorScheme].foreground,
-                    borderRadius: 12,
-                    marginBottom: 18,
-                    padding: 12,
-                    paddingRight: 50,
-                    fontSize: 16,
-                  }}
-                  placeholderTextColor={Colors[colorScheme].mutedForeground}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  style={{
-                    position: "absolute",
-                    right: 12,
-                    top: "50%",
-                    transform: [{ translateY: -20 }],
-                    padding: 4,
-                  }}
-                >
-                  <Ionicons
-                    name={!showConfirmPassword ? "eye-off" : "eye"}
-                    size={20}
-                    color={Colors[colorScheme].mutedForeground}
-                  />
-                </TouchableOpacity>
-              </View>
+              <AuthInput
+                label="Xác nhận mật khẩu"
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                secureTextEntry={!showConfirmPassword}
+                leftIcon="checkmark-done-outline"
+                rightIcon={showConfirmPassword ? "eye" : "eye-off"}
+                onPressRightIcon={() => setShowConfirmPassword((v) => !v)}
+                errorText={errors.confirmPassword?.message}
+              />
             )}
           />
-          {errors.confirmPassword && (
-            <Text
-              style={{
-                color: Colors[colorScheme].destructive,
-                fontSize: 14,
-                marginBottom: 8,
-                alignSelf: "flex-start",
-                marginLeft: 4,
-              }}
-            >
-              {errors.confirmPassword.message}
-            </Text>
-          )}
 
+          {/* Nút đăng ký */}
           <TouchableOpacity
             style={{
               width: "100%",
               backgroundColor:
                 competitorForm.formState.isValid && !isPending
-                  ? Colors[colorScheme].primary
-                  : Colors[colorScheme].muted,
+                  ? C.primary
+                  : C.muted,
               borderRadius: 12,
               paddingVertical: 14,
               alignItems: "center",
@@ -667,8 +383,8 @@ export default function CompetitorSignupScreen() {
               style={{
                 color:
                   competitorForm.formState.isValid && !isPending
-                    ? Colors[colorScheme].primaryForeground
-                    : Colors[colorScheme].mutedForeground,
+                    ? C.primaryForeground
+                    : C.mutedForeground,
                 fontWeight: "bold",
                 fontSize: 16,
               }}
@@ -681,7 +397,7 @@ export default function CompetitorSignupScreen() {
             onPress={() => router.replace("/login")}
             style={{ marginTop: 8 }}
           >
-            <Text style={{ color: Colors[colorScheme].primary, fontSize: 15 }}>
+            <Text style={{ color: C.primary, fontSize: 15 }}>
               Đã có tài khoản? Đăng nhập
             </Text>
           </TouchableOpacity>
@@ -691,478 +407,373 @@ export default function CompetitorSignupScreen() {
       {/* Ward Picker Modal */}
       <Modal
         visible={showWardPicker}
-        animationType="slide"
-        presentationStyle="pageSheet"
+        animationType="fade"
+        transparent
         onRequestClose={() => setShowWardPicker(false)}
       >
-        <View
+        {/* backdrop */}
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setShowWardPicker(false)}
           style={{
             flex: 1,
-            backgroundColor: Colors[colorScheme].background,
+            backgroundColor: "rgba(0,0,0,0.35)",
+            justifyContent: "flex-end",
           }}
         >
-          {/* Header */}
+          {/* bottom sheet */}
           <View
             style={{
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: Colors[colorScheme].card,
-              paddingHorizontal: 16,
-              paddingTop: 50,
-              paddingBottom: 16,
-              borderBottomWidth: 1,
-              borderBottomColor: Colors[colorScheme].border,
+              maxHeight: SCREEN_H * MAX_RATIO,
+              backgroundColor: C.background,
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              overflow: "hidden",
+              borderWidth: 1,
+              borderColor: C.border,
             }}
           >
-            <TouchableOpacity
-              onPress={() => setShowWardPicker(false)}
-              style={{ padding: 8, marginRight: 8 }}
-            >
-              <Ionicons
-                name="close"
-                size={24}
-                color={Colors[colorScheme].primary}
-              />
-            </TouchableOpacity>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "bold",
-                color: Colors[colorScheme].foreground,
-                flex: 1,
-              }}
-            >
-              Chọn khu vực
-            </Text>
-          </View>
-
-          {/* Ward List */}
-          {wardsLoading ? (
+            {/* header + grabber */}
             <View
               style={{
-                flex: 1,
-                justifyContent: "center",
+                backgroundColor: C.card,
+                borderBottomWidth: 1,
+                borderBottomColor: C.border,
+                paddingTop: 10,
+                paddingBottom: 10,
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: Colors[colorScheme].mutedForeground }}>
-                Đang tải danh sách khu vực...
-              </Text>
-            </View>
-          ) : (
-            <FlatList
-              data={wards}
-              keyExtractor={(item) => item.code}
-              renderItem={({ item }) => (
+              <View
+                style={{
+                  width: 40,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: C.border,
+                  marginBottom: 8,
+                }}
+              />
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  width: "100%",
+                  paddingHorizontal: 16,
+                }}
+              >
                 <TouchableOpacity
-                  onPress={() => {
-                    competitorForm.setValue("ward", item.name);
-                    setShowWardPicker(false);
-                  }}
-                  style={{
-                    padding: 16,
-                    borderBottomWidth: 1,
-                    borderBottomColor: Colors[colorScheme].border,
-                  }}
+                  onPress={() => setShowWardPicker(false)}
+                  style={{ padding: 8, marginRight: 8 }}
                 >
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      color: Colors[colorScheme].foreground,
-                    }}
-                  >
-                    {item.name}
-                  </Text>
+                  <Ionicons name="close" size={22} color={C.primary} />
                 </TouchableOpacity>
-              )}
-              ListEmptyComponent={
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: C.foreground,
+                    flex: 1,
+                  }}
+                  numberOfLines={1}
+                >
+                  Chọn khu vực
+                </Text>
+              </View>
+            </View>
+
+            {/* body */}
+            {wardsLoading ? (
+              <View
+                style={{
+                  height: SCREEN_H * MAX_RATIO - HEADER_H,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: C.mutedForeground }}>
+                  Đang tải danh sách khu vực...
+                </Text>
+              </View>
+            ) : (
+              <View style={{ padding: 12, paddingTop: 12 }}>
+                {/* search box */}
                 <View
                   style={{
-                    flex: 1,
-                    justifyContent: "center",
+                    flexDirection: "row",
                     alignItems: "center",
-                    padding: 32,
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    backgroundColor: C.card,
+                    borderRadius: 10,
+                    paddingHorizontal: 10,
+                    height: 42,
+                    marginBottom: 10,
                   }}
                 >
-                  <Text style={{ color: Colors[colorScheme].mutedForeground }}>
-                    Không có dữ liệu khu vực
+                  <Ionicons
+                    name="search-outline"
+                    size={18}
+                    color={C.mutedForeground}
+                  />
+                  <Text
+                    style={{ color: C.mutedForeground, marginHorizontal: 6 }}
+                  >
+                    |
                   </Text>
+                  <TextInput
+                    placeholder="Tìm theo tên hoặc mã..."
+                    placeholderTextColor={C.mutedForeground}
+                    value={q}
+                    onChangeText={setQ}
+                    style={{
+                      flex: 1,
+                      color: C.foreground,
+                      fontSize: 14,
+                      paddingVertical: 0,
+                    }}
+                    autoCapitalize="none"
+                  />
+                  {q ? (
+                    <TouchableOpacity
+                      onPress={() => setQ("")}
+                      style={{ padding: 6 }}
+                    >
+                      <Ionicons
+                        name="close-circle"
+                        size={18}
+                        color={C.mutedForeground}
+                      />
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
-              }
-            />
-          )}
-        </View>
-      </Modal>
 
+                {/* list (cuộn trong sheet) */}
+                <FlatList
+                  data={filteredWards}
+                  keyExtractor={(item: any) => item.code}
+                  keyboardShouldPersistTaps="handled"
+                  style={{
+                    maxHeight: SCREEN_H * MAX_RATIO - HEADER_H - 42 - 20,
+                  }}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      onPress={() => {
+                        competitorForm.setValue("ward", item.name, {
+                          shouldValidate: true,
+                          shouldDirty: true,
+                        });
+                        setShowWardPicker(false);
+                        setQ("");
+                      }}
+                      style={{
+                        paddingVertical: 12,
+                        paddingHorizontal: 14,
+                        borderRadius: 10,
+                        backgroundColor: C.card,
+                        borderWidth: 1,
+                        borderColor: C.border,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <Text
+                        style={{ fontSize: 15, color: C.foreground }}
+                        numberOfLines={1}
+                      >
+                        {item.name}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: C.mutedForeground,
+                          marginTop: 2,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {item.code}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  ListEmptyComponent={
+                    <View style={{ paddingVertical: 24, alignItems: "center" }}>
+                      <Text style={{ color: C.mutedForeground }}>
+                        Không có dữ liệu khu vực
+                      </Text>
+                    </View>
+                  }
+                />
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
       {/* Grade Picker Modal */}
       <Modal
         visible={showGradePicker}
-        animationType="slide"
-        presentationStyle="pageSheet"
+        animationType="fade"
+        transparent
         onRequestClose={() => setShowGradePicker(false)}
       >
-        <View
+        {/* backdrop */}
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setShowGradePicker(false)}
           style={{
             flex: 1,
-            backgroundColor: Colors[colorScheme].background,
+            backgroundColor: "rgba(0,0,0,0.35)",
+            justifyContent: "flex-end",
           }}
         >
-          {/* Header */}
+          {/* bottom sheet */}
           <View
             style={{
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: Colors[colorScheme].card,
-              paddingHorizontal: 16,
-              paddingTop: 50,
-              paddingBottom: 16,
-              borderBottomWidth: 1,
-              borderBottomColor: Colors[colorScheme].border,
+              maxHeight: SHEET_MAX_H,
+              backgroundColor: C.background,
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              overflow: "hidden",
+              borderWidth: 1,
+              borderColor: C.border,
             }}
           >
-            <TouchableOpacity
-              onPress={() => setShowGradePicker(false)}
-              style={{ padding: 8, marginRight: 8 }}
-            >
-              <Ionicons
-                name="close"
-                size={24}
-                color={Colors[colorScheme].primary}
-              />
-            </TouchableOpacity>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "bold",
-                color: Colors[colorScheme].foreground,
-                flex: 1,
-              }}
-            >
-              Chọn lớp
-            </Text>
-          </View>
-
-          {/* Grade List */}
-          <View
-            style={{
-              flex: 1,
-              padding: 20,
-            }}
-          >
-            {[6, 7, 8, 9].map((grade) => (
-              <TouchableOpacity
-                key={grade}
-                onPress={() => {
-                  competitorForm.setValue("grade", grade.toString(), {
-                    shouldValidate: true,
-                    shouldDirty: true,
-                  });
-                  setShowGradePicker(false);
-                }}
-                style={{
-                  padding: 16,
-                  borderBottomWidth: 1,
-                  borderBottomColor: Colors[colorScheme].border,
-                  backgroundColor: Colors[colorScheme].card,
-                  marginBottom: 8,
-                  borderRadius: 8,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 16,
-                    color: Colors[colorScheme].foreground,
-                  }}
-                >
-                  Lớp {grade}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </Modal>
-
-      {/* Date Picker Modal */}
-      <Modal
-        visible={showDatePicker}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowDatePicker(false)}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: Colors[colorScheme].background,
-          }}
-        >
-          {/* Header */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: Colors[colorScheme].card,
-              paddingHorizontal: 16,
-              paddingTop: 50,
-              paddingBottom: 16,
-              borderBottomWidth: 1,
-              borderBottomColor: Colors[colorScheme].border,
-            }}
-          >
-            <TouchableOpacity
-              onPress={() => setShowDatePicker(false)}
-              style={{ padding: 8, marginRight: 8 }}
-            >
-              <Ionicons
-                name="close"
-                size={24}
-                color={Colors[colorScheme].primary}
-              />
-            </TouchableOpacity>
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "bold",
-                color: Colors[colorScheme].foreground,
-                flex: 1,
-              }}
-            >
-              Chọn ngày sinh
-            </Text>
-            <TouchableOpacity
-              onPress={() => {
-                const formattedDate = `${selectedDate.getFullYear()}-${String(
-                  selectedDate.getMonth() + 1
-                ).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(
-                  2,
-                  "0"
-                )}`;
-                competitorForm.setValue("birthday", formattedDate);
-                setShowDatePicker(false);
-              }}
-              style={{ padding: 8 }}
-            >
-              <Text
-                style={{
-                  color: Colors[colorScheme].primary,
-                  fontWeight: "bold",
-                  fontSize: 16,
-                }}
-              >
-                Xong
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Date Picker Content */}
-          <View
-            style={{
-              flex: 1,
-              justifyContent: "center",
-              alignItems: "center",
-              padding: 20,
-            }}
-          >
+            {/* header + grabber */}
             <View
               style={{
-                backgroundColor: Colors[colorScheme].card,
-                borderRadius: 12,
-                padding: 20,
-                width: "100%",
-                maxWidth: 300,
+                alignItems: "center",
+                backgroundColor: C.card,
+                borderBottomWidth: 1,
+                borderBottomColor: C.border,
+                paddingTop: 10,
+                paddingBottom: 10,
               }}
             >
-              <Text
+              <View
                 style={{
-                  fontSize: 18,
-                  fontWeight: "bold",
-                  color: Colors[colorScheme].foreground,
-                  textAlign: "center",
-                  marginBottom: 20,
+                  width: 40,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: C.border,
+                  marginBottom: 8,
+                }}
+              />
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  width: "100%",
+                  paddingHorizontal: 16,
                 }}
               >
-                {selectedDate.toLocaleDateString("vi-VN", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </Text>
+                <TouchableOpacity
+                  onPress={() => setShowGradePicker(false)}
+                  style={{ padding: 8, marginRight: 8 }}
+                >
+                  <Ionicons name="close" size={22} color={C.primary} />
+                </TouchableOpacity>
 
-              {/* Year Picker */}
-              <View style={{ marginBottom: 16 }}>
                 <Text
                   style={{
                     fontSize: 16,
-                    fontWeight: "600",
-                    color: Colors[colorScheme].foreground,
-                    marginBottom: 8,
+                    fontWeight: "700",
+                    color: C.foreground,
+                    flex: 1,
                   }}
+                  numberOfLines={1}
                 >
-                  Năm
+                  Chọn lớp
                 </Text>
-                <ScrollView
-                  ref={yearScrollRef}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingHorizontal: 10 }}
-                >
-                  {Array.from({ length: 50 }, (_, i) => {
-                    const year = new Date().getFullYear() - 40 + i;
-                    const isSelected = selectedDate.getFullYear() === year;
-                    return (
-                      <TouchableOpacity
-                        key={year}
-                        onPress={() => {
-                          const newDate = new Date(selectedDate);
-                          newDate.setFullYear(year);
-                          setSelectedDate(newDate);
-                        }}
-                        style={{
-                          paddingHorizontal: 12,
-                          paddingVertical: 6,
-                          marginHorizontal: 2,
-                          borderRadius: 6,
-                          backgroundColor: isSelected
-                            ? Colors[colorScheme].primary
-                            : Colors[colorScheme].muted,
-                          minWidth: 50,
-                          alignItems: "center",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: isSelected
-                              ? Colors[colorScheme].primaryForeground
-                              : Colors[colorScheme].foreground,
-                            fontWeight: isSelected ? "bold" : "normal",
-                            fontSize: 14,
-                          }}
-                        >
-                          {year}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-
-              {/* Month Picker */}
-              <View style={{ marginBottom: 16 }}>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: "600",
-                    color: Colors[colorScheme].foreground,
-                    marginBottom: 8,
-                  }}
-                >
-                  Tháng
-                </Text>
-                <View
-                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 4 }}
-                >
-                  {Array.from({ length: 12 }, (_, i) => {
-                    const month = i + 1;
-                    const isSelected = selectedDate.getMonth() === i;
-                    return (
-                      <TouchableOpacity
-                        key={month}
-                        onPress={() => {
-                          const newDate = new Date(selectedDate);
-                          newDate.setMonth(i);
-                          setSelectedDate(newDate);
-                        }}
-                        style={{
-                          width: "22%",
-                          paddingVertical: 8,
-                          borderRadius: 6,
-                          backgroundColor: isSelected
-                            ? Colors[colorScheme].primary
-                            : Colors[colorScheme].muted,
-                          alignItems: "center",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: isSelected
-                              ? Colors[colorScheme].primaryForeground
-                              : Colors[colorScheme].foreground,
-                            fontWeight: isSelected ? "bold" : "normal",
-                            fontSize: 14,
-                          }}
-                        >
-                          {month}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-
-              {/* Day Picker */}
-              <View>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: "600",
-                    color: Colors[colorScheme].foreground,
-                    marginBottom: 8,
-                  }}
-                >
-                  Ngày
-                </Text>
-                <View
-                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 2 }}
-                >
-                  {Array.from(
-                    {
-                      length: new Date(
-                        selectedDate.getFullYear(),
-                        selectedDate.getMonth() + 1,
-                        0
-                      ).getDate(),
-                    },
-                    (_, i) => {
-                      const day = i + 1;
-                      const isSelected = selectedDate.getDate() === day;
-                      return (
-                        <TouchableOpacity
-                          key={day}
-                          onPress={() => {
-                            const newDate = new Date(selectedDate);
-                            newDate.setDate(day);
-                            setSelectedDate(newDate);
-                          }}
-                          style={{
-                            width: "12%",
-                            paddingVertical: 6,
-                            borderRadius: 6,
-                            backgroundColor: isSelected
-                              ? Colors[colorScheme].primary
-                              : Colors[colorScheme].muted,
-                            alignItems: "center",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              color: isSelected
-                                ? Colors[colorScheme].primaryForeground
-                                : Colors[colorScheme].foreground,
-                              fontWeight: isSelected ? "bold" : "normal",
-                              fontSize: 12,
-                            }}
-                          >
-                            {day}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    }
-                  )}
-                </View>
               </View>
             </View>
+
+            {/* content: auto change list/grid + tối đa chiều cao */}
+            <View style={{ padding: PADDING_V, paddingTop: 16 }}>
+              {USE_GRID ? (
+                // GRID CHIP 3 cột
+                <FlatList
+                  data={grades}
+                  numColumns={NUM_COLS}
+                  keyExtractor={(g) => String(g)}
+                  columnWrapperStyle={{
+                    justifyContent: "space-between",
+                    marginBottom: GAP,
+                  }}
+                  renderItem={({ item: grade }) => {
+                    return (
+                      <TouchableOpacity
+                        onPress={() => {
+                          competitorForm.setValue("grade", String(grade), {
+                            shouldValidate: true,
+                            shouldDirty: true,
+                          });
+                          setShowGradePicker(false);
+                        }}
+                        style={{
+                          width: `${100 / NUM_COLS - 2}%`,
+                          paddingVertical: 12,
+                          borderRadius: 12,
+                          borderWidth: 1,
+                          borderColor: C.border,
+                          backgroundColor: C.card,
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            fontWeight: "600",
+                            color: C.foreground,
+                          }}
+                        >
+                          Lớp {grade}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  }}
+                  // Nếu quá nhiều, FlatList vẫn cuộn trong sheet
+                  style={{ maxHeight: SCREEN_H * MAX_RATIO - HEADER_H }}
+                  keyboardShouldPersistTaps="handled"
+                />
+              ) : (
+                // LIST ITEM GỌN
+                <FlatList
+                  data={grades}
+                  keyExtractor={(g) => String(g)}
+                  renderItem={({ item: grade, index }) => (
+                    <TouchableOpacity
+                      onPress={() => {
+                        competitorForm.setValue("grade", String(grade), {
+                          shouldValidate: true,
+                          shouldDirty: true,
+                        });
+                        setShowGradePicker(false);
+                      }}
+                      style={{
+                        height: ITEM_H,
+                        paddingHorizontal: 14,
+                        borderRadius: 10,
+                        backgroundColor: C.card,
+                        borderWidth: 1,
+                        borderColor: C.border,
+                        justifyContent: "center",
+                        marginBottom: index === grades.length - 1 ? 0 : GAP,
+                      }}
+                    >
+                      <Text style={{ fontSize: 16, color: C.foreground }}>
+                        Lớp {grade}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  getItemLayout={(_, i) => ({
+                    length: ITEM_H + GAP,
+                    offset: (ITEM_H + GAP) * i,
+                    index: i,
+                  })}
+                  style={{ maxHeight: SCREEN_H * MAX_RATIO - HEADER_H }}
+                  keyboardShouldPersistTaps="handled"
+                />
+              )}
+            </View>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
     </KeyboardAvoidingView>
   );

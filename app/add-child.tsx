@@ -1,12 +1,15 @@
 import { useWhoAmI } from "@/apis/auth";
 import { useAssignCompetitors } from "@/apis/guardian";
-import AddChildBottomSheet from "@/components/modals/AddChildBottomSheet";
+import AddChildBottomSheet, {
+  AddChildBottomSheetRef,
+} from "@/components/modals/AddChildBottomSheet";
 import { Colors, withOpacity } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { RegisterRequest } from "@/types/auth";
 import { Ionicons } from "@expo/vector-icons";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Alert, FlatList, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -30,9 +33,9 @@ type ChildFormData = CompetitorFormData & { localId: string };
 export default function AddChildScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const C = Colors[colorScheme];
-  const [showAddChildSheet, setShowAddChildSheet] = useState(false);
   const [children, setChildren] = useState<ChildFormData[]>([]);
   const [editingChild, setEditingChild] = useState<ChildFormData | null>(null);
+  const bottomSheetRef = useRef<AddChildBottomSheetRef>(null);
 
   const { data: user } = useWhoAmI();
   const assignCompetitors = useAssignCompetitors(() => {
@@ -47,7 +50,6 @@ export default function AddChildScreen() {
       localId: Date.now().toString(), // Simple ID generation
     };
     setChildren((prev) => [...prev, newChild]);
-    setShowAddChildSheet(false);
   };
 
   const handleEditChild = (childData: ChildFormData) => {
@@ -57,7 +59,6 @@ export default function AddChildScreen() {
       )
     );
     setEditingChild(null);
-    setShowAddChildSheet(false);
   };
 
   const handleDeleteChild = (childId: string) => {
@@ -120,12 +121,7 @@ export default function AddChildScreen() {
 
   const openEditSheet = (child: ChildFormData) => {
     setEditingChild(child);
-    setShowAddChildSheet(true);
-  };
-
-  const closeSheet = () => {
-    setShowAddChildSheet(false);
-    setEditingChild(null);
+    bottomSheetRef.current?.present();
   };
 
   const handleBottomSheetSubmit = (
@@ -141,231 +137,232 @@ export default function AddChildScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.background }}>
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          backgroundColor: C.card,
-          paddingHorizontal: 16,
-          paddingVertical: 16,
-          borderBottomWidth: 1,
-          borderBottomColor: C.border,
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{ padding: 8, marginRight: 8 }}
-        >
-          <Ionicons name="arrow-back" size={24} color={C.primary} />
-        </TouchableOpacity>
-        <Text
+    <BottomSheetModalProvider>
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.background }}>
+        {/* Header */}
+        <View
           style={{
-            fontSize: 20,
-            fontWeight: "bold",
-            color: C.foreground,
-            flex: 1,
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: C.card,
+            paddingHorizontal: 16,
+            paddingVertical: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: C.border,
           }}
         >
-          Thêm con em
-        </Text>
-        {children.length > 0 && (
           <TouchableOpacity
-            onPress={handleSubmitAll}
-            style={{
-              backgroundColor: C.primary,
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              borderRadius: 8,
-            }}
+            onPress={() => router.back()}
+            style={{ padding: 8, marginRight: 8 }}
           >
-            <Text
-              style={{
-                color: C.primaryForeground,
-                fontWeight: "600",
-                fontSize: 14,
-              }}
-            >
-              Hoàn thành ({children.length})
-            </Text>
+            <Ionicons name="arrow-back" size={24} color={C.primary} />
           </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Content */}
-      <View style={{ flex: 1 }}>
-        {children.length === 0 ? (
-          <View
+          <Text
             style={{
+              fontSize: 20,
+              fontWeight: "bold",
+              color: C.foreground,
               flex: 1,
-              justifyContent: "center",
-              alignItems: "center",
-              padding: 32,
             }}
           >
-            <Ionicons name="people-outline" size={80} color={C.muted} />
-            <Text
+            Thêm con em
+          </Text>
+          {children.length > 0 && (
+            <TouchableOpacity
+              onPress={handleSubmitAll}
               style={{
-                fontSize: 18,
-                fontWeight: "bold",
-                color: C.foreground,
-                marginTop: 16,
-                marginBottom: 8,
-                textAlign: "center",
+                backgroundColor: C.primary,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderRadius: 8,
               }}
             >
-              Chưa thêm con em nào
-            </Text>
-            <Text
-              style={{
-                fontSize: 14,
-                color: C.mutedForeground,
-                marginBottom: 24,
-                textAlign: "center",
-              }}
-            >
-              Thêm thông tin con em vào danh sách để chuẩn bị tạo tài khoản
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={children}
-            keyExtractor={(item) => item.localId}
-            contentContainerStyle={{ padding: 16 }}
-            renderItem={({ item, index }) => (
-              <View
+              <Text
                 style={{
-                  backgroundColor: C.card,
-                  borderRadius: 12,
-                  padding: 16,
-                  marginBottom: 12,
-                  shadowColor: "#000",
-                  shadowOpacity: 0.06,
-                  shadowRadius: 8,
-                  shadowOffset: { width: 0, height: 2 },
-                  elevation: 2,
+                  color: C.primaryForeground,
+                  fontWeight: "600",
+                  fontSize: 14,
                 }}
               >
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <View
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: [
-                        "#FF6B6B",
-                        "#4ECDC4",
-                        "#45B7D1",
-                        "#96CEB4",
-                        "#FFEAA7",
-                        "#DDA0DD",
-                        "#98D8C8",
-                        "#F7DC6F",
-                        "#BB8FCE",
-                        "#85C1E9",
-                      ][index % 10],
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginRight: 12,
-                    }}
-                  >
-                    <Ionicons name="person-outline" size={20} color="white" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        fontSize: 16,
-                        fontWeight: "600",
-                        color: C.foreground,
-                        marginBottom: 4,
-                      }}
-                    >
-                      {item.fullName}
-                    </Text>
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        color: C.mutedForeground,
-                      }}
-                    >
-                      {item.grade} - {item.schoolName}
-                    </Text>
-                  </View>
-                  <View style={{ flexDirection: "row", gap: 8 }}>
-                    <TouchableOpacity
-                      onPress={() => openEditSheet(item)}
-                      style={{
-                        padding: 8,
-                        backgroundColor: withOpacity(C.muted, 0.4),
-                        borderRadius: 6,
-                      }}
-                    >
-                      <Ionicons
-                        name="pencil-outline"
-                        size={16}
-                        color={C.primary}
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleDeleteChild(item.localId)}
-                      style={{
-                        padding: 8,
-                        backgroundColor: withOpacity(C.destructive, 0.2),
-                        borderRadius: 6,
-                      }}
-                    >
-                      <Ionicons
-                        name="trash-outline"
-                        size={16}
-                        color={C.destructiveForeground}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            )}
-          />
-        )}
+                Hoàn thành ({children.length})
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
-        {/* Add Child Button */}
-        <View style={{ padding: 16 }}>
-          <TouchableOpacity
-            onPress={() => {
-              setEditingChild(null);
-              setShowAddChildSheet(true);
-            }}
-            style={{
-              backgroundColor: C.primary,
-              borderRadius: 12,
-              paddingVertical: 16,
-              alignItems: "center",
-              flexDirection: "row",
-              justifyContent: "center",
-              gap: 8,
-            }}
-          >
-            <Ionicons name="add" size={20} color={C.primaryForeground} />
-            <Text
+        {/* Content */}
+        <View style={{ flex: 1 }}>
+          {children.length === 0 ? (
+            <View
               style={{
-                color: C.primaryForeground,
-                fontSize: 16,
-                fontWeight: "600",
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                padding: 32,
               }}
             >
-              Thêm con em
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+              <Ionicons name="people-outline" size={80} color={C.muted} />
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "bold",
+                  color: C.foreground,
+                  marginTop: 16,
+                  marginBottom: 8,
+                  textAlign: "center",
+                }}
+              >
+                Chưa thêm con em nào
+              </Text>
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: C.mutedForeground,
+                  marginBottom: 24,
+                  textAlign: "center",
+                }}
+              >
+                Thêm thông tin con em vào danh sách để chuẩn bị tạo tài khoản
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={children}
+              keyExtractor={(item) => item.localId}
+              contentContainerStyle={{ padding: 16 }}
+              renderItem={({ item, index }) => (
+                <View
+                  style={{
+                    backgroundColor: C.card,
+                    borderRadius: 12,
+                    padding: 16,
+                    marginBottom: 12,
+                    shadowColor: "#000",
+                    shadowOpacity: 0.06,
+                    shadowRadius: 8,
+                    shadowOffset: { width: 0, height: 2 },
+                    elevation: 2,
+                  }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: [
+                          "#FF6B6B",
+                          "#4ECDC4",
+                          "#45B7D1",
+                          "#96CEB4",
+                          "#FFEAA7",
+                          "#DDA0DD",
+                          "#98D8C8",
+                          "#F7DC6F",
+                          "#BB8FCE",
+                          "#85C1E9",
+                        ][index % 10],
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginRight: 12,
+                      }}
+                    >
+                      <Ionicons name="person-outline" size={20} color="white" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          fontWeight: "600",
+                          color: C.foreground,
+                          marginBottom: 4,
+                        }}
+                      >
+                        {item.fullName}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          color: C.mutedForeground,
+                        }}
+                      >
+                        {item.grade} - {item.schoolName}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <TouchableOpacity
+                        onPress={() => openEditSheet(item)}
+                        style={{
+                          padding: 8,
+                          backgroundColor: withOpacity(C.muted, 0.4),
+                          borderRadius: 6,
+                        }}
+                      >
+                        <Ionicons
+                          name="pencil-outline"
+                          size={16}
+                          color={C.primary}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteChild(item.localId)}
+                        style={{
+                          padding: 8,
+                          backgroundColor: withOpacity(C.destructive, 0.2),
+                          borderRadius: 6,
+                        }}
+                      >
+                        <Ionicons
+                          name="trash-outline"
+                          size={16}
+                          color={C.destructiveForeground}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              )}
+            />
+          )}
 
-      {/* Add Child Bottom Sheet */}
-      <AddChildBottomSheet
-        visible={showAddChildSheet}
-        onClose={closeSheet}
-        onSubmit={handleBottomSheetSubmit}
-        editingChild={editingChild}
-      />
-    </SafeAreaView>
+          {/* Add Child Button */}
+          <View style={{ padding: 16 }}>
+            <TouchableOpacity
+              onPress={() => {
+                setEditingChild(null);
+                bottomSheetRef.current?.present();
+              }}
+              style={{
+                backgroundColor: C.primary,
+                borderRadius: 12,
+                paddingVertical: 16,
+                alignItems: "center",
+                flexDirection: "row",
+                justifyContent: "center",
+                gap: 8,
+              }}
+            >
+              <Ionicons name="add" size={20} color={C.primaryForeground} />
+              <Text
+                style={{
+                  color: C.primaryForeground,
+                  fontSize: 16,
+                  fontWeight: "600",
+                }}
+              >
+                Thêm con em
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Add Child Bottom Sheet */}
+        <AddChildBottomSheet
+          ref={bottomSheetRef}
+          onSubmit={handleBottomSheetSubmit}
+          editingChild={editingChild}
+        />
+      </SafeAreaView>
+    </BottomSheetModalProvider>
   );
 }

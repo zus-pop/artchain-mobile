@@ -1,12 +1,7 @@
 // screens/GuardianProfileComponent.tsx
 import PillButton from "@/components/buttons/PillButton";
-import AchievementCard from "@/components/cards/guardian/AchievementCard";
 import ChildCard from "@/components/cards/guardian/ChildrentCard";
-import ContestCard from "@/components/cards/guardian/ContestCard";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
-
-// ⚡ dùng GuardianTabs phiên bản mới (slider dưới, không bọc nền)
-import GuardianTabs, { GuardianTabKey } from "@/components/tabs/GuardianTabs";
 
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -15,6 +10,8 @@ import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Platform,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -26,7 +23,6 @@ import { useWhoAmI } from "@/apis/auth";
 import { useGuardianChildren } from "@/apis/guardian";
 import { useAuthStore } from "@/store/auth-store";
 import type { ColorTokens, KPIProps } from "@/types/tabkey";
-import { formatDateDisplay } from "@/utils/date";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -41,11 +37,13 @@ const VIVID_POOLS: [string, string][] = [
   ["#60A5FA", "#F472B6"],
   ["#F43F5E", "#FB7185"],
 ];
+
 const hashStr = (s: string) => {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
   return Math.abs(h);
 };
+
 const pickGrad = (seed?: string): [string, string] => {
   const i = hashStr(seed || Math.random().toString()) % VIVID_POOLS.length;
   return VIVID_POOLS[i];
@@ -53,6 +51,7 @@ const pickGrad = (seed?: string): [string, string] => {
 
 /** Header brand color */
 const BRAND = "#dd504b";
+const isIOS = Platform.OS === "ios";
 
 export default function GuardianProfileComponent() {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
@@ -61,53 +60,12 @@ export default function GuardianProfileComponent() {
   const C = Colors[scheme];
   const s = styles(C);
 
-  const { data: children } = useGuardianChildren(user?.userId);
+  const guardianId = user?.userId ?? "";
+  const { data: children, refetch: refetchChildren } =
+    useGuardianChildren(guardianId);
+
   const [openDetails, setOpenDetails] = useState(false);
-  const [activeTab, setActiveTab] = useState<GuardianTabKey>("children");
-
-  const ongoingContests = useMemo(
-    () => [
-      {
-        id: "contest1",
-        title: "Vẽ Sài Gòn Xanh",
-        progress: 75,
-        status: "active",
-        deadline: "2024-12-31",
-        submitted: true,
-        submissionCount: 1,
-        totalRounds: 2,
-        currentRound: 1,
-      },
-      {
-        id: "contest2",
-        title: "Nghệ Thuật Đường Phố",
-        progress: 45,
-        status: "active",
-        deadline: "2025-01-15",
-        submitted: false,
-        submissionCount: 0,
-        totalRounds: 1,
-        currentRound: 1,
-      },
-    ],
-    []
-  );
-
-  const achievements = useMemo(
-    () => [
-      {
-        id: "a1",
-        title: 'Giải Nhất "Cuộc thi vẽ tranh thiếu nhi toàn quốc 2024"',
-        place: "2024 - TP. Hồ Chí Minh",
-      },
-      {
-        id: "a2",
-        title: 'Top 10 "Nghệ thuật đường phố TPHCM"',
-        place: "2024 - Quận 1",
-      },
-    ],
-    []
-  );
+  const [refreshing, setRefreshing] = useState(false);
 
   const childAvatars = useMemo(
     () => [
@@ -124,6 +82,7 @@ export default function GuardianProfileComponent() {
     ],
     []
   );
+
   const getChildAvatar = (index: number) =>
     childAvatars[index % childAvatars.length];
 
@@ -132,6 +91,13 @@ export default function GuardianProfileComponent() {
       reloadMe();
     }, [reloadMe])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await reloadMe();
+    await refetchChildren();
+    setRefreshing(false);
+  }, [reloadMe, refetchChildren]);
 
   const Avatar = () => {
     const seed = user?.email || user?.fullName || "guardian";
@@ -162,182 +128,274 @@ export default function GuardianProfileComponent() {
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
+  // ================= LOADING =================
   if (isLoading) {
     return (
-      <SafeAreaView style={s.container}>
-        {/* Solid brand header (loading) */}
+      <SafeAreaView
+        style={[
+          s.safeArea,
+          { backgroundColor: BRAND, paddingTop: isIOS ? 20 : 0 },
+        ]}
+        edges={["top"]}
+      >
+        <View style={s.container}>
+          {/* Solid brand header (loading) */}
+          <View
+            style={[
+              s.topbar,
+              { backgroundColor: BRAND, borderBottomColor: C.border },
+            ]}
+          >
+            <Text style={s.headerTitle}>Hồ sơ</Text>
+            <View style={{ flexDirection: "row" }}>
+              <TouchableOpacity style={s.iconBtn}>
+                <Ionicons name="notifications-outline" size={22} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={s.loaderWrap}>
+            <Ionicons name="person-circle-outline" size={80} color={C.muted} />
+            <Text style={s.loaderText}>Đang tải hồ sơ...</Text>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ================= NOT LOGGED IN =================
+  if (!accessToken || !user) {
+    return (
+      <SafeAreaView
+        style={[
+          s.safeArea,
+          { backgroundColor: BRAND, paddingTop: isIOS ? 20 : 0 },
+        ]}
+        edges={["top"]}
+      >
+        <View style={s.container}>
+          {/* Solid brand header (unauth) */}
+          <View
+            style={[
+              s.topbar,
+              { backgroundColor: BRAND, borderBottomColor: C.border },
+            ]}
+          >
+            <Text style={s.headerTitle}>Hồ sơ</Text>
+          </View>
+
+          <View style={s.authWrap}>
+            <Ionicons name="person-circle-outline" size={80} color={C.muted} />
+            <Text style={s.authTitle}>Bạn chưa đăng nhập</Text>
+            <Text style={s.authDesc}>
+              Đăng nhập để quản lý hồ sơ, theo dõi thành tích và tham gia các
+              cuộc thi nghệ thuật hấp dẫn trên ArtChain.
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push("/login")}
+              style={s.authBtn}
+            >
+              <Text style={s.authBtnText}>Đăng nhập / Đăng ký</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ================= MAIN =================
+  return (
+    <SafeAreaView
+      style={[
+        s.safeArea,
+        { backgroundColor: C.foreground80, paddingTop: isIOS ? 8 : 0 },
+      ]}
+      edges={["top"]}
+    >
+      <View style={s.container}>
+        {/* Solid brand header (main) */}
         <View
           style={[
             s.topbar,
-            { backgroundColor: BRAND, borderBottomColor: C.border },
+            { backgroundColor: C.foreground80, borderBottomColor: C.border },
           ]}
         >
-          <Text style={s.headerTitle}>Hồ sơ</Text>
+          <Text style={s.headerTitle}>Hồ sơ phụ huynh</Text>
           <View style={{ flexDirection: "row" }}>
-            <TouchableOpacity style={s.iconBtn}>
-              <Ionicons name="notifications-outline" size={22} color="#fff" />
+            <TouchableOpacity
+              onPress={() => router.push("/notifications")}
+              style={s.iconBtn}
+            >
+              <Ionicons name="notifications-outline" size={25} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/setting")}
+              style={s.iconBtn}
+            >
+              <Ionicons name="settings-outline" size={25} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={s.loaderWrap}>
-          <Ionicons name="person-circle-outline" size={80} color={C.muted} />
-          <Text style={s.loaderText}>Đang tải hồ sơ...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (!accessToken || !user) {
-    return (
-      <SafeAreaView style={s.container}>
-        {/* Solid brand header (unauth) */}
-        <View
-          style={[
-            s.topbar,
-            { backgroundColor: BRAND, borderBottomColor: C.border },
-          ]}
+        <Animated.ScrollView
+          contentContainerStyle={{ paddingBottom: 110 }}
+          showsVerticalScrollIndicator={false}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true }
+          )}
+          scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl
+              colors={[C.primary]}
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+            />
+          }
         >
-          <Text style={s.headerTitle}>Hồ sơ</Text>
-        </View>
-
-        <View style={s.authWrap}>
-          <Ionicons name="person-circle-outline" size={80} color={C.muted} />
-          <Text style={s.authTitle}>Bạn chưa đăng nhập</Text>
-          <Text style={s.authDesc}>
-            Đăng nhập để quản lý hồ sơ, theo dõi thành tích và tham gia các cuộc
-            thi nghệ thuật hấp dẫn trên ArtChain.
-          </Text>
-          <TouchableOpacity
-            onPress={() => router.push("/login")}
-            style={s.authBtn}
-          >
-            <Text style={s.authBtnText}>Đăng nhập / Đăng ký</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={s.container}>
-      {/* Solid brand header (main) */}
-      <View
-        style={[
-          s.topbar,
-          { backgroundColor: BRAND, borderBottomColor: C.border },
-        ]}
-      >
-        <Text style={s.headerTitle}>Hồ sơ phụ huynh</Text>
-        <View style={{ flexDirection: "row" }}>
-          <TouchableOpacity
-            onPress={() => router.push("/notifications")}
-            style={s.iconBtn}
-          >
-            <Ionicons name="notifications-outline" size={25} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push("/setting")}
-            style={s.iconBtn}
-          >
-            <Ionicons name="settings-outline" size={25} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Background blobs (giữ nguyên) */}
-      <LinearGradient
-        colors={["#a78bfa22", "#60a5fa16"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={bg.blobTL}
-      />
-      <LinearGradient
-        colors={["#fda4af1f", "#fde68a1f"]}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={bg.blobBR}
-      />
-
-      <Animated.ScrollView
-        contentContainerStyle={{ paddingBottom: 110 }}
-        showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
-      >
-        {/* Header compact */}
-        <View style={s.headerWrap}>
-          <TouchableOpacity
-            onPress={() => setOpenDetails(true)}
-            activeOpacity={0.9}
-          >
-            <View>
-              <Avatar />
-              {/* Badge cọ vẽ gradient */}
-              <LinearGradient
-                colors={pickGrad("brush")}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[s.addBadge, { borderColor: C.background }]}
-              >
-                <Ionicons name="brush" size={12} color={C.primaryForeground} />
-              </LinearGradient>
+          {/* Header compact */}
+          <View style={s.headerWrap}>
+            <TouchableOpacity
+              onPress={() => setOpenDetails(true)}
+              activeOpacity={0.9}
+              style={{ padding: 8, margin: -8 }} // Expand touch area
+            >
+              <View>
+                <Avatar />
+                {/* Badge cọ vẽ gradient */}
+                <LinearGradient
+                  colors={pickGrad("brush")}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[s.addBadge, { borderColor: C.background }]}
+                >
+                  <Ionicons
+                    name="brush"
+                    size={12}
+                    color={C.primaryForeground}
+                  />
+                </LinearGradient>
+              </View>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={s.name}>{user.fullName}</Text>
+              <Text style={s.handle}>{user.email}</Text>
             </View>
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={s.name}>{user.fullName}</Text>
-            <Text style={s.handle}>{user.email}</Text>
-          </View>
 
-          <PillButton
-            label="Hồ sơ"
-            icon="person-outline"
-            colors={C}
-            variant="ghost"
-            onPress={() => router.push("/profile-detail")}
-          />
-        </View>
-
-        {/* KPI */}
-        <View style={s.kpiCard}>
-          <View style={{ flex: 1 }}>
-            <KPI
-              icon="people-outline"
-              label="Con tham gia"
-              value={String(children?.length || 0)}
-              C={C}
+            <PillButton
+              label="Hồ sơ"
+              icon="person-outline"
+              colors={C}
+              variant="ghost"
+              onPress={() => router.push("/profile-detail")}
             />
           </View>
-        </View>
 
-  
-        <GuardianTabs
-          C={C}
-          activeTab={activeTab}
-          onChange={setActiveTab}
-          style={{ marginHorizontal: 12, marginTop: 8, marginBottom: 8 }}
-        />
+          <View
+            style={{
+              width: "92%",
+              height: 2,
+              backgroundColor: C.primary,
+              opacity: 0.6,
+              marginTop: 10,
+              alignSelf: "center",
+              borderRadius: 999,
+              marginBottom: 10,
+            }}
+          />
 
-        {/* Tab Content */}
-        <View style={s.tabContent}>
-          {activeTab === "children" && (
+          {/* KPI – chỉ giữ KPI Con em */}
+          <View style={s.kpiCard}>
+            <View style={{ flex: 1, flexDirection: "row", gap: 12 }}>
+              <KPI
+                icon="people-outline"
+                label="Con em"
+                value={String(children?.length || 0)}
+                C={C}
+              />
+            </View>
+          </View>
+
+          <View style={{ marginTop: 12, marginBottom: 4 }}>
+            {/* Title chip */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingHorizontal: 16,
+                  paddingVertical: 6,
+                  borderRadius: 4,
+                  backgroundColor: C.card,
+                  borderWidth: 1,
+                  borderColor: C.primary,
+                  gap: 8,
+                }}
+              >
+                <Ionicons name="people-outline" size={18} color={C.primary} />
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontFamily: "Be Vietnam Pro",
+                    fontWeight: "700",
+                    color: C.primary,
+                  }}
+                >
+                  Danh sách con em
+                </Text>
+              </View>
+            </View>
+
+            {/* Underline */}
+            <View
+              style={{
+                width: "92%",
+                height: 2,
+                backgroundColor: C.primary,
+                opacity: 0.6,
+                marginTop: 10,
+                alignSelf: "center",
+                borderRadius: 999,
+                marginBottom: 10,
+              }}
+            />
+          </View>
+
+          <View style={s.tabContent}>
             <View style={s.tabScrollContent}>
               {children && children.length > 0 ? (
-                <View style={{ gap: 12 }}>
+                <View style={s.childrenGrid}>
                   {children.map((child, index) => {
                     const avatar = getChildAvatar(index);
                     return (
-                      <ChildCard
+                      <View
                         key={child.userId || child.username || `child-${index}`}
-                        C={C}
-                        avatarBg={avatar.bg}
-                        name={child.fullName}
-                        grade={child.grade ?? undefined}
-                        schoolName={child.schoolName ?? undefined}
-                      />
+                        style={s.childGridItem}
+                      >
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          onPress={() =>
+                            router.push({
+                              pathname: "/childrent-detail",
+                              params: { childId: child.userId },
+                            })
+                          }
+                        >
+                          <ChildCard
+                            C={C}
+                            avatarBg={avatar.bg}
+                            name={child.fullName}
+                            grade={child.grade ?? undefined}
+                            schoolName={child.schoolName ?? undefined}
+                          />
+                        </TouchableOpacity>
+                      </View>
                     );
                   })}
                 </View>
@@ -351,89 +409,38 @@ export default function GuardianProfileComponent() {
                   </Text>
                 </View>
               )}
-
-              {/* Add child button */}
-              <TouchableOpacity
-                style={s.addChildButton}
-                onPress={() => router.push("/add-child")}
-              >
-                <Ionicons name="add" size={20} color={C.primaryForeground} />
-                <Text style={s.addChildButtonText}>Thêm con em</Text>
-              </TouchableOpacity>
             </View>
-          )}
+          </View>
+        </Animated.ScrollView>
 
-          {activeTab === "contests" && (
-            <View style={s.tabScrollContent}>
-              {ongoingContests.length > 0 ? (
-                <View style={{ gap: 12 }}>
-                  {ongoingContests.map((contest) => (
-                    <ContestCard
-                      key={contest.id}
-                      C={C}
-                      title={contest.title}
-                      deadlineText={formatDateDisplay(contest.deadline)}
-                      roundText={`Vòng ${contest.currentRound}/${contest.totalRounds}`}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <View style={s.emptyTab}>
-                  <Ionicons name="time-outline" size={64} color={C.muted} />
-                  <Text style={s.emptyTabText}>
-                    Con em chưa tham gia cuộc thi nào
-                  </Text>
-                  <TouchableOpacity style={s.exploreButton}>
-                    <Text style={s.exploreButtonText}>Khám phá cuộc thi</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          )}
+        <ProfileDetailsModal
+          visible={openDetails}
+          onClose={() => setOpenDetails(false)}
+          scheme={scheme}
+          user={{
+            userId: user.userId,
+            fullname: user.fullName,
+            email: user.email,
+            phone: user.phone || "",
+          }}
+        />
 
-          {activeTab === "achievements" && (
-            <View style={s.tabScrollContent}>
-              {achievements.length > 0 ? (
-                <View style={{ gap: 12 }}>
-                  {achievements.map((a) => (
-                    <AchievementCard
-                      key={a.id}
-                      C={C}
-                      title={a.title}
-                      place={a.place}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <View style={s.emptyTab}>
-                  <Ionicons name="trophy-outline" size={64} color={C.muted} />
-                  <Text style={s.emptyTabText}>
-                    Con em chưa có thành tích nào
-                  </Text>
-                  <TouchableOpacity style={s.exploreButton}>
-                    <Text style={s.exploreButtonText}>
-                      Khuyến khích tham gia
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          )}
-        </View>
-      </Animated.ScrollView>
-
-      {/* Modal hồ sơ cá nhân */}
-      <ProfileDetailsModal
-        visible={openDetails}
-        onClose={() => setOpenDetails(false)}
-        scheme={scheme}
-        user={{
-          userId: user.userId,
-          fullname: user.fullName,
-          email: user.email,
-          phone: user.phone || "",
-        }}
-      />
+        {/* Floating Add Child Button – luôn hiện vì chỉ còn tab Con em */}
+        <TouchableOpacity
+          style={s.fabButton}
+          onPress={() => router.push("/add-child")}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={[C.primary, "#f87171"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.fabGradient}
+          >
+            <Ionicons name="add" size={28} color={C.primaryForeground} />
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -442,14 +449,9 @@ function KPI({ icon, label, value, C }: KPIProps) {
   const [g0, g1] = pickGrad(label + value);
   return (
     <View style={{ flex: 1, alignItems: "center" }}>
-      <LinearGradient
-        colors={[g0, g1]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={sKpi.iconGrad}
-      >
+      <View style={sKpi.iconGrad}>
         <Ionicons name={icon} size={18} color={C.primaryForeground} />
-      </LinearGradient>
+      </View>
       <Text style={{ fontWeight: "800", color: C.foreground }}>{value}</Text>
       <Text style={{ fontSize: 12, color: C.mutedForeground }}>{label}</Text>
     </View>
@@ -460,15 +462,21 @@ const sKpi = StyleSheet.create({
   iconGrad: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 36,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 6,
+    backgroundColor: "hsl(15 85% 55%)",
   },
 });
 
 const styles = (C: ColorTokens) =>
   StyleSheet.create({
+    // Safe area wrapper, màu override inline theo từng state
+    safeArea: {
+      flex: 1,
+    },
+
     container: { flex: 1, backgroundColor: C.background },
 
     /** New solid topbar (replaces topbarGrad) */
@@ -514,19 +522,31 @@ const styles = (C: ColorTokens) =>
       alignItems: "stretch",
       backgroundColor: C.card,
       marginHorizontal: 12,
-      borderRadius: 14,
+      borderRadius: 4,
       paddingVertical: 12,
       paddingHorizontal: 8,
       shadowColor: "#000",
       shadowOpacity: 0.08,
-      shadowRadius: 12,
+      shadowRadius: 4,
       shadowOffset: { width: 0, height: 3 },
       elevation: 2,
     },
 
-    // Tabs container spacing
+    // Content spacing
     tabContent: { flex: 1, minHeight: 400 },
     tabScrollContent: { paddingHorizontal: 16, paddingBottom: 20 },
+
+    // Children grid layout
+    childrenGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      marginHorizontal: -6,
+    },
+    childGridItem: {
+      width: "100%",
+      paddingHorizontal: 6,
+      marginBottom: 12,
+    },
 
     emptyTab: {
       alignItems: "center",
@@ -545,22 +565,6 @@ const styles = (C: ColorTokens) =>
       color: C.muted,
       marginBottom: 24,
       textAlign: "center",
-    },
-
-    addChildButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: C.primary,
-      borderRadius: 20,
-      paddingHorizontal: 24,
-      paddingVertical: 12,
-      gap: 8,
-      marginTop: 10,
-    },
-    addChildButtonText: {
-      color: C.primaryForeground,
-      fontSize: 14,
-      fontWeight: "600",
     },
 
     exploreButton: {
@@ -617,6 +621,28 @@ const styles = (C: ColorTokens) =>
       color: C.primaryForeground,
       fontWeight: "bold",
       fontSize: 16,
+    },
+
+    // Floating Action Button
+    fabButton: {
+      position: "absolute",
+      bottom: 90,
+      right: 20,
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      shadowColor: "#000",
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 8,
+    },
+    fabGradient: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      alignItems: "center",
+      justifyContent: "center",
     },
   });
 

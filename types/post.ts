@@ -39,3 +39,9 @@ export interface PostFilters {
   tag_id?: number;
   account_id?: string;
 }
+
+export interface Tag {
+  tag_id: string;
+  tag_name: string;
+  created_at: string;
+}

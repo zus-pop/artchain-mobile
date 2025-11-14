@@ -12,7 +12,7 @@ import {
   ViewStyle,
 } from "react-native";
 
-export type GuardianTabKey = "children" | "contests" | "achievements";
+export type GuardianTabKey = "children" | "achievements";
 
 type Props = {
   C: ColorTokens;
@@ -28,12 +28,6 @@ const TABS = [
     label: "Con em",
     icon: "people-outline",
     grad: ["#06B6D4", "#3B82F6"], // cyan → blue
-  },
-  {
-    key: "contests",
-    label: "Cuộc thi",
-    icon: "time-outline",
-    grad: ["#F59E0B", "#F97316"], // amber → orange
   },
   {
     key: "achievements",
@@ -108,31 +102,22 @@ export default function GuardianTabs({ C, activeTab, onChange, style }: Props) {
               android_ripple={{ color: C.muted + "40" }}
               style={styles.tab}
             >
-              {/* Icon “viền gradient” */}
-              <LinearGradient
-                colors={t.grad as [string, string]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+              {/* Icon */}
+              <View
                 style={[
                   styles.iconRing,
                   // active → ring lớn hơn 1 chút
                   active && styles.iconRingActive,
+                  { backgroundColor: active ? C.card : C.card + "EE" },
                 ]}
               >
-                <View
-                  style={[
-                    styles.iconInner,
-                    { backgroundColor: active ? C.card : C.card + "EE" },
-                  ]}
-                >
-                  <Ionicons
-                    name={t.icon as any}
-                    size={22}
-                    color={active ? C.primary : C.mutedForeground}
-                    style={{ transform: [{ translateY: -0.5 }] }}
-                  />
-                </View>
-              </LinearGradient>
+                <Ionicons
+                  name={t.icon as any}
+                  size={22}
+                  color={active ? C.primary : C.mutedForeground}
+                  style={{ transform: [{ translateY: -0.5 }] }}
+                />
+              </View>
 
               {/* Nhãn */}
               <Text

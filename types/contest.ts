@@ -1,15 +1,34 @@
 export interface Contest {
-  contestId: string;
+  contestId: number;
   title: string;
   bannerUrl?: string;
   description: string;
   numOfAward: number;
+  round2Quantity: number;
+  ruleUrl: string;
   startDate: string;
   endDate: string;
   status: ContestStatus;
   createdBy: string;
   rounds: Rounds[];
   examinerRole: ExaminerRole;
+}
+export interface ExaminerContest {
+  contestId: number;
+  title: string;
+  bannerUrl?: string;
+  description: string;
+  numOfAward: number;
+  round2Quantity: number;
+  ruleUrl: string;
+  startDate: string;
+  endDate: string;
+  status: ContestStatus;
+  createdBy: string;
+  rounds: Rounds[];
+  examinerRole: ExaminerRole;
+  isScheduleEnforced: boolean;
+  canEvaluate: boolean;
 }
 
 export interface Rounds {
@@ -29,6 +48,18 @@ export interface Rounds {
 
 export interface ContestFilter {
   status?: ContestStatus;
+  page?: number;
+  limit?: number;
+}
+
+// types
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
 }
 
 export type ContestStatus =
@@ -39,4 +70,4 @@ export type ContestStatus =
   | "DRAFT"
   | "ALL";
 
-export type ExaminerRole = "ROUND_1" | "REVIEW_ROUND_1" | "ROUND_2";
+export type ExaminerRole = "ROUND_1" | "ROUND_2";

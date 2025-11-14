@@ -1,15 +1,11 @@
 // components/header/contest/CollapsibleHeader.tsx
 import { Colors } from "@/constants/theme";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { Filter, Search } from "lucide-react-native";
 import React from "react";
 import {
   Animated,
-  ImageBackground,
-  ImageSourcePropType,
   LayoutChangeEvent,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -28,7 +24,7 @@ type Props = {
   scheme: "light" | "dark";
   translateY: Animated.AnimatedInterpolation<number> | Animated.Value;
   /** giữ để tương thích API cũ */
-  progress: Animated.AnimatedInterpolation<number>;
+  progress?: Animated.AnimatedInterpolation<number>;
   headerOnLayout: (e: LayoutChangeEvent) => void;
 
   searchQuery: string;
@@ -42,7 +38,6 @@ type Props = {
   onSelectFilter: (opt: FilterOption) => void;
   filterOptions: FilterOption[];
 
-  bgImage?: ImageSourcePropType;
   /** Safe-area top (from useSafeAreaInsets) */
   topInset?: number;
 };
@@ -57,7 +52,6 @@ export default function CollapsibleHeader({
   selectedFilter,
   onSelectFilter,
   filterOptions,
-  bgImage = require("@/assets/images/banner/bannerSearch.jpg"),
   topInset = 0,
 }: Props) {
   const C = Colors[scheme];
@@ -75,7 +69,7 @@ export default function CollapsibleHeader({
       <View
         style={[
           s.chipDot,
-          { backgroundColor: active ? C.primary : "rgba(255,255,255,0.9)" },
+          { backgroundColor: active ? "#fff" : C.mutedForeground },
         ]}
       />
       <Text
@@ -99,26 +93,12 @@ export default function CollapsibleHeader({
           shadowRadius: 8,
           shadowOffset: { width: 0, height: 3 },
           elevation: 2,
+          backgroundColor: C.foreground80,
         },
       ]}
     >
-      {/* Ảnh nền + overlay */}
-      <ImageBackground
-        source={bgImage}
-        defaultSource={Platform.OS === "ios" ? (bgImage as any) : undefined}
-        resizeMode="cover"
-        // FIX iPhone notch: cộng paddingTop theo topInset ngay tại đây
-        style={[s.imageBg, { paddingTop: 14 + topInset }]}
-        imageStyle={s.imageBgImage}
-      >
-        <LinearGradient
-          pointerEvents="none"
-          colors={["rgba(0,0,0,0.55)", "rgba(0,0,0,0.35)", "rgba(0,0,0,0.20)"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={s.overlay}
-        />
-
+      {/* Simple Background */}
+      <View style={[s.contentBg, { paddingTop: 14 + topInset }]}>
         {/* Title */}
         <View style={s.titleWrap} accessible accessibilityRole="header">
           <Text style={s.title} numberOfLines={1}>
@@ -142,7 +122,7 @@ export default function CollapsibleHeader({
             accessibilityRole="button"
             accessibilityLabel="Mở màn hình tìm kiếm"
           >
-            <Search size={18} color="#fff" style={s.searchIcon} />
+            <Search size={18} color={C.mutedForeground} style={s.searchIcon} />
             <Text style={s.searchInput} numberOfLines={1}>
               {searchQuery?.trim()?.length
                 ? searchQuery
@@ -159,7 +139,7 @@ export default function CollapsibleHeader({
             accessibilityRole="button"
             accessibilityLabel="Mở bộ lọc"
           >
-            <Filter size={18} color="#111" />
+            <Filter size={18} color={C.foreground} />
           </Pressable>
         </View>
 
@@ -173,7 +153,7 @@ export default function CollapsibleHeader({
             </ScrollView>
           </View>
         )}
-      </ImageBackground>
+      </View>
 
       {/* Hairline */}
       <View style={s.hairline} />
@@ -192,31 +172,24 @@ const styles = (C: any) =>
       borderBottomLeftRadius: 16,
       borderBottomRightRadius: 16,
       overflow: "hidden",
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: "rgba(255,255,255,0.2)",
       backgroundColor: C.card,
     },
 
-    imageBg: {
+    contentBg: {
       paddingHorizontal: 16,
-      // paddingTop được cộng động theo topInset ở trên
       paddingBottom: 14,
-    },
-    imageBgImage: {
       borderBottomLeftRadius: 16,
       borderBottomRightRadius: 16,
+      overflow: "hidden",
     },
     overlay: { ...StyleSheet.absoluteFillObject },
 
     titleWrap: { marginBottom: 10 },
     title: {
-      fontSize: 18,
-      fontWeight: "800",
-      color: "#fff",
+      fontSize: 20,
+      fontWeight: "700",
+      color: "white",
       letterSpacing: 0.3,
-      textShadowColor: "rgba(0,0,0,0.35)",
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 2,
     },
 
     searchRow: { flexDirection: "row", alignItems: "center", gap: 10 },
@@ -224,15 +197,20 @@ const styles = (C: any) =>
       flex: 1,
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: "rgba(255,255,255,0.14)",
+      backgroundColor: C.background,
       borderRadius: 16,
       paddingHorizontal: 12,
       paddingVertical: 10,
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.28)",
+      borderColor: C.border,
     },
-    searchIcon: { marginRight: 8, opacity: 0.95 },
-    searchInput: { flex: 1, paddingVertical: 4, fontSize: 15, color: "#fff" },
+    searchIcon: { marginRight: 8 },
+    searchInput: {
+      flex: 1,
+      paddingVertical: 4,
+      fontSize: 15,
+      color: C.mutedForeground,
+    },
 
     filterBtn: {
       width: 44,
@@ -240,9 +218,9 @@ const styles = (C: any) =>
       borderRadius: 22,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "#fff",
+      backgroundColor: C.background,
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.6)",
+      borderColor: C.border,
     },
 
     filterOption: {
@@ -251,28 +229,31 @@ const styles = (C: any) =>
       gap: 8,
       paddingHorizontal: 14,
       paddingVertical: 8,
-      backgroundColor: "rgba(255,255,255,0.12)",
+      backgroundColor: C.background,
       borderRadius: 999,
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.28)",
+      borderColor: C.border,
       marginRight: 10,
     },
-    chipDot: { width: 8, height: 8, borderRadius: 4, opacity: 0.95 },
+    chipDot: { width: 8, height: 8, borderRadius: 4 },
     filterOptionText: {
       fontSize: 13,
-      color: "#fff",
+      color: C.mutedForeground,
       fontWeight: "800",
       letterSpacing: 0.3,
     },
-    filterOptionActive: { backgroundColor: "#fff", borderColor: "transparent" },
-    filterOptionTextActive: { color: "#111" },
+    filterOptionActive: {
+      backgroundColor: C.primary,
+      borderColor: "transparent",
+    },
+    filterOptionTextActive: { color: "#fff" },
 
     hairline: {
       position: "absolute",
       left: 0,
       right: 0,
       bottom: 0,
-      height: StyleSheet.hairlineWidth * 2,
-      backgroundColor: "rgba(255,255,255,0.35)",
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: C.border,
     },
   });

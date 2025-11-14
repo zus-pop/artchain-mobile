@@ -63,10 +63,11 @@ export default function ProfileScreen() {
           style={{
             backgroundColor: colors.primary,
             color: colors.primaryForeground,
-            paddingHorizontal: 32,
+            width: "90%",
             paddingVertical: 12,
             borderRadius: 16,
             fontWeight: "bold",
+            textAlign: "center",
           }}
           onPress={() => {
             router.push("/login");

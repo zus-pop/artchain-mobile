@@ -1,4 +1,3 @@
-// app/(tabs)/contests.tsx
 import { router } from "expo-router";
 import React, { useCallback, useRef, useState } from "react";
 import {
@@ -19,7 +18,8 @@ import CollapsibleHeader, {
 } from "@/components/header/contest/CollapsibleHeader";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Contest } from "../../types";
+import { Contest } from "@/types";
+import { FlatList } from "react-native-gesture-handler";
 
 /* ======================== Types & helpers ======================== */
 type ContestStatus = "ALL" | "ACTIVE" | "UPCOMING" | "COMPLETED" | "ENDED";
@@ -40,15 +40,6 @@ const filterToStatus: Record<FilterOption, ContestStatus> = {
   "Hoàn thành": "COMPLETED",
 };
 
-function useDebouncedValue<T>(value: T, delay = 260) {
-  const [v, setV] = useState(value);
-  React.useEffect(() => {
-    const t = setTimeout(() => setV(value), delay);
-    return () => clearTimeout(t);
-  }, [value, delay]);
-  return v;
-}
-
 /* ======================== Screen ======================== */
 export default function ContestsScreen() {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
@@ -60,27 +51,17 @@ export default function ContestsScreen() {
   const [showFilters, setShowFilters] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const debouncedQuery = useDebouncedValue(searchQuery.trim(), 260);
   const insets = useSafeAreaInsets();
   const TOP_INSET = insets.top ?? 0;
 
   // ===== API =====
-  const {
-    data: contests = [],
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useContest({
-    status: filterToStatus[selectedFilter],
-  });
+  const { data, isPending, error, fetchNextPage, isFetchingNextPage, refetch } =
+    useContest({
+      status: filterToStatus[selectedFilter],
+    });
 
   // ===== Collapsible header =====
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const listRef = useRef<Animated.FlatList<Contest>>(null);
-
   const isDraggingRef = useRef(false);
-  // Dự phòng chiều cao header để iOS không “ăn” mất UI lúc đầu
   const ESTIMATED_HEADER = 96;
   const [headerHeight, setHeaderHeight] = useState(ESTIMATED_HEADER);
   const HEADER_EXTRA_GAP = 12;
@@ -96,47 +77,8 @@ export default function ContestsScreen() {
     [headerHeight]
   );
 
-  const clampMax = Math.max(headerHeight, 1);
-  const clamped = Animated.diffClamp(scrollY, 0, clampMax);
-
-  const translateY = clamped.interpolate({
-    inputRange: [0, clampMax],
-    outputRange: [0, -clampMax],
-    extrapolate: "clamp",
-  });
-
-  const progress = clamped.interpolate({
-    inputRange: [0, clampMax],
-    outputRange: [0, 1],
-    extrapolate: "clamp",
-  });
-
-  const REVEAL_DISTANCE = 48;
-  const EPS = 4;
-  const snappingRef = useRef(false);
-  const handleRevealNearTop = useCallback(
-    (e: any) => {
-      if (snappingRef.current) return;
-      const H = headerHeight; // độ cao header thực tế
-      if (H <= 0) return;
-      const y: number = e?.nativeEvent?.contentOffset?.y ?? 0;
-
-      if (Math.abs(y - 0) <= EPS || Math.abs(y - H) <= EPS) return;
-
-      if (y <= REVEAL_DISTANCE) {
-        snappingRef.current = true;
-        listRef.current?.scrollToOffset({ offset: 0, animated: true });
-        setTimeout(() => (snappingRef.current = false), 250);
-        return;
-      }
-      if (y < H) {
-        snappingRef.current = true;
-        listRef.current?.scrollToOffset({ offset: H, animated: true });
-        setTimeout(() => (snappingRef.current = false), 250);
-      }
-    },
-    [headerHeight]
-  );
+  const translateY = new Animated.Value(0); // Keep header always visible
+  const progress = new Animated.Value(0);
 
   const lastToggleRef = useRef(0);
   const safeToggleFilters = useCallback(() => {
@@ -148,26 +90,24 @@ export default function ContestsScreen() {
 
   const onChangeSearch = useCallback((txt: string) => {
     setSearchQuery(txt);
-    listRef.current?.scrollToOffset?.({ offset: 0, animated: false });
-  }, []);
-
-  const onSubmitSearch = useCallback(() => {
-    listRef.current?.scrollToOffset?.({ offset: 0, animated: true });
   }, []);
 
   const onChangeFilter = useCallback((opt: FilterOption) => {
     setSelectedFilter(opt);
-    listRef.current?.scrollToOffset?.({ offset: 0, animated: true });
   }, []);
 
   const onRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
-      await refetch?.();
+      await refetch();
     } finally {
       setRefreshing(false);
     }
   }, [refetch]);
+
+  const onEndReached = useCallback(() => {
+    fetchNextPage();
+  }, [fetchNextPage]);
 
   const keyExtractor = useCallback(
     (c: Contest, i: number) => String(c.contestId ?? i),
@@ -191,6 +131,30 @@ export default function ContestsScreen() {
     []
   );
 
+  const listFooterComponent = useCallback(() => {
+    if (isFetchingNextPage) {
+      return (
+        <View style={s.footerLoading}>
+          <ActivityIndicator color={C.primary} size="large" />
+          <Text style={s.footerText}>Đang tải thêm cuộc thi...</Text>
+        </View>
+      );
+    }
+    return null;
+  }, [isFetchingNextPage, C, s]);
+
+  const listEmptyComponent = useCallback(() => {
+    if (isPending) return null; // Don't show empty state while loading
+    return (
+      <View style={s.emptyWrap}>
+        <Text style={s.emptyTitle}>Không có cuộc thi nào</Text>
+        <Text style={s.emptySubtitle}>
+          Hiện tại chưa có cuộc thi nào phù hợp với bộ lọc của bạn.
+        </Text>
+      </View>
+    );
+  }, [isPending, s]);
+
   /* ======================== UI ======================== */
   const TOP_PADDING = headerHeight + HEADER_EXTRA_GAP + TOP_INSET;
 
@@ -203,7 +167,6 @@ export default function ContestsScreen() {
         headerOnLayout={headerOnLayout}
         searchQuery={searchQuery}
         onChangeSearch={onChangeSearch}
-        onSubmitSearch={onSubmitSearch}
         showFilters={showFilters}
         onToggleFilters={safeToggleFilters}
         selectedFilter={selectedFilter}
@@ -212,7 +175,7 @@ export default function ContestsScreen() {
         topInset={TOP_INSET}
       />
 
-      {isLoading ? (
+      {isPending ? (
         <View style={s.stateWrap}>
           <ActivityIndicator color={C.primary} />
           <Text style={s.stateText}>Đang tải cuộc thi...</Text>
@@ -223,18 +186,9 @@ export default function ContestsScreen() {
             Không tải được dữ liệu. Vui lòng thử lại.
           </Text>
         </View>
-      ) : contests.length === 0 ? (
-        <View style={s.stateWrap}>
-          <Text style={s.stateText}>
-            {debouncedQuery && debouncedQuery.length === 1
-              ? "Nhập ≥ 2 ký tự để tìm…"
-              : "Không có cuộc thi phù hợp."}
-          </Text>
-        </View>
       ) : (
-        <Animated.FlatList
-          ref={listRef}
-          data={contests}
+        <FlatList
+          data={data?.pages.map((page) => page.data).flat()}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           contentContainerStyle={{
@@ -243,28 +197,8 @@ export default function ContestsScreen() {
             paddingHorizontal: 6,
           }}
           showsVerticalScrollIndicator={false}
-          scrollEventThrottle={16}
-          onScrollBeginDrag={() => {
-            isDraggingRef.current = true;
-          }}
-          onMomentumScrollBegin={() => {
-            isDraggingRef.current = true;
-          }}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: true }
-          )}
-          onScrollEndDrag={(e) => {
-            isDraggingRef.current = false;
-            handleRevealNearTop(e);
-          }}
-          onMomentumScrollEnd={(e) => {
-            isDraggingRef.current = false;
-            handleRevealNearTop(e);
-          }}
-          // iOS: tự kiểm soát inset để không mất UI khúc đầu
-          contentInsetAdjustmentBehavior="never"
-          automaticallyAdjustContentInsets={false as any}
+          onEndReached={onEndReached}
+          onEndReachedThreshold={0.5}
           scrollIndicatorInsets={{
             top: TOP_PADDING,
             bottom: 24,
@@ -277,14 +211,21 @@ export default function ContestsScreen() {
               onRefresh={onRefresh}
               tintColor={C.mutedForeground}
               colors={[C.primary]}
+              progressViewOffset={TOP_PADDING}
             />
           }
+          ListFooterComponent={listFooterComponent}
+          ListEmptyComponent={listEmptyComponent}
         />
       )}
 
-      {isFetching && !isLoading && contests.length > 0 && (
+      {/* Footer loading indicator */}
+      {isFetchingNextPage && !isPending && (
         <View style={s.fetchingFoot}>
-          <ActivityIndicator color={C.mutedForeground} />
+          <ActivityIndicator color={C.primary} size="small" />
+          <Text style={[s.footerText, { marginLeft: 8 }]}>
+            Đang tải thêm...
+          </Text>
         </View>
       )}
     </View>
@@ -295,7 +236,7 @@ export default function ContestsScreen() {
 const styles = (scheme: "light" | "dark") => {
   const C = Colors[scheme];
   return StyleSheet.create({
-    screen: { flex: 1, backgroundColor: C.background, paddingBottom: 32 },
+    screen: { flex: 1, backgroundColor: C.newbackground, paddingBottom: 32 },
     stateWrap: {
       flex: 1,
       justifyContent: "center",
@@ -311,6 +252,36 @@ const styles = (scheme: "light" | "dark") => {
       paddingVertical: 6,
       borderRadius: 999,
       backgroundColor: C.card,
+    },
+    footerLoading: {
+      paddingVertical: 16,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    footerText: {
+      marginTop: 8,
+      color: C.mutedForeground,
+      fontSize: 14,
+    },
+    emptyWrap: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingTop: 100,
+      paddingHorizontal: 24,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: "900",
+      color: C.foreground,
+      textAlign: "center",
+      marginBottom: 8,
+    },
+    emptySubtitle: {
+      fontSize: 14,
+      color: C.mutedForeground,
+      textAlign: "center",
+      lineHeight: 20,
     },
   });
 };

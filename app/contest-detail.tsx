@@ -2,48 +2,47 @@
 import { useWhoAmI } from "@/apis/auth";
 import { useContestById } from "@/apis/contest";
 import AppHeader from "@/components/AppHeader"; // header tùy biến có nút back
-import { Colors } from "@/constants/theme";
+import { Colors, withOpacity } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Rounds } from "@/types";
 import { router, useLocalSearchParams } from "expo-router";
-import { Trophy } from "lucide-react-native";
+import { ExternalLink, FileText, Trophy, Users } from "lucide-react-native";
 import React from "react";
 import {
   ActivityIndicator,
   Image,
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import AnimatedSection, {
-  sectionShadow,
-} from "../components/header/contest/AnimatedSection";
 
-/** Brand từ ảnh bạn cung cấp */
-const BRAND = "#dc5a54";
-
-/** Status tone (nổi bật nhưng tối giản) */
-const STATUS = {
-  ACTIVE: {
-    bg: "#16a34a1a",
-    fg: "#166534",
-    bd: "#16a34a55",
-    label: "Đang diễn ra",
-  },
-  UPCOMING: {
-    bg: "#f59e0b1a",
-    fg: "#92400e",
-    bd: "#f59e0b55",
-    label: "Sắp diễn ra",
-  },
-  ENDED: {
-    bg: "#6b72801a",
-    fg: "#374151",
-    bd: "#9ca3af55",
-    label: "Đã kết thúc",
-  },
-} as const;
+/** Status tone using app theme colors - more visible */
+const getStatusStyle = (scheme: "light" | "dark") => {
+  const C = Colors[scheme];
+  return {
+    ACTIVE: {
+      bg: withOpacity(C.primary, 0.05),
+      fg: "#16a34a", // green
+      bd: withOpacity(C.primary, 0.2),
+      label: "Đang diễn ra",
+    },
+    UPCOMING: {
+      bg: withOpacity(C.accent, 0.05),
+      fg: "#f59e0b", // amber
+      bd: withOpacity(C.accent, 0.2),
+      label: "Sắp diễn ra",
+    },
+    ENDED: {
+      bg: withOpacity(C.muted, 0.05),
+      fg: "#64748b", // slate
+      bd: withOpacity(C.muted, 0.2),
+      label: "Đã kết thúc",
+    },
+  } as const;
+};
 
 /** Fake rules khi API chưa có dữ liệu */
 const DEFAULT_RULES: string[] = [
@@ -71,7 +70,7 @@ export default function ContestDetail() {
   if (isLoading) {
     return (
       <View style={[s.screen, s.center]}>
-        <ActivityIndicator size="large" color={BRAND} />
+        <ActivityIndicator size="large" color={C.primary} />
         <Text style={[s.muted, { marginTop: 10 }]}>Đang tải…</Text>
       </View>
     );
@@ -87,175 +86,287 @@ export default function ContestDetail() {
     );
   }
 
-  const tone =
-    STATUS[(contest?.status ?? "UPCOMING") as keyof typeof STATUS] ??
-    STATUS.UPCOMING;
+  // Normalize status to match our expected values
+  const normalizeStatus = (
+    status?: string
+  ): "ACTIVE" | "UPCOMING" | "ENDED" => {
+    if (!status) return "UPCOMING";
+    const upperStatus = status.toUpperCase();
+    if (
+      upperStatus === "ACTIVE" ||
+      upperStatus === "ONGOING" ||
+      upperStatus === "RUNNING"
+    )
+      return "ACTIVE";
+    if (
+      upperStatus === "UPCOMING" ||
+      upperStatus === "PENDING" ||
+      upperStatus === "SCHEDULED"
+    )
+      return "UPCOMING";
+    if (
+      upperStatus === "ENDED" ||
+      upperStatus === "FINISHED" ||
+      upperStatus === "COMPLETED" ||
+      upperStatus === "CLOSED"
+    )
+      return "ENDED";
+    return "UPCOMING"; // default fallback
+  };
+
+  const tone = getStatusStyle(scheme)[normalizeStatus(contest?.status)];
   const rules = DEFAULT_RULES;
 
+  // Get ROUND_1 and ROUND_2 data
+  const findRound1 = (rounds?: Rounds[]) => {
+    if (!rounds || !Array.isArray(rounds)) return null;
+    return rounds.find((r) => r?.name === "ROUND_1") || null;
+  };
+
+  const findRound2 = (rounds?: Rounds[]) => {
+    if (!rounds || !Array.isArray(rounds)) return null;
+    return rounds.find((r) => r?.name === "ROUND_2") || null;
+  };
+
+  const round1 = findRound1(contest?.rounds);
   return (
     <View style={s.screen}>
       {/* Header tái sử dụng với màu brand + nút back */}
       <AppHeader
         title="Chi tiết cuộc thi"
-        backgroundColor={BRAND}
+        backgroundColor={C.primary}
         onBack={() => router.back()}
       />
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 28 }}>
-        {/* HERO CARD (không còn “Quay lại” trên ảnh) */}
-        <View style={s.card}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+        {/* HERO BANNER */}
+        <View style={s.heroContainer}>
           <Image
             source={{ uri: contest?.bannerUrl }}
-            style={s.cover}
+            style={s.heroImage}
             resizeMode="cover"
           />
+          <View style={s.heroOverlay}>
+            <Text style={s.heroTitle}>{contest?.title}</Text>
+            {!!(contest as any)?.subTitle && (
+              <Text style={s.heroSubtitle}>{(contest as any)?.subTitle}</Text>
+            )}
+          </View>
+        </View>
 
-          {/* Meta 2 cột cân đối */}
-          <View style={s.metaGrid}>
-            {/* Box 1: Số giải thưởng + trophy */}
-            <View style={s.metaBox}>
-              <Text style={s.metaLabel}>Số giải thưởng</Text>
-              <View style={s.awardRow}>
-                <Trophy
-                  size={18}
-                  color={scheme === "dark" ? "#e5e7eb" : "#111827"}
-                />
-                <Text style={s.metaValue}>{contest?.numOfAward ?? 0}</Text>
+        {/* KEY INFO CARDS */}
+        <View style={s.infoCardsContainer}>
+          <View style={s.infoCard}>
+            <Trophy size={20} color={C.primary} />
+            <Text style={s.infoCardValue}>{contest?.numOfAward ?? 0}</Text>
+            <Text style={s.infoCardLabel}>Giải thưởng</Text>
+          </View>
+
+          <View style={s.infoCard}>
+            <Users size={20} color={C.primary} />
+            <Text style={s.infoCardValue}>{contest?.round2Quantity ?? 0}</Text>
+            <Text style={s.infoCardLabel}>Vào vòng 2</Text>
+          </View>
+        </View>
+
+        {/* CONTEST TIMELINE */}
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>Thời gian cuộc thi</Text>
+          </View>
+
+          <View style={s.timelineContainer}>
+            <View style={s.timelineItem}>
+              <View style={[s.timelineDot, { backgroundColor: "#16a34a" }]} />
+              <View style={s.timelineContent}>
+                <Text style={s.timelineLabel}>Bắt đầu</Text>
+                <Text style={s.timelineValue}>
+                  {fmtDateTime(contest?.startDate) ?? "—"}
+                </Text>
               </View>
             </View>
 
-            {/* Box 2: Trạng thái */}
-            <View style={s.metaBox}>
-              <Text style={s.metaLabel}>Trạng thái</Text>
-              <View
-                style={[
-                  s.statusChip,
-                  { backgroundColor: tone.bg, borderColor: tone.bd },
-                ]}
-              >
-                <View style={[s.dot, { backgroundColor: tone.fg }]} />
-                <Text style={[s.statusText, { color: tone.fg }]}>
+            <View style={s.timelineItem}>
+              <View style={[s.timelineDot, { backgroundColor: "#dc2626" }]} />
+              <View style={s.timelineContent}>
+                <Text style={s.timelineLabel}>Kết thúc</Text>
+                <Text style={s.timelineValue}>
+                  {fmtDateTime(contest?.endDate) ?? "—"}
+                </Text>
+              </View>
+            </View>
+
+            <View
+              style={[s.timelineItem, s.timelineItemLast, { marginTop: 16 }]}
+            >
+              <View style={[s.timelineDot, { backgroundColor: tone.fg }]} />
+              <View style={s.timelineContent}>
+                <Text style={s.timelineLabel}>Trạng thái</Text>
+                <Text style={[s.timelineValue, { color: tone.fg }]}>
                   {tone.label}
                 </Text>
               </View>
             </View>
           </View>
-
-          {/* Tiêu đề + mô tả ngắn */}
-          <View style={{ padding: 14, paddingTop: 6 }}>
-            <Text style={s.title}>{contest?.title}</Text>
-            {!!(contest as any)?.subTitle && (
-              <Text style={s.subTitle}>{(contest as any)?.subTitle}</Text>
-            )}
-          </View>
         </View>
 
-        {/* THỜI GIAN CUỘC THI */}
-        <View style={s.card}>
-          <View style={s.cardHeaderRow}>
-            <Text style={s.sectionTitle}>Thời gian cuộc thi</Text>
+        {/* ROUND 1 TIMELINE - Always show */}
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>Lịch trình Vòng 1</Text>
           </View>
-          <View style={{ padding: 14, paddingTop: 8 }}>
-            <View style={s.row}>
-              <View style={[s.led, { backgroundColor: "#16a34a" }]} />
-              <View style={{ flex: 1 }}>
-                <Text style={s.rowTitle}>Bắt đầu</Text>
-                <Text style={s.muted}>
-                  {fmtDateTime(contest?.startDate) ?? "—"}
+
+          <View style={s.roundTimeline}>
+            <View style={s.roundItem}>
+              <View style={[s.roundDot, { backgroundColor: C.primary }]} />
+              <View style={s.roundContent}>
+                <Text style={s.roundTitle}>Bắt đầu</Text>
+                <Text style={s.roundDate}>
+                  {round1
+                    ? fmtDateTime(round1.startDate) ?? "—"
+                    : "Chưa có thông tin"}
                 </Text>
               </View>
             </View>
-            <View style={[s.row, { marginTop: 10 }]}>
-              <View style={[s.led, { backgroundColor: "#dc2626" }]} />
-              <View style={{ flex: 1 }}>
-                <Text style={s.rowTitle}>Kết thúc</Text>
-                <Text style={s.muted}>
-                  {fmtDateTime(contest?.endDate) ?? "—"}
+
+            <View style={s.roundItem}>
+              <View style={[s.roundDot, { backgroundColor: C.accent }]} />
+              <View style={s.roundContent}>
+                <Text style={s.roundTitle}>Hạn nộp bài</Text>
+                <Text style={s.roundDate}>
+                  {round1
+                    ? fmtDateTime(round1.submissionDeadline) ?? "—"
+                    : "Chưa có thông tin"}
+                </Text>
+              </View>
+            </View>
+
+            <View style={s.roundItem}>
+              <View style={[s.roundDot, { backgroundColor: C.secondary }]} />
+              <View style={s.roundContent}>
+                <Text style={s.roundTitle}>Công bố kết quả</Text>
+                <Text style={s.roundDate}>
+                  {round1
+                    ? fmtDateTime(round1.resultAnnounceDate) ?? "—"
+                    : "Chưa có thông tin"}
+                </Text>
+              </View>
+            </View>
+
+            <View style={s.roundItem}>
+              <View style={[s.roundDot, { backgroundColor: C.destructive }]} />
+              <View style={s.roundContent}>
+                <Text style={s.roundTitle}>Gửi bản gốc</Text>
+                <Text style={s.roundDate}>
+                  {round1
+                    ? fmtDateTime(round1.sendOriginalDeadline) ?? "—"
+                    : "Chưa có thông tin"}
                 </Text>
               </View>
             </View>
           </View>
-
-          {/* CTA + Rewards */}
-          <AnimatedSection delay={360}>
-            {["ACTIVE", "ENDED"].includes(contest!.status) && (
-              <View style={[s.rewardsBox, sectionShadow.base]}>
-                <Text style={s.rewardsTitle}>Award-Winning Paintings</Text>
-                <TouchableOpacity
-                  style={[s.rewardsBtn, { backgroundColor: C.accent }]}
-                  onPress={() => router.push("/reward-painting")}
-                  activeOpacity={0.9}
-                >
-                  <Text style={s.rewardsBtnText}>See Rewards</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </AnimatedSection>
-
-          {/* Rules */}
-          {/* <AnimatedSection delay={420}>
-            <View style={[s.block, sectionShadow.base]}>
-              <Text style={s.blockTitle}>Rules</Text>
-              <Text style={s.rules}>{contest.rules}</Text>
-            </View>
-          </AnimatedSection> */}
         </View>
 
-        {/* THỂ LỆ (dùng fake data nếu rỗng) */}
-        <View style={s.card}>
-          <View style={s.cardHeaderRow}>
+        {/* ROUND 2 INFO */}
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>Vòng 2</Text>
+          </View>
+
+          <View style={s.roundTimeline}>
+            <View style={s.roundItem}>
+              <View style={[s.roundDot, { backgroundColor: C.primary }]} />
+              <View style={s.roundContent}>
+                <Text style={s.roundTitle}>Số lượng tham gia</Text>
+                <Text style={s.roundDate}>
+                  Top {contest?.round2Quantity ?? 0} từ Vòng 1
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* RULES SECTION */}
+        <View style={s.section}>
+          <View style={[s.sectionHeader, { marginBottom: 8 }]}>
             <Text style={s.sectionTitle}>Thể lệ cuộc thi</Text>
           </View>
-          <View
-            style={{ paddingHorizontal: 14, paddingBottom: 14, paddingTop: 6 }}
-          >
-            {rules.map((r, i) => (
-              <View key={i} style={s.ruleRow}>
-                <View style={s.star} />
-                <Text style={s.text}>{r}</Text>
+
+          {/* Rules PDF Link */}
+          {contest?.ruleUrl && (
+            <TouchableOpacity
+              style={[s.actionButton, { marginBottom: 12 }]}
+              onPress={() => Linking.openURL(contest.ruleUrl)}
+              activeOpacity={0.9}
+            >
+              <FileText size={20} color={C.primary} />
+              <Text style={s.actionButtonText}>Xem thể lệ chi tiết (PDF)</Text>
+              <ExternalLink size={16} color={C.primary} />
+            </TouchableOpacity>
+          )}
+
+          <View style={s.rulesContainer}>
+            {rules.map((rule, i) => (
+              <View key={i} style={s.ruleItem}>
+                <View style={s.ruleBullet} />
+                <Text style={s.ruleText}>{rule}</Text>
               </View>
             ))}
           </View>
         </View>
 
-        {/* CTA */}
-        {contest?.status === "ACTIVE" && (
-          <TouchableOpacity
-            style={[s.primaryBtn, { alignSelf: "center", marginTop: 8 }]}
-            onPress={() => {
-              if (!me) {
-                router.push("/login");
-                return;
-              }
-              if (me.role === "COMPETITOR") {
-                router.push({
-                  pathname: "/painting-upload",
-                  params: {
-                    type: "COMPETITOR",
-                    contestId: contest.contestId,
-                    competitorId: me.userId,
-                    roundId: contest.rounds.find((r) => r.name === "ROUND_1")
-                      ?.roundId,
-                  },
-                });
-                return;
-              }
+        {/* ACTION BUTTONS */}
+        <View style={s.actionsContainer}>
+          {/* See Rewards */}
+          {["ACTIVE", "ENDED"].includes(contest!.status) && (
+            <TouchableOpacity
+              style={[s.actionButton, s.rewardsButton]}
+              onPress={() => router.push("/reward-painting")}
+              activeOpacity={0.9}
+            >
+              <Text style={s.rewardsButtonText}>Xem giải thưởng</Text>
+            </TouchableOpacity>
+          )}
 
-              if (me.role === "GUARDIAN") {
-                router.push({
-                  pathname: "/children-participate",
-                  params: {
-                    contestId: contest.contestId,
-                    roundId: contest.rounds.find((r) => r.name === "ROUND_1")
-                      ?.roundId,
-                  },
-                });
-              }
-            }}
-          >
-            <Text style={s.primaryBtnText}>Tham gia</Text>
-          </TouchableOpacity>
-        )}
+          {/* Join Contest */}
+          {contest?.status === "ACTIVE" && (
+            <TouchableOpacity
+              style={s.primaryButton}
+              onPress={() => {
+                if (!me) {
+                  router.push("/login");
+                  return;
+                }
+                if (me.role === "COMPETITOR") {
+                  const round1Data = findRound1(contest.rounds);
+                  router.push({
+                    pathname: "/painting-upload",
+                    params: {
+                      type: "COMPETITOR",
+                      contestId: contest.contestId,
+                      competitorId: me.userId,
+                      roundId: round1Data?.roundId,
+                    },
+                  });
+                  return;
+                }
+
+                if (me.role === "GUARDIAN") {
+                  const round1Data = findRound1(contest.rounds);
+                  router.push({
+                    pathname: "/children-participate",
+                    params: {
+                      contestId: contest.contestId,
+                      roundId: round1Data?.roundId,
+                    },
+                  });
+                }
+              }}
+            >
+              <Text style={s.primaryButtonText}>Tham gia cuộc thi</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -288,6 +399,296 @@ const styles = (C: any) => {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: C.background },
 
+    // HERO BANNER
+    heroContainer: {
+      height: 280,
+      position: "relative",
+      marginBottom: 20,
+    },
+    heroImage: {
+      width: "100%",
+      height: "100%",
+    },
+    heroOverlay: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      padding: 20,
+    },
+    heroTitle: {
+      fontSize: 24,
+      fontWeight: "bold",
+      color: "white",
+      marginBottom: 4,
+      fontFamily: "Be Vietnam Pro",
+    },
+    heroSubtitle: {
+      fontSize: 16,
+      color: "rgba(255,255,255,0.9)",
+      fontFamily: "Be Vietnam Pro",
+    },
+    // INFO BAR
+    infoBar: {
+      flexDirection: "column",
+      backgroundColor: C.card,
+      marginHorizontal: 16,
+      marginBottom: 8,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: C.border,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      gap: 8,
+      fontFamily: "Be Vietnam Pro",
+    },
+    infoBarItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      minWidth: 80,
+      fontFamily: "Be Vietnam Pro",
+    },
+    infoBarItemLast: {
+      marginLeft: 0,
+    },
+    infoBarText: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: C.foreground,
+      textAlign: "center",
+      fontFamily: "Be Vietnam Pro",
+    },
+    statusDotSmall: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    // INFO CARDS
+    infoCardsContainer: {
+      flexDirection: "row",
+      paddingHorizontal: 16,
+      marginBottom: 24,
+      gap: 12,
+      fontFamily: "Be Vietnam Pro",
+    },
+    infoCard: {
+      flex: 1,
+      backgroundColor: C.card,
+      borderRadius: 8,
+      padding: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: C.border,
+      gap: 8,
+      fontFamily: "Be Vietnam Pro",
+    },
+    infoCardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginBottom: 8,
+      fontFamily: "Be Vietnam Pro",
+    },
+    infoCardTitle: {
+      fontSize: 12,
+      color: C.mutedForeground,
+      fontWeight: "400",
+      fontFamily: "Be Vietnam Pro",
+    },
+    infoCardValue: {
+      fontSize: 24,
+      fontWeight: "bold",
+      color: C.foreground,
+      fontFamily: "Be Vietnam Pro",
+    },
+    infoCardLabel: {
+      fontSize: 11,
+      color: C.mutedForeground,
+      fontWeight: "500",
+      textAlign: "center",
+      fontFamily: "Be Vietnam Pro",
+    },
+    statusBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      fontFamily: "Be Vietnam Pro",
+    },
+    statusDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    statusBadgeText: {
+      fontSize: 12,
+      fontWeight: "500",
+      fontFamily: "Be Vietnam Pro",
+    },
+    // SECTIONS
+    section: {
+      marginBottom: 24,
+      paddingHorizontal: 16,
+    },
+    sectionHeader: {
+      marginBottom: 16,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: C.foreground,
+    },
+    // TIMELINE
+    timelineContainer: {
+      backgroundColor: C.card,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    timelineItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    timelineItemLast: {
+      marginBottom: 0,
+    },
+    timelineDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      marginRight: 12,
+    },
+    timelineContent: {
+      flex: 1,
+    },
+    timelineLabel: {
+      fontSize: 14,
+      color: C.mutedForeground,
+      marginBottom: 2,
+    },
+    timelineValue: {
+      fontSize: 16,
+      fontWeight: "500",
+      color: C.foreground,
+    },
+    // ROUND TIMELINE
+    roundTimeline: {
+      backgroundColor: C.card,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    roundItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    roundItemLast: {
+      marginBottom: 0,
+    },
+    roundDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      marginRight: 12,
+    },
+    roundContent: {
+      flex: 1,
+    },
+    roundTitle: {
+      fontSize: 14,
+      color: C.mutedForeground,
+      marginBottom: 2,
+      fontFamily: "Be Vietnam Pro",
+    },
+    roundDate: {
+      fontSize: 15,
+      fontWeight: "500",
+      color: C.foreground,
+      fontFamily: "Be Vietnam Pro",
+    },
+    // ACTIONS
+    actionsContainer: {
+      paddingHorizontal: 16,
+      marginBottom: 24,
+      gap: 12,
+    },
+    actionButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: C.card,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: C.border,
+      gap: 12,
+    },
+    actionButtonText: {
+      flex: 1,
+      fontSize: 16,
+      fontWeight: "500",
+      color: C.foreground,
+      fontFamily: "Be Vietnam Pro",
+    },
+    rewardsButton: {
+      backgroundColor: C.accent,
+    },
+    rewardsButtonText: {
+      color: C.accentForeground,
+    },
+    primaryButton: {
+      backgroundColor: C.primary,
+      borderRadius: 12,
+      padding: 16,
+      alignItems: "center",
+    },
+    primaryButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: C.primaryForeground,
+      fontFamily: "Be Vietnam Pro",
+    },
+    // RULES
+    rulesContainer: {
+      backgroundColor: C.card,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    ruleItem: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      marginBottom: 12,
+    },
+    ruleItemLast: {
+      marginBottom: 0,
+    },
+    ruleBullet: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: C.primary,
+      marginTop: 6,
+      marginRight: 12,
+    },
+    ruleText: {
+      flex: 1,
+      fontSize: 14,
+      color: C.foreground,
+      lineHeight: 20,
+    },
+
+    // LEGACY STYLES (keeping for compatibility)
     card: {
       backgroundColor: C.card,
       borderRadius: R,
@@ -296,14 +697,12 @@ const styles = (C: any) => {
       marginBottom: 16,
       overflow: "hidden",
     },
-
     cover: { width: "100%", height: 200 },
-
     metaGrid: {
       flexDirection: "row",
-      gap: 10,
-      paddingHorizontal: 12,
-      paddingTop: 12,
+      gap: 12,
+      paddingHorizontal: 16,
+      paddingTop: 16,
     },
     metaBox: {
       flex: 1,
@@ -311,29 +710,30 @@ const styles = (C: any) => {
       borderRadius: R - 2,
       borderWidth: 1,
       borderColor: C.border,
-      padding: 12,
+      padding: 14,
     },
     metaLabel: { color: C.mutedForeground, fontWeight: "500", marginBottom: 4 },
-
     awardRow: { flexDirection: "row", alignItems: "center", gap: 8 },
     metaValue: { color: C.foreground, fontSize: 18, fontWeight: "600" },
-
+    statusContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 16,
+      marginBottom: 24,
+    },
     statusChip: {
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 999,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 8,
       borderWidth: 1,
-      alignSelf: "flex-start",
     },
-    dot: { width: 8, height: 8, borderRadius: 999 },
-    statusText: { fontWeight: "700", fontSize: 12 },
-
+    dot: { width: 6, height: 6, borderRadius: 999 },
+    statusText: { fontWeight: "600", fontSize: 14 },
     title: { color: C.foreground, fontSize: 20, fontWeight: "600" },
     subTitle: { marginTop: 4, color: C.mutedForeground },
-
     cardHeaderRow: {
       paddingHorizontal: 14,
       paddingVertical: 10,
@@ -341,12 +741,9 @@ const styles = (C: any) => {
       borderBottomColor: C.border,
       backgroundColor: C.card,
     },
-    sectionTitle: { color: C.foreground, fontSize: 16, fontWeight: "600" },
-
     row: { flexDirection: "row", alignItems: "center", gap: 10 },
     led: { width: 10, height: 10, borderRadius: 999 },
     rowTitle: { color: C.foreground, fontWeight: "800", marginBottom: 2 },
-
     ruleRow: {
       flexDirection: "row",
       gap: 8,
@@ -357,18 +754,15 @@ const styles = (C: any) => {
       width: 6,
       height: 6,
       borderRadius: 999,
-      backgroundColor: BRAND,
+      backgroundColor: C.primary,
       marginTop: 7,
     },
-
     primaryBtn: {
-      backgroundColor: BRAND,
       paddingVertical: 12,
       paddingHorizontal: 16,
       borderRadius: R,
     },
-    primaryBtnText: { color: "#fff", fontWeight: "900" },
-
+    primaryBtnText: { fontWeight: "900" },
     ctaBtn: {
       paddingVertical: 14,
       paddingHorizontal: 18,
@@ -380,7 +774,6 @@ const styles = (C: any) => {
       marginBottom: 12,
     },
     ctaText: { color: "#fff", fontWeight: "800", fontSize: 15 },
-
     rewardsBox: {
       backgroundColor: C.card,
       borderRadius: R,
@@ -401,8 +794,17 @@ const styles = (C: any) => {
       alignItems: "center",
       justifyContent: "center",
     },
-    rewardsBtnText: { color: "#fff", fontWeight: "800", fontSize: 14 },
-
+    pdfBox: {
+      backgroundColor: C.card,
+      borderRadius: R,
+      padding: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    pdfText: { flex: 1, fontWeight: "600", fontSize: 14 },
     text: { color: C.foreground },
     muted: { color: C.mutedForeground },
     center: { justifyContent: "center", alignItems: "center" },

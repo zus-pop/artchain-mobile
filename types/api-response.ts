@@ -6,6 +6,8 @@ export interface ApiResponse<T> {
     page: string;
     limit: string;
     totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
     hasNextPage: boolean;
     hasPreviousPage: boolean;
   };

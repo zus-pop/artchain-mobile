@@ -1,22 +1,29 @@
-import { useQuery } from "@tanstack/react-query";
-import myAxios from "../constants/custom-axios";
-import { Contest, ContestFilter } from "../types/contest";
+import myAxios from "@/constants/custom-axios";
+import { ApiResponse } from "@/types";
+import { Contest, ContestFilter, ExaminerContest } from "@/types/contest";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
-export function useContest(filter: ContestFilter) {
+export function useContest(filters: ContestFilter = { status: "ALL" }) {
   const params: ContestFilter = {};
-  if (filter.status != "ALL") {
-    params.status = filter.status;
-  }
-  return useQuery({
-    queryKey: ["contests", filter],
-    queryFn: async () => {
-      const response = await myAxios.get<Contest[]>("/contests", {
+  if (filters.status && filters.status !== "ALL")
+    params.status = filters.status;
+  if (filters.limit) params.limit = filters.limit;
+
+  return useInfiniteQuery({
+    queryKey: ["contests", filters],
+    queryFn: async ({ pageParam }) => {
+      params.page = pageParam;
+      const response = await myAxios.get<ApiResponse<Contest[]>>("/contests", {
         params,
       });
-      return response.data;
+      const filteredData = response.data.data.filter(
+        (contest) => contest.status !== "DRAFT"
+      );
+      return { ...response.data, data: filteredData };
     },
-    staleTime: 30 * 1000,
-    select: (data) => data.filter((d) => d.status !== "DRAFT"),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.hasNext ? Number(lastPage.meta.page) + 1 : null,
   });
 }
 
@@ -35,7 +42,7 @@ export function useExaminerContest(examinerId: string | undefined) {
     queryKey: ["/contests/examiner", examinerId],
     queryFn: async () => {
       const response = await myAxios.get(`/contests/examiner/${examinerId}`);
-      return response.data.data as Contest[];
+      return response.data.data as ExaminerContest[];
     },
     enabled: !!examinerId,
   });

@@ -1,7 +1,7 @@
-// screens/CompetitorProfileComponent.tsx  (UPDATED FULL - Spacing tuned)
 import PillButton from "@/components/buttons/PillButton";
+import AchievementModal from "@/components/modals/AchievementModal";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
-import SubmissionDetailsModal from "./modals/SubmissionDetailsModal";
+import SubmissionDetailsModal from "../components/modals/SubmissionDetailsModal";
 
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -11,32 +11,27 @@ import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useWhoAmI } from "@/apis/auth";
+import { useGetAchievementByUserId, useMySubmission } from "@/apis/painting";
 import { useAuthStore } from "@/store/auth-store";
-import type { AchievementItem, ColorTokens, KPIProps } from "@/types/tabkey";
+import { Painting } from "@/types";
+import type { AchievementItem as ApiAchievementItem } from "@/types/achievements";
+import type { ColorTokens, KPIProps } from "@/types/tabkey";
 import { formatDateDisplay } from "@/utils/date";
-import { useMySubmission } from "../apis/painting";
-import { Painting } from "../types";
 import AchievementCard from "./cards/competitor/AchievementCard";
-import ContestCardCompetitor, {
-  ContestItem,
-} from "./cards/competitor/ContestCardCompetitor";
 import EmptyState from "./cards/competitor/EmptyState";
 import SubmissionCard, {
   SubmissionItem,
 } from "./cards/competitor/SubmissionCard";
 import SegmentedTabsProfile from "./tabs/SegmentedTabsProfile";
-import { TabItem } from "./tabs/SegmentedTabsScrollable";
 
 /* -------------------- Color helpers -------------------- */
 const VIVID_POOLS: [string, string][] = [
@@ -49,6 +44,16 @@ const VIVID_POOLS: [string, string][] = [
   ["#60A5FA", "#F472B6"],
   ["#F43F5E", "#FB7185"],
 ];
+
+const fmtDateOnly = (v?: string | Date | null) => {
+  if (!v) return "—";
+  const d = new Date(v);
+  return d.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
 const hashStr = (s: string) => {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
@@ -70,85 +75,35 @@ export default function CompetitorProfileComponent() {
     kpiCardRadius: 18,
   };
 
+  const [openAchModal, setOpenAchModal] = useState(false);
+  const [selectedAch, setSelectedAch] = useState<ApiAchievementItem | null>(
+    null
+  );
+  const [refreshing, setRefreshing] = useState(false);
+
   const accessToken = useAuthStore((s) => s.accessToken);
   const { data: user, isLoading, refetch: reloadMe } = useWhoAmI();
-  const { data: submissions = [], isLoading: submissionsLoading } =
-    useMySubmission();
+  const {
+    data: submissions = [],
+    isLoading: submissionsLoading,
+    refetch: refetchSubmissions,
+  } = useMySubmission();
+  const {
+    data: achievementData,
+    isLoading: achievementsLoading,
+    refetch: refetchAchievements,
+  } = useGetAchievementByUserId(user?.userId || "");
 
   const [openDetails, setOpenDetails] = useState(false);
   const [openSubmission, setOpenSubmission] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<Painting | null>(
     null
   );
-  const [activeTab, setActiveTab] = useState<
-    "contests" | "achievements" | "submissions"
-  >("contests");
-
-  // demo contests
-  const ongoingContests = useMemo(
-    () => [
-      {
-        id: "contest1",
-        title: "Vẽ Sài Gòn Xanh",
-        progress: 75,
-        status: "active",
-        deadline: "2024-12-31",
-        submitted: true,
-        submissionCount: 1,
-        totalRounds: 2,
-        currentRound: 1,
-      },
-      {
-        id: "contest2",
-        title: "Nghệ Thuật Đường Phố",
-        progress: 45,
-        status: "active",
-        deadline: "2025-01-15",
-        submitted: false,
-        submissionCount: 0,
-        totalRounds: 1,
-        currentRound: 1,
-      },
-    ],
-    []
+  const [activeTab, setActiveTab] = useState<"achievements" | "submissions">(
+    "submissions"
   );
 
-  const contestStats = useMemo(() => {
-    const activeContests = ongoingContests.length;
-    const submittedContests = ongoingContests.filter((c) => c.submitted).length;
-    const avgProgress = ongoingContests.length
-      ? Math.round(
-          ongoingContests.reduce((sum, c) => sum + c.progress, 0) /
-            ongoingContests.length
-        )
-      : 0;
-    return { activeContests, submittedContests, avgProgress };
-  }, [ongoingContests]);
-
-  const achievements = useMemo(
-    () =>
-      [
-        {
-          id: "a1",
-          title: 'Giải Nhất "Cuộc thi vẽ tranh thiếu nhi toàn quốc 2024"',
-          place: "2024 - TP. Hồ Chí Minh",
-          awardId: "award_2024_001",
-        },
-        {
-          id: "a2",
-          title: 'Top 10 "Nghệ thuật đường phố TPHCM"',
-          place: "2024 - Quận 1",
-          awardId: "award_2024_002",
-        },
-        {
-          id: "a3",
-          title: "Participation Certificate",
-          place: "2024 - District 3",
-          awardId: null,
-        },
-      ].filter((a) => a.awardId !== null),
-    []
-  ) as AchievementItem[];
+  const achievements = achievementData?.achievements ?? [];
 
   const kpis = useMemo(
     () => [
@@ -162,22 +117,8 @@ export default function CompetitorProfileComponent() {
         label: "Giải thưởng",
         value: String(achievements.length),
       },
-      {
-        icon: "time-outline" as const,
-        label: "Cuộc thi active",
-        value: String(contestStats.activeContests),
-      },
     ],
-    [submissions.length, achievements.length, contestStats]
-  );
-
-  const tabs: TabItem[] = useMemo(
-    () => [
-      { key: "contests", label: "Cuộc thi", icon: "time-outline" },
-      { key: "achievements", label: "Thành tích", icon: "trophy-outline" },
-      { key: "submissions", label: "Bài nộp", icon: "document-text-outline" },
-    ],
-    []
+    [submissions.length, achievements.length]
   );
 
   useFocusEffect(
@@ -185,6 +126,22 @@ export default function CompetitorProfileComponent() {
       reloadMe();
     }, [])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        reloadMe(),
+        refetchSubmissions(),
+        refetchAchievements(),
+      ]);
+    } catch (error) {
+      console.error("Refresh failed:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [reloadMe, refetchSubmissions, refetchAchievements]);
+
   const scrollY = useRef(new Animated.Value(0)).current;
 
   function TopBar({
@@ -194,14 +151,8 @@ export default function CompetitorProfileComponent() {
     title: string;
     withActions?: boolean;
   }) {
-    const [g0, g1] = pickGrad(title);
     return (
-      <LinearGradient
-        colors={[g0, g1]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={[t.topbarGrad, { borderBottomColor: C.border }]}
-      >
+      <View style={[t.topbarGrad, { backgroundColor: C.foreground80 }]}>
         <Text
           style={[
             t.headerTitle,
@@ -230,20 +181,20 @@ export default function CompetitorProfileComponent() {
             </TouchableOpacity>
           </View>
         )}
-      </LinearGradient>
+      </View>
     );
   }
 
   const Avatar = () => {
-    const seed = user?.email || user?.fullName || "user";
-    const [g0, g1] = pickGrad(seed);
     return (
       <View style={{ width: 64, height: 64 }}>
-        <LinearGradient
-          colors={[g0, g1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ position: "absolute", inset: 0, borderRadius: 999 }}
+        <View
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: 999,
+            backgroundColor: C.primary,
+          }}
         />
         <View
           style={{
@@ -262,17 +213,11 @@ export default function CompetitorProfileComponent() {
   };
 
   function KPI({ icon, label, value }: KPIProps) {
-    const [g0, g1] = pickGrad(label + value);
     return (
       <View style={{ flex: 1, alignItems: "center" }}>
-        <LinearGradient
-          colors={[g0, g1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={k.kpiIconGrad}
-        >
+        <View style={[k.kpiIconGrad, { backgroundColor: C.primary }]}>
           <Ionicons name={icon as any} size={18} color="#fff" />
-        </LinearGradient>
+        </View>
         <Text style={{ fontWeight: "900", color: C.foreground, marginTop: 6 }}>
           {value}
         </Text>
@@ -313,22 +258,8 @@ export default function CompetitorProfileComponent() {
   }
 
   return (
-    <SafeAreaProvider style={s.container}>
+    <View style={{ backgroundColor: C.newbackground, flex: 1 }}>
       <TopBar title="Hồ sơ thí sinh" withActions />
-
-      {/* background blobs */}
-      <LinearGradient
-        colors={["#a78bfa22", "#60a5fa16"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={bg.blobTL}
-      />
-      <LinearGradient
-        colors={["#fda4af1f", "#fde68a1f"]}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={bg.blobBR}
-      />
 
       <Animated.ScrollView
         contentContainerStyle={{ paddingBottom: SP.pagePB }}
@@ -339,17 +270,21 @@ export default function CompetitorProfileComponent() {
         )}
         scrollEventThrottle={16}
         contentInsetAdjustmentBehavior="automatic"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[C.primary]}
+            tintColor={C.primary}
+          />
+        }
       >
         {/* header compact */}
-        <View
-          style={[
-            s.headerWrap,
-            { borderBottomColor: C.border, marginBottom: SP.sectionGap },
-          ]}
-        >
+        <View style={[s.headerWrap, { marginBottom: SP.sectionGap }]}>
           <TouchableOpacity
             onPress={() => setOpenDetails(true)}
             activeOpacity={0.9}
+            style={{ padding: 8, margin: -8 }} // Expand touch area
           >
             <View>
               <Avatar />
@@ -389,7 +324,6 @@ export default function CompetitorProfileComponent() {
           />
         </View>
 
-        {/* KPI row */}
         <View
           style={[
             s.kpiCard,
@@ -400,7 +334,6 @@ export default function CompetitorProfileComponent() {
               shadowColor: "#000",
               marginHorizontal: 16,
               marginBottom: SP.sectionGap,
-              borderRadius: SP.kpiCardRadius,
             },
           ]}
         >
@@ -418,80 +351,26 @@ export default function CompetitorProfileComponent() {
         <View style={{ marginBottom: SP.sectionGap }}>
           <SegmentedTabsProfile
             tabs={[
-              { key: "contests", label: "Cuộc thi", icon: "time-outline" },
-              {
-                key: "achievements",
-                label: "Thành tích",
-                icon: "trophy-outline",
-              },
               {
                 key: "submissions",
                 label: "Bài nộp",
                 icon: "document-text-outline",
               },
+              {
+                key: "achievements",
+                label: "Thành tích",
+                icon: "trophy-outline",
+              },
             ]}
             activeKey={activeTab}
             onChange={(k) => setActiveTab(k as any)}
-            pickGrad={pickGrad}
-            cardBg={C.card}
+            activeFg={C.primary}
             mutedFg={C.mutedForeground}
           />
         </View>
 
         {/* Tab Content */}
         <View style={s.tabContent}>
-          {activeTab === "contests" && (
-            <View style={[s.tabScrollContent, { gap: SP.blockGap }]}>
-              {ongoingContests.length > 0 ? (
-                <View style={{ gap: SP.blockGap, marginBottom: SP.sectionGap }}>
-                  {ongoingContests.map((c) => (
-                    <ContestCardCompetitor
-                      key={c.id}
-                      item={c as ContestItem}
-                      pickGrad={pickGrad}
-                      borderColor={C.border}
-                      mutedFg={C.mutedForeground}
-                      onPressSubmit={() => router.push("/painting-upload")}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <EmptyState
-                  C={C}
-                  icon="brush-outline"
-                  title="Chưa tham gia cuộc thi nào"
-                  action="Khám phá cuộc thi"
-                  compact
-                />
-              )}
-            </View>
-          )}
-
-          {activeTab === "achievements" && (
-            <View style={[s.tabScrollContent, { gap: SP.blockGap }]}>
-              {achievements.length > 0 ? (
-                <View style={{ gap: SP.blockGap, marginBottom: SP.sectionGap }}>
-                  {achievements.map((a) => (
-                    <AchievementCard
-                      key={a.id}
-                      item={{ id: a.id, title: a.title, place: a.place }}
-                      pickGrad={pickGrad}
-                      borderColor={C.border}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <EmptyState
-                  C={C}
-                  icon="trophy-outline"
-                  title="Chưa có thành tích nào"
-                  action="Tham gia cuộc thi"
-                  compact
-                />
-              )}
-            </View>
-          )}
-
           {activeTab === "submissions" && (
             <View style={[s.tabScrollContent, { gap: SP.blockGap }]}>
               {submissionsLoading ? (
@@ -511,7 +390,9 @@ export default function CompetitorProfileComponent() {
                           paintingId: sItem.paintingId,
                           title: sItem.title,
                           contestTitle: sItem.contest.title,
-                          date: formatDateDisplay(sItem.submissionDate),
+                          date: sItem.submissionDate
+                            ? formatDateDisplay(sItem.submissionDate)
+                            : null,
                           status: sItem.status,
                           imageUrl: sItem.imageUrl,
                         } as SubmissionItem
@@ -532,6 +413,49 @@ export default function CompetitorProfileComponent() {
                   icon="document-text-outline"
                   title="Chưa có bài nộp nào"
                   action="Nộp bài dự thi"
+                  compact
+                />
+              )}
+            </View>
+          )}
+          {activeTab === "achievements" && (
+            <View style={[s.tabScrollContent, { gap: SP.blockGap }]}>
+              {achievementsLoading ? (
+                <EmptyState
+                  C={C}
+                  icon="sync"
+                  title="Đang tải thành tích..."
+                  compact
+                />
+              ) : achievements.length > 0 ? (
+                <View style={{ gap: SP.blockGap, marginBottom: SP.sectionGap }}>
+                  {achievements.map((a) => (
+                    <TouchableOpacity
+                      key={a.paintingId}
+                      activeOpacity={0.9}
+                      onPress={() => {
+                        setSelectedAch(a);
+                        setOpenAchModal(true);
+                      }}
+                    >
+                      <AchievementCard
+                        item={{
+                          id: a.paintingId,
+                          title: `${a.award.name} - ${a.contest.title}`,
+                          achievedDate: fmtDateOnly(a.achievedDate),
+                        }}
+                        pickGrad={pickGrad}
+                        borderColor={C.border}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <EmptyState
+                  C={C}
+                  icon="trophy-outline"
+                  title="Chưa có thành tích nào"
+                  action="Tham gia cuộc thi"
                   compact
                 />
               )}
@@ -561,7 +485,12 @@ export default function CompetitorProfileComponent() {
           scheme={scheme}
         />
       )}
-    </SafeAreaProvider>
+      <AchievementModal
+        visible={openAchModal}
+        onClose={() => setOpenAchModal(false)}
+        item={selectedAch}
+      />
+    </View>
   );
 }
 
@@ -595,6 +524,7 @@ function CenteredState({
           fontWeight: "800",
           color: C.foreground,
           marginTop: 16,
+          fontFamily: "Be Vietnam Pro",
         }}
       >
         {title}
@@ -606,6 +536,7 @@ function CenteredState({
             color: C.mutedForeground,
             marginVertical: 12,
             textAlign: "center",
+            fontFamily: "Be Vietnam Pro",
           }}
         >
           {message}
@@ -627,6 +558,7 @@ function CenteredState({
               color: C.primaryForeground,
               fontWeight: "700",
               fontSize: 15,
+              fontFamily: "Be Vietnam Pro",
             }}
           >
             {action.label}
@@ -648,9 +580,8 @@ const s = StyleSheet.create({
     paddingBottom: 12,
     gap: 12,
     backgroundColor: "transparent",
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  name: { fontSize: 16, fontWeight: "900" },
+  name: { fontSize: 19, fontWeight: "700", fontFamily: "Be Vietnam Pro" },
   handle: { marginTop: 2, opacity: 0.85 },
   addBadge: {
     position: "absolute",
@@ -664,7 +595,7 @@ const s = StyleSheet.create({
   kpiCard: {
     flexDirection: "row",
     alignItems: "stretch",
-    borderRadius: 18,
+    borderRadius: 4,
     paddingVertical: 14,
     paddingHorizontal: 14,
     shadowOpacity: 0.08,

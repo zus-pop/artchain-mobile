@@ -130,7 +130,7 @@ export default function SearchContestScreen() {
   }, [canQuery, fade]);
 
   const HeaderBar = (
-    <View style={[s.header, { backgroundColor: BRAND.base }]}>
+    <View style={[s.header, { backgroundColor: C.foreground80 }]}>
       <Pressable
         onPress={() => router.back()}
         style={({ pressed }) => [

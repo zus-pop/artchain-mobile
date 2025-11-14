@@ -6,6 +6,7 @@
 import { Platform } from "react-native";
 export interface ThemeColors {
   background: string;
+  newbackground: string;
   foreground: string;
   card: string;
   cardForeground: string;
@@ -21,6 +22,7 @@ export interface ThemeColors {
   accentForeground: string;
   destructive: string;
   destructiveForeground: string;
+  destructiveLight?: string;
   border: string;
   input: string;
   ring: string;
@@ -55,86 +57,90 @@ export interface Theme {
 
 export const Colors = {
   light: {
-    background: "hsl(0 0% 98.8235%)",
-    foreground: "hsl(210 25% 7.8431%)",
+    background: "hsl(30 25% 98%)",
+    newbackground: "#EAE6E0",
+    foreground: "hsl(20 15% 15%)",
     card: "hsl(0 0% 100%)",
-    cardForeground: "hsl(210 25% 7.8431%)",
+    cardForeground: "hsl(20 15% 15%)",
     popover: "hsl(0 0% 100%)",
-    popoverForeground: "hsl(210 25% 7.8431%)",
-    primary: "hsl(203.8863 88.2845% 53.1373%)",
+    popoverForeground: "hsl(20 15% 15%)",
+    primary: "hsl(15 85% 55%)",
     primaryForeground: "hsl(0 0% 100%)",
-    secondary: "hsl(208.2353 23.9437% 13.9216%)",
+    secondary: "hsl(200 15% 20%)",
     secondaryForeground: "hsl(0 0% 100%)",
-    muted: "hsl(240 1.9608% 90%)",
-    mutedForeground: "hsl(210 25% 7.8431%)",
-    accent: "hsl(201.4286 30.4348% 90.9804%)",
-    accentForeground: "hsl(203.8863 88.2845% 53.1373%)",
-    destructive: "hsl(356.3033 90.5579% 54.3137%)",
+    muted: "hsl(25 10% 92%)",
+    mutedForeground: "hsl(20 10% 45%)",
+    accent: "hsl(15 60% 95%)",
+    accentForeground: "hsl(15 85% 55%)",
+    destructive: "#EF4444",
     destructiveForeground: "hsl(0 0% 100%)",
-    border: "hsla(204, 4%, 52%, 1.00)",
-    input: "hsl(200 23.0769% 97.4510%)",
-    ring: "hsl(202.8169 89.1213% 53.1373%)",
-    chart1: "hsl(203.8863 88.2845% 53.1373%)",
-    chart2: "hsl(159.7826 100% 36.0784%)",
-    chart3: "hsl(42.0290 92.8251% 56.2745%)",
-    chart4: "hsl(147.1429 78.5047% 41.9608%)",
-    chart5: "hsl(341.4894 75.2000% 50.9804%)",
-    sidebar: "hsl(180 6.6667% 97.0588%)",
-    sidebarForeground: "hsl(210 25% 7.8431%)",
-    sidebarPrimary: "hsl(203.8863 88.2845% 53.1373%)",
+    destructiveLight: "#F87171",
+    border: "hsl(25 8% 83%)",
+    input: "hsl(30 15% 96%)",
+    ring: "hsl(15 85% 55%)",
+    chart1: "hsl(15 85% 55%)",
+    chart2: "hsl(25 90% 60%)",
+    chart3: "hsl(35 85% 50%)",
+    chart4: "hsl(5 80% 55%)",
+    chart5: "hsl(45 75% 55%)",
+    sidebar: "hsl(30 20% 97%)",
+    sidebarForeground: "hsl(20 15% 15%)",
+    sidebarPrimary: "hsl(15 85% 55%)",
     sidebarPrimaryForeground: "hsl(0 0% 100%)",
-    sidebarAccent: "hsl(211.5789 51.3514% 92.7451%)",
-    sidebarAccentForeground: "hsl(203.8863 88.2845% 53.1373%)",
-    sidebarBorder: "hsl(205.0000 25.0000% 90.5882%)",
-    sidebarRing: "hsl(202.8169 89.1213% 53.1373%)",
-    tint: "hsl(203.8863 88.2845% 53.1373%)",
+    sidebarAccent: "hsl(15 50% 92%)",
+    sidebarAccentForeground: "hsl(15 85% 55%)",
+    sidebarBorder: "hsl(25 8% 88%)",
+    sidebarRing: "hsl(15 85% 55%)",
+    tint: "hsl(15 85% 55%)",
     // Opacity variants
-    primary50: "rgba(59, 130, 246, 0.5)", // 50% opacity blue
-    primary20: "rgba(59, 130, 246, 0.2)", // 20% opacity blue
-    primary10: "rgba(59, 130, 246, 0.1)", // 10% opacity blue
-    background80: "rgba(248, 250, 252, 0.8)", // 80% opacity light background
-    background50: "rgba(248, 250, 252, 0.5)", // 50% opacity light background
-    foreground80: "rgba(23, 37, 84, 0.8)", // 80% opacity dark foreground
-    foreground60: "rgba(23, 37, 84, 0.6)", // 60% opacity dark foreground
+    primary50: "rgba(239, 68, 68, 0.5)", // 50% opacity red-orange
+    primary20: "rgba(239, 68, 68, 0.2)", // 20% opacity red-orange
+    primary10: "rgba(239, 68, 68, 0.1)", // 10% opacity red-orange
+    background80: "rgba(255, 248, 240, 0.8)", // 80% opacity warm light background
+    background50: "rgba(255, 248, 240, 0.5)", // 50% opacity warm light background
+    foreground80: "rgba(31, 41, 55, 0.8)", // 80% opacity dark foreground
+    foreground60: "rgba(31, 41, 55, 0.6)", // 60% opacity dark foreground
   },
   dark: {
-    background: "hsl(196.3636 21.5686% 10%)",
-    foreground: "hsl(200 6.6667% 91.1765%)",
-    card: "hsl(197.1429 13.7255% 20%)",
-    cardForeground: "hsl(0 0% 85.0980%)",
+    background: "hsl(20 15% 8%)",
+    newbackground: "hsl(36 19% 90%)",
+    foreground: "hsl(25 10% 90%)",
+    card: "hsl(20 12% 15%)",
+    cardForeground: "hsl(25 8% 85%)",
     popover: "hsl(0 0% 0%)",
-    popoverForeground: "hsl(200 6.6667% 91.1765%)",
-    primary: "hsl(203.7736 87.6033% 52.5490%)",
-    primaryForeground: "hsl(0 0% 100%)",
-    secondary: "hsl(192.0000 100.0000% 99.0196%)",
-    secondaryForeground: "hsl(210 25% 7.8431%)",
-    muted: "hsl(198.2609 100.0000% 18.0392%)",
-    mutedForeground: "hsl(205.7143 4.1420% 66.8627%)",
-    accent: "hsl(205.7143 70% 7.8431%)",
-    accentForeground: "hsl(203.7736 87.6033% 52.5490%)",
-    destructive: "hsl(356.3033 90.5579% 54.3137%)",
+    popoverForeground: "hsl(25 10% 90%)",
+    primary: "hsl(15 80% 60%)",
+    primaryForeground: "hsl(20 15% 8%)",
+    secondary: "hsl(25 8% 85%)",
+    secondaryForeground: "hsl(20 15% 8%)",
+    muted: "hsl(20 10% 20%)",
+    mutedForeground: "hsl(25 5% 65%)",
+    accent: "hsl(20 12% 12%)",
+    accentForeground: "hsl(15 80% 60%)",
+    destructive: "#EF4444",
     destructiveForeground: "hsl(0 0% 100%)",
-    border: "hsla(210, 14%, 51%, 1.00)",
-    input: "hsl(207.6923 27.6596% 18.4314%)",
-    ring: "hsl(202.8169 89.1213% 53.1373%)",
-    chart1: "hsl(203.8863 88.2845% 53.1373%)",
-    chart2: "hsl(159.7826 100% 36.0784%)",
-    chart3: "hsl(42.0290 92.8251% 56.2745%)",
-    chart4: "hsl(147.1429 78.5047% 41.9608%)",
-    chart5: "hsl(341.4894 75.2000% 50.9804%)",
-    sidebar: "hsl(228 9.8039% 10%)",
-    sidebarForeground: "hsl(0 0% 85.0980%)",
-    sidebarPrimary: "hsl(202.8169 89.1213% 53.1373%)",
-    sidebarPrimaryForeground: "hsl(0 0% 100%)",
-    sidebarAccent: "hsl(205.7143 70% 7.8431%)",
-    sidebarAccentForeground: "hsl(203.7736 87.6033% 52.5490%)",
-    sidebarBorder: "hsl(205.7143 15.7895% 26.0784%)",
-    sidebarRing: "hsl(202.8169 89.1213% 53.1373%)",
-    tint: "hsl(203.7736 87.6033% 52.5490%)",
+    destructiveLight: "#F87171",
+    border: "hsl(20 8% 25%)",
+    input: "hsl(20 12% 18%)",
+    ring: "hsl(15 80% 60%)",
+    chart1: "hsl(15 80% 60%)",
+    chart2: "hsl(25 90% 60%)",
+    chart3: "hsl(35 85% 50%)",
+    chart4: "hsl(5 80% 55%)",
+    chart5: "hsl(45 75% 55%)",
+    sidebar: "hsl(20 15% 6%)",
+    sidebarForeground: "hsl(25 8% 85%)",
+    sidebarPrimary: "hsl(15 80% 60%)",
+    sidebarPrimaryForeground: "hsl(20 15% 8%)",
+    sidebarAccent: "hsl(20 12% 12%)",
+    sidebarAccentForeground: "hsl(15 80% 60%)",
+    sidebarBorder: "hsl(20 8% 20%)",
+    sidebarRing: "hsl(15 80% 60%)",
+    tint: "hsl(15 80% 60%)",
     // Opacity variants
-    primary50: "rgba(56, 189, 248, 0.5)", // 50% opacity blue
-    primary20: "rgba(56, 189, 248, 0.2)", // 20% opacity blue
-    primary10: "rgba(56, 189, 248, 0.1)", // 10% opacity blue
+    primary50: "rgba(249, 115, 22, 0.5)", // 50% opacity orange
+    primary20: "rgba(249, 115, 22, 0.2)", // 20% opacity orange
+    primary10: "rgba(249, 115, 22, 0.1)", // 10% opacity orange
     background80: "rgba(15, 23, 42, 0.8)", // 80% opacity dark background
     background50: "rgba(15, 23, 42, 0.5)", // 50% opacity dark background
     foreground80: "rgba(203, 213, 225, 0.8)", // 80% opacity light foreground
@@ -158,6 +164,7 @@ export const Fonts = Platform.select({
     serif: "serif",
     rounded: "normal",
     mono: "monospace",
+    default: "Be Vietnam Pro",
   },
   web: {
     sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
