@@ -80,7 +80,7 @@ const competitorSchema = z
 type CompetitorForm = z.infer<typeof competitorSchema>;
 
 const { height: SCREEN_H } = Dimensions.get("window");
-const grades = [6, 7, 8, 9]; // hoặc props/biến của bạn
+const grades = [1, 2, 3, 4, 5, 6, 7, 8, 9]; // hoặc props/biến của bạn
 
 // Tính chiều cao động
 const HEADER_H = 64;
