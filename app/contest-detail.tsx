@@ -1,6 +1,7 @@
 // app/contest-detail.tsx
 import { useWhoAmI } from "@/apis/auth";
-import { useContestById } from "@/apis/contest";
+import { useCheckUploadCompetitor, useContestById } from "@/apis/contest";
+import ArtchainAnimation from "@/components/animations/ArtchainAnimation";
 import AppHeader from "@/components/AppHeader"; // header tùy biến có nút back
 import { Colors, withOpacity } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -9,7 +10,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import { ExternalLink, FileText, Trophy, Users } from "lucide-react-native";
 import React from "react";
 import {
-  ActivityIndicator,
   Image,
   Linking,
   ScrollView,
@@ -64,13 +64,25 @@ export default function ContestDetail() {
   } = useContestById(contestId);
   const { data: me } = useWhoAmI();
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
+
   const C = Colors[scheme];
   const s = styles(C);
+
+  const { data: uploadStatus, isLoading: isCheckingUpload } =
+    useCheckUploadCompetitor(
+      contest?.contestId,
+      me?.role === "COMPETITOR" && me?.userId ? [me.userId] : []
+    );
+
+  const hasUploaded = uploadStatus?.[0]?.isUploaded === true;
+
+  const isCompetitor = me?.role === "COMPETITOR";
+  const disableJoin = isCompetitor && hasUploaded;
 
   if (isLoading) {
     return (
       <View style={[s.screen, s.center]}>
-        <ActivityIndicator size="large" color={C.primary} />
+        <ArtchainAnimation />
         <Text style={[s.muted, { marginTop: 10 }]}>Đang tải…</Text>
       </View>
     );
@@ -328,15 +340,19 @@ export default function ContestDetail() {
             </TouchableOpacity>
           )}
 
-          {/* Join Contest */}
           {contest?.status === "ACTIVE" && (
             <TouchableOpacity
-              style={s.primaryButton}
+              style={[s.primaryButton, disableJoin && s.primaryButtonDisabled]}
+              disabled={disableJoin}
               onPress={() => {
                 if (!me) {
                   router.push("/login");
                   return;
                 }
+
+               
+                if (disableJoin) return;
+
                 if (me.role === "COMPETITOR") {
                   const round1Data = findRound1(contest.rounds);
                   router.push({
@@ -363,7 +379,11 @@ export default function ContestDetail() {
                 }
               }}
             >
-              <Text style={s.primaryButtonText}>Tham gia cuộc thi</Text>
+              <Text style={s.primaryButtonText}>
+                {disableJoin
+                  ? "Bạn đã nộp bài cuộc thi này"
+                  : "Tham gia cuộc thi"}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -398,6 +418,15 @@ const styles = (C: any) => {
   const R = 8; // ít bo tròn hơn
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: C.background },
+    primaryButton: {
+      backgroundColor: C.primary,
+      borderRadius: 12,
+      padding: 16,
+      alignItems: "center",
+    },
+    primaryButtonDisabled: {
+      opacity: 0.5,
+    },
 
     // HERO BANNER
     heroContainer: {
@@ -645,12 +674,7 @@ const styles = (C: any) => {
     rewardsButtonText: {
       color: C.accentForeground,
     },
-    primaryButton: {
-      backgroundColor: C.primary,
-      borderRadius: 12,
-      padding: 16,
-      alignItems: "center",
-    },
+
     primaryButtonText: {
       fontSize: 16,
       fontWeight: "600",

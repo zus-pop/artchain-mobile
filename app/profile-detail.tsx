@@ -1,6 +1,7 @@
 // app/profile-detail.tsx
 import { useWhoAmI } from "@/apis/auth";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
+import AppHeader from "@/components/ui/AppHeader";
 import myAxios from "@/constants/custom-axios";
 import { Colors, withOpacity } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -101,7 +102,7 @@ export default function ProfileDetailScreen() {
               { opacity: pressed ? 0.6 : 1 },
             ]}
           >
-            <Ionicons name="arrow-back" size={20} color="white" />
+            <Ionicons name="arrow-back" size={20} color="#fff" />
           </Pressable>
           <Text style={s.headerTitle}>Hồ sơ</Text>
           <View style={{ width: 32 }} />
@@ -163,19 +164,7 @@ export default function ProfileDetailScreen() {
     >
       <View style={s.container}>
         {/* Header cố định trong screen */}
-        <View style={s.header}>
-          <Pressable
-            onPress={() => router.back()}
-            style={({ pressed }) => [
-              s.headerIconBtn,
-              { opacity: pressed ? 0.6 : 1 },
-            ]}
-          >
-            <Ionicons name="arrow-back" size={20} color="#111827" />
-          </Pressable>
-          <Text style={s.headerTitle}>Hồ sơ</Text>
-          <View style={{ width: 32 }} />
-        </View>
+        <AppHeader title="Hồ sơ" showBack />
 
         <Animated.ScrollView
           showsVerticalScrollIndicator={false}
@@ -226,12 +215,6 @@ export default function ProfileDetailScreen() {
             <Text style={s.name} numberOfLines={1}>
               {userUI.fullName}
             </Text>
-
-            <View style={s.statsRow}>
-              <StatBox label="Cuộc thi" value="12" C={C} />
-              <StatBox label="Giải thưởng" value="03" C={C} />
-              <StatBox label="Theo dõi" value="1.2K" C={C} />
-            </View>
 
             <Pressable
               onPress={() => setOpenDetails(true)}
@@ -382,8 +365,13 @@ function InfoRow({
       >
         <Ionicons name={icon} size={16} color={C.background} />
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[infoStyles.label, { color: C.background }]}>{label}</Text>
+      <View
+        style={{
+          alignContent: "center",
+          flex: 1,
+          justifyContent: "center",
+        }}
+      >
         <Text
           style={[infoStyles.value, { color: C.foreground }]}
           numberOfLines={1}
@@ -464,7 +452,7 @@ const styles = (C: ColorTokens) =>
       borderRadius: 16,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "rgba(0,0,0,0.04)",
+      backgroundColor: "rgba(255,255,255,0.92)",
     },
     headerTitle: {
       fontSize: 18,

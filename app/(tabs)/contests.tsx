@@ -1,7 +1,6 @@
 import { router } from "expo-router";
 import React, { useCallback, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Animated,
   LayoutChangeEvent,
   RefreshControl,
@@ -12,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useContest } from "@/apis/contest";
+import ArtchainAnimation from "@/components/animations/ArtchainAnimation";
 import { ContestCard } from "@/components/cards/ContestCard";
 import CollapsibleHeader, {
   FilterOption,
@@ -135,7 +135,7 @@ export default function ContestsScreen() {
     if (isFetchingNextPage) {
       return (
         <View style={s.footerLoading}>
-          <ActivityIndicator color={C.primary} size="large" />
+          <ArtchainAnimation />
           <Text style={s.footerText}>Đang tải thêm cuộc thi...</Text>
         </View>
       );
@@ -177,7 +177,7 @@ export default function ContestsScreen() {
 
       {isPending ? (
         <View style={s.stateWrap}>
-          <ActivityIndicator color={C.primary} />
+          <ArtchainAnimation />
           <Text style={s.stateText}>Đang tải cuộc thi...</Text>
         </View>
       ) : error ? (
@@ -222,7 +222,7 @@ export default function ContestsScreen() {
       {/* Footer loading indicator */}
       {isFetchingNextPage && !isPending && (
         <View style={s.fetchingFoot}>
-          <ActivityIndicator color={C.primary} size="small" />
+          <ArtchainAnimation />
           <Text style={[s.footerText, { marginLeft: 8 }]}>
             Đang tải thêm...
           </Text>

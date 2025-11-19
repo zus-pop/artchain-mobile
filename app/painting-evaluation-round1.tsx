@@ -185,9 +185,10 @@ const PressableScale: React.FC<
       onPressOut={() => animate(1)}
       onPress={onPress}
       style={({ pressed }) => [
-        { transform: [{ scale: pressed ? 0.98 : 1 }] },
+        { transform: [{ scale: pressed ? 0.7 : 1 }] },
         style,
       ]}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
       <Animated.View style={{ transform: [{ scale }] }}>
         {children}
@@ -256,6 +257,7 @@ export default function PaintingEvaluationScreen() {
       return;
     }
     router.back();
+    console.log("Back");
   };
 
   /* ---------- Submit flow ---------- */
@@ -320,7 +322,7 @@ export default function PaintingEvaluationScreen() {
               styles(colors).header,
               {
                 backgroundColor: "hsl(15 85% 55%)",
-                height:60
+                height: 60,
               },
             ]}
           >
@@ -330,16 +332,13 @@ export default function PaintingEvaluationScreen() {
                 left: 10,
               }}
             >
-              <PressableScale
-                onPress={handleBack}
-                style={styles(colors).circleBtn}
-              >
+              <Pressable onPress={handleBack} style={styles(colors).circleBtn}>
                 <Ionicons
                   name="chevron-back"
                   size={18}
                   color={colors.primary}
                 />
-              </PressableScale>
+              </Pressable>
             </View>
             <ThemedText
               style={{
@@ -816,8 +815,8 @@ const styles = (colors: typeof Colors.light) =>
 
     /* Circles */
     circleBtn: {
-      width: 36,
-      height: 36,
+      width: 46,
+      height: 46,
       borderRadius: 999,
       alignItems: "center",
       justifyContent: "center",

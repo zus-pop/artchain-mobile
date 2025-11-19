@@ -1,6 +1,7 @@
 import myAxios from "@/constants/custom-axios";
 import { ApiResponse } from "@/types";
 import { Contest, ContestFilter, ExaminerContest } from "@/types/contest";
+import { UserUploadStatus } from "@/types/contest-upload";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 export function useContest(filters: ContestFilter = { status: "ALL" }) {
@@ -45,5 +46,51 @@ export function useExaminerContest(examinerId: string | undefined) {
       return response.data.data as ExaminerContest[];
     },
     enabled: !!examinerId,
+  });
+}
+
+// export function useCheckUploadCompetitor(
+//   contestId?: number,
+//   userIds: string[] = []
+// ) {
+//   const enabled = !!contestId && userIds.length > 0;
+
+//   return useQuery<UserUploadStatus[]>({
+//     queryKey: ["/contests/check-uploaded", contestId, userIds],
+//     enabled,
+//     queryFn: async () => {
+//       const response = await myAxios.get(
+//         `/contests/${contestId}/check-uploaded`,
+//         {
+//           params: {
+//             userIds,
+//           },
+//         }
+//       );
+//       return response.data.data as UserUploadStatus[];
+//     },
+//   });
+// }
+
+export function useCheckUploadCompetitor(
+  contestId?: number,
+  userIds: string[] = []
+) {
+  const enabled = !!contestId && userIds.length > 0;
+
+  return useQuery({
+    queryKey: ["/contests/check-uploaded", contestId, userIds],
+    enabled,
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      userIds.forEach((id) => params.append("userIds", id));
+
+      const { data } = await myAxios.get<ApiResponse<UserUploadStatus[]>>(
+        `/contests/${contestId}/check-uploaded`,
+        { params }
+      );
+
+      return data.data;
+    },
   });
 }

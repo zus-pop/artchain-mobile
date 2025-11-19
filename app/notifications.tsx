@@ -187,8 +187,7 @@ export default function NotificationsScreen() {
         translucent
       />
 
-      {/* orbs */}
-      <Orbs scheme={scheme} />
+    
 
       {/* Header gradient mảnh + safe area */}
       <LinearGradient
