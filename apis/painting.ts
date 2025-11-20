@@ -60,6 +60,7 @@ export function useGetPaintings(filters: PaintingFilter) {
 }
 
 export function useUploadPainting() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (paintingUploadRequest: PaintingUploadRequest) => {
       const formData = new FormData();
@@ -79,7 +80,8 @@ export function useUploadPainting() {
       return response.data;
     },
     onSuccess: () => {
-      toast.success(`Upload painting successfully!`);
+      toast.success(`Nộp Bài Thành Công!`);
+      queryClient.invalidateQueries({ queryKey: ["/contests/check-uploaded"] });
       router.back();
     },
     onError: (error) => {

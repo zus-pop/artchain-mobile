@@ -1,4 +1,5 @@
 import { useWhoAmI } from "@/apis/auth";
+import ArtchainAnimation from "@/components/animations/ArtchainAnimation";
 import CompetitorProfileComponent from "@/components/CompetitorProfile";
 import ExaminerProfileComponent from "@/components/ExaminerProfile";
 import GuardianProfileComponent from "@/components/GuardianProfile";
@@ -7,7 +8,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuthStore } from "@/store/auth-store";
 import { router } from "expo-router";
 import React from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 export default function ProfileScreen() {
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -19,10 +20,8 @@ export default function ProfileScreen() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={{ marginTop: 16, color: colors.foreground }}>
-          Đang tải hồ sơ...
-        </Text>
+        <ArtchainAnimation />
+        <Text style={{ color: colors.foreground ,fontSize: 16}}>Đang tải hồ sơ...</Text>
       </View>
     );
   }

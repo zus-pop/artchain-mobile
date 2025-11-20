@@ -40,7 +40,12 @@ export interface PaintingFilter {
   contestId?: string;
   roundName?: "ROUND_1" | "ROUND_2";
   is_passed?: boolean | null;
-  status?: "PENDING" | "ACCEPTED" | "REJECTED";
+  status?:
+    | "PENDING"
+    | "ACCEPTED"
+    | "REJECTED"
+    | "ORIGINAL_SUBMITTED"
+    | "NOT_SUBMITTED_ORIGINAL";
   examinerId?: string;
 }
 
