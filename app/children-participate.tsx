@@ -1,4 +1,5 @@
 import { useWhoAmI } from "@/apis/auth";
+import { useCheckUploadCompetitor } from "@/apis/contest";
 import { useGuardianChildren } from "@/apis/guardian";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -29,6 +30,23 @@ export default function ContestParticipateScreen() {
     error,
   } = useGuardianChildren(user?.userId);
   // Avatar colors for children
+
+  const childIds = children?.map((c) => c.userId) ?? [];
+
+  const { data: uploadStatusList, isLoading: isCheckingUpload } =
+    useCheckUploadCompetitor(
+      contestId ? Number(contestId) : undefined,
+      childIds
+    );
+  console.log(uploadStatusList);
+  const isChildUploaded = (childId: string) => {
+    const found = uploadStatusList?.find((u) => u.userId === childId);
+    return found?.isUploaded === true;
+  };
+
+  console.log("childIds", childIds);
+  console.log("uploadStatusList", uploadStatusList);
+
   const childAvatars = [
     "#FF6B6B",
     "#4ECDC4",
@@ -121,62 +139,74 @@ export default function ContestParticipateScreen() {
             data={children}
             keyExtractor={(item) => item.userId}
             contentContainerStyle={styles.listContainer}
-            renderItem={({ item, index }) => (
-              <View style={[styles.childCard, { backgroundColor: C.card }]}>
-                <View style={styles.childHeader}>
-                  <View
-                    style={[
-                      styles.childAvatar,
-                      { backgroundColor: getChildAvatar(index) },
-                    ]}
-                  >
-                    <Ionicons name="person-outline" size={24} color="white" />
-                  </View>
-                  <View style={styles.childInfo}>
-                    <Text style={[styles.childName, { color: C.foreground }]}>
-                      {item.fullName || "Tên chưa cập nhật"}
-                    </Text>
-                    <Text
+            renderItem={({ item, index }) => {
+              const uploaded = isChildUploaded(item.userId);
+
+              return (
+                <View style={[styles.childCard, { backgroundColor: C.card }]}>
+                  <View style={styles.childHeader}>
+                    <View
                       style={[
-                        styles.childDetails,
-                        { color: C.mutedForeground },
+                        styles.childAvatar,
+                        { backgroundColor: getChildAvatar(index) },
                       ]}
                     >
-                      {item.grade || "Chưa cập nhật"} -{" "}
-                      {item.schoolName || "Chưa cập nhật"}
-                    </Text>
+                      <Ionicons name="person-outline" size={24} color="white" />
+                    </View>
+                    <View style={styles.childInfo}>
+                      <Text style={[styles.childName, { color: C.foreground }]}>
+                        {item.fullName || "Tên chưa cập nhật"}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.childDetails,
+                          { color: C.mutedForeground },
+                        ]}
+                      >
+                        {item.grade || "Chưa cập nhật"} -{" "}
+                        {item.schoolName || "Chưa cập nhật"}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-                <TouchableOpacity
-                  style={[styles.submitButton, { backgroundColor: C.primary }]}
-                  onPress={() => {
-                    router.push({
-                      pathname: "/painting-upload",
-                      params: {
-                        type: "GUARDIAN",
-                        contestId: contestId,
-                        roundId: roundId,
-                        competitorId: item.userId,
-                      },
-                    });
-                  }}
-                >
-                  <Ionicons
-                    name="brush"
-                    size={18}
-                    color={C.primaryForeground}
-                  />
-                  <Text
+
+                  <TouchableOpacity
                     style={[
-                      styles.submitButtonText,
-                      { color: C.primaryForeground },
+                      styles.submitButton,
+                      { backgroundColor: C.primary },
+                      uploaded && styles.submitButtonDisabled,
                     ]}
+                    disabled={uploaded}
+                    onPress={() => {
+                      router.push({
+                        pathname: "/painting-upload",
+                        params: {
+                          type: "GUARDIAN",
+                          contestId: contestId,
+                          roundId: roundId,
+                          competitorId: item.userId,
+                        },
+                      });
+                    }}
                   >
-                    Nộp bài cho {item.fullName}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
+                    <Ionicons
+                      name="brush"
+                      size={18}
+                      color={C.primaryForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.submitButtonText,
+                        { color: C.primaryForeground },
+                      ]}
+                    >
+                      {uploaded
+                        ? `Đã nộp bài cuộc thi này`
+                        : `Nộp bài cho ${item.fullName}`}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            }}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="people-outline" size={64} color={C.muted} />
@@ -234,6 +264,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  submitButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  submitButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  submitButtonDisabled: {
+    opacity: 0.5,
+  },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -319,19 +366,7 @@ const styles = StyleSheet.create({
   childDetails: {
     fontSize: 14,
   },
-  submitButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    gap: 8,
-  },
-  submitButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
+
   emptyContainer: {
     flex: 1,
     justifyContent: "center",

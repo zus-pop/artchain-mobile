@@ -127,7 +127,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   // Snap points for the bottom sheet - use percentage
-  const snapPoints = useMemo(() => ["90%"], []);
+  const snapPoints = useMemo(() => ["80%"], []);
 
   // Control modal visibility with useEffect
   useEffect(() => {
@@ -261,7 +261,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
             flexGrow: 1,
             paddingHorizontal: 14,
             paddingTop: 6,
-            paddingBottom: 16,
+            
           }}
           keyboardShouldPersistTaps="handled"
           bounces
@@ -362,10 +362,10 @@ const ProfileDetailsModal: React.FC<Props> = ({
             />
           </View>
 
-          {/* SPACER to push footer to bottom */}
+     
           <View style={{ flex: 1, minHeight: 20 }} />
 
-          {/* FOOTER - Always at bottom of scroll view */}
+          
           <View
             style={[
               s.footer,
@@ -495,57 +495,7 @@ function Field({
   );
 }
 
-/** Trường ngày sinh thân thiện: bấm để mở DatePicker, không bật bàn phím */
-function BirthdayField({
-  value,
-  onOpen,
-  error,
-  C,
-}: {
-  value?: string;
-  onOpen: () => void;
-  error?: string;
-  C: any;
-}) {
-  return (
-    <View style={{ paddingVertical: 8 }}>
-      <Text style={[local.label, { color: C.mutedForeground }]}>Ngày sinh</Text>
-      <Pressable
-        onPress={onOpen}
-        style={({ pressed }) => [
-          local.row,
-          {
-            borderColor: C.border,
-            backgroundColor: "rgba(147, 51, 234, 0.12)", // tím nhẹ
-            opacity: pressed ? 0.95 : 1,
-          },
-        ]}
-      >
-        <Ionicons name="calendar-outline" size={16} color={"#9333EA"} />
-        <Text
-          style={[local.input, { color: C.foreground, paddingVertical: 0 }]}
-        >
-          {value || "Chọn ngày…"}
-        </Text>
-        <Ionicons name="chevron-down" size={16} color={C.mutedForeground} />
-      </Pressable>
-      {!!error && (
-        <Text style={[local.err, { color: C.destructive ?? "#EF4444" }]}>
-          {error}
-        </Text>
-      )}
-      <View
-        style={{
-          height: StyleSheet.hairlineWidth,
-          backgroundColor: C.border,
-          opacity: 0.9,
-          marginTop: 10,
-          marginHorizontal: -14,
-        }}
-      />
-    </View>
-  );
-}
+
 
 export default ProfileDetailsModal;
 

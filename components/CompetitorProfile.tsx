@@ -142,8 +142,21 @@ export default function CompetitorProfileComponent() {
     }
   }, [reloadMe, refetchSubmissions, refetchAchievements]);
 
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const [headerH, setHeaderH] = useState(0);
+  const onHeaderLayout = useCallback(
+    (e: any) => {
+      const h = e.nativeEvent.layout.height;
+      if (h && Math.abs(h - headerH) > 1) setHeaderH(h);
+    },
+    [headerH]
+  );
 
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const TOP_PAD = Math.max(headerH, insets.top + 54);
+  const BRAND = C.foreground80;
+  const BRAND_DARK = C.primary;
+
+  /* -------------------- Header giống style Examiner -------------------- */
   function TopBar({
     title,
     withActions,
@@ -152,14 +165,23 @@ export default function CompetitorProfileComponent() {
     withActions?: boolean;
   }) {
     return (
-      <View style={[t.topbarGrad, { backgroundColor: C.foreground80 }]}>
+      <View
+        style={[
+          t.topbarGrad,
+          {
+            backgroundColor: C.foreground80,
+            paddingTop: insets.top,
+          },
+        ]}
+        onLayout={onHeaderLayout}
+      >
         <Text
           style={[
             t.headerTitle,
             {
               color: "#fff",
               textShadowColor: "rgba(0,0,0,0.25)",
-              textShadowRadius: 4,
+              textShadowRadius: 2,
             },
           ]}
         >

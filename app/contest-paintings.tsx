@@ -183,9 +183,9 @@ export default function ContestPaintingsScreen() {
 
     const roundLabel =
       examinerRole === "ROUND_1"
-        ? "Vòng 1 · Sơ loại"
+        ? "Vòng 1"
         : examinerRole === "ROUND_2"
-        ? "Vòng 2 · Chung kết"
+        ? "Vòng 2"
         : "Tranh dự thi";
 
     return (
@@ -326,7 +326,7 @@ const styles = (C: any) =>
     /* Container */
     container: {
       flex: 1,
-      backgroundColor: C.newbackground, // nền tổng thể
+      backgroundColor: C.newbackground, 
     },
 
     /* Header */
