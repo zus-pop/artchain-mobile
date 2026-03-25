@@ -18,13 +18,35 @@ export function useContest(filters: ContestFilter = { status: "ALL" }) {
         params,
       });
       const filteredData = response.data.data.filter(
-        (contest) => contest.status !== "DRAFT"
+        (contest) => contest.status !== "DRAFT",
       );
       return { ...response.data, data: filteredData };
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.meta.hasNext ? Number(lastPage.meta.page) + 1 : null,
+  });
+}
+
+/**
+ * Hook for searching contests by keyword
+ * Uses simple query (single page) for search suggest feature
+ */
+export function useSearchContest(keyword?: string) {
+  return useQuery({
+    queryKey: ["contests", "search", keyword],
+    queryFn: async () => {
+      const response = await myAxios.get<ApiResponse<Contest[]>>("/contests", {
+        params: {
+          suggest: keyword,
+        },
+      });
+      const filteredData = response.data.data.filter(
+        (contest) => contest.status !== "DRAFT",
+      );
+      return filteredData;
+    },
+    enabled: !!keyword && keyword.length >= 2,
   });
 }
 
@@ -74,7 +96,7 @@ export function useExaminerContest(examinerId: string | undefined) {
 
 export function useCheckUploadCompetitor(
   contestId?: number,
-  userIds: string[] = []
+  userIds: string[] = [],
 ) {
   const enabled = !!contestId && userIds.length > 0;
 
@@ -87,7 +109,7 @@ export function useCheckUploadCompetitor(
 
       const { data } = await myAxios.get<ApiResponse<UserUploadStatus[]>>(
         `/contests/${contestId}/check-uploaded`,
-        { params }
+        { params },
       );
 
       return data.data;

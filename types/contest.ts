@@ -50,6 +50,7 @@ export interface ContestFilter {
   status?: ContestStatus;
   page?: number;
   limit?: number;
+  suggest?: string;
 }
 
 // types

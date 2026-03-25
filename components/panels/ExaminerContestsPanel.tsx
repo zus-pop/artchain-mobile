@@ -136,15 +136,15 @@ export default function ExaminerContestsPanel({
 
     const safeAreaTop = PLATFORM_HEADER_CONFIG.SAFE_AREA_PADDING;
     const activeCount =
-      ongoingContests?.filter((c) => c.status === "ACTIVE").length ?? 0;
+      ongoingContests?.filter((c) => c.status === "ACTIVE")?.length ?? 0;
     const totalCount = ongoingContests?.length ?? 0;
 
     return (
       <LinearGradient
         colors={[
-          C.brand ?? "#8B4513",
-          (C.brandLight as string) ?? "#A0522D",
-          (C.brand as string) ?? "#8B4513",
+          C.primary ?? "#5C1A1A",
+          C.primary ?? "#5C1A1A",
+          C.primary ?? "#5C1A1A",
         ]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1.2, y: 1.2 }}
@@ -341,15 +341,7 @@ export default function ExaminerContestsPanel({
         )}
       </LinearGradient>
     );
-  }, [
-    vertical,
-    C.brand,
-    C.brandLight,
-    C.border,
-    insets.top,
-    isLoading,
-    ongoingContests,
-  ]);
+  }, [vertical, C.primary, C.border, insets.top, isLoading, ongoingContests]);
 
   // ===== Creative Loading State =====
   if (isLoading && (!ongoingContests || ongoingContests.length === 0)) {
@@ -432,7 +424,7 @@ export default function ExaminerContestsPanel({
     if (vertical) {
       return (
         <SafeAreaView
-          style={{ flex: 1, backgroundColor: C.bg ?? "#FAF7F2" }}
+          style={{ flex: 1, backgroundColor: C.background ?? "#FAF7F2" }}
           edges={["left", "right", "bottom"]}
         >
           {renderHeader()}
@@ -528,7 +520,7 @@ export default function ExaminerContestsPanel({
     if (vertical) {
       return (
         <SafeAreaView
-          style={{ flex: 1, backgroundColor: C.bg ?? "#FAF7F2" }}
+          style={{ flex: 1, backgroundColor: C.background ?? "#FAF7F2" }}
           edges={["left", "right", "bottom"]}
         >
           {renderHeader()}
@@ -560,13 +552,13 @@ export default function ExaminerContestsPanel({
             justifyContent: "center",
             alignItems: "center",
             marginBottom: 32,
-            backgroundColor: `${C.accent ?? "#C9A96E"}12`,
+            backgroundColor: `${C.chart1 ?? "#C9A96E"}12`,
           }}
         >
           <MaterialCommunityIcons
             name="inbox-outline"
             size={50}
-            color={C.accent ?? "#C9A96E"}
+            color={C.chart1 ?? "#C9A96E"}
           />
         </View>
 
@@ -600,7 +592,7 @@ export default function ExaminerContestsPanel({
     if (vertical) {
       return (
         <SafeAreaView
-          style={{ flex: 1, backgroundColor: C.bg ?? "#FAF7F2" }}
+          style={{ flex: 1, backgroundColor: C.background ?? "#FAF7F2" }}
           edges={["left", "right", "bottom"]}
         >
           {renderHeader()}
@@ -643,7 +635,7 @@ export default function ExaminerContestsPanel({
   if (vertical) {
     return (
       <SafeAreaView
-        style={{ flex: 1, backgroundColor: C.bg ?? "#FAF7F2" }}
+        style={{ flex: 1, backgroundColor: C.background ?? "#FAF7F2" }}
         edges={["left", "right", "bottom"]}
       >
         {renderHeader()}
@@ -660,7 +652,7 @@ export default function ExaminerContestsPanel({
               onRefresh={onRefresh}
               tintColor={C.primary ?? "#5C1A1A"}
               colors={[C.primary ?? "#5C1A1A"]}
-              progressBackgroundColor={C.bg ?? "#FAF7F2"}
+              progressBackgroundColor={C.background ?? "#FAF7F2"}
             />
           }
         >

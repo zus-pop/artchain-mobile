@@ -1,5 +1,5 @@
 // app/searchContest.tsx
-import { useContest } from "@/apis/contest";
+import { useSearchContest } from "@/apis/contest";
 import SearchBar from "@/components/search/SearchBar";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -102,22 +102,22 @@ export default function SearchContestScreen() {
 
   const canQuery = deb.length >= MIN;
 
-  const { data, isLoading } = useContest({
-    suggest: canQuery ? deb : undefined,
-  } as any);
-  const source = useMemo(() => (Array.isArray(data) ? data : []), [data]);
+  // Use new search hook that properly sends suggest param to API
+  const { data: apiResults = [], isLoading } = useSearchContest(
+    canQuery ? deb : undefined,
+  );
 
   const suggestions = useMemo(() => {
     if (!canQuery) return [];
     const q = normalizeVN(deb);
-    return source
-      .filter((x: any) => normalizeVN(x.title ?? x.name ?? "").includes(q))
+    return apiResults
+      .filter((x) => normalizeVN(x.title ?? "").includes(q))
       .slice(0, 12)
-      .map((x: any) => ({
-        id: String(x.id ?? x.contestId ?? x.title),
+      .map((x) => ({
+        id: String(x.contestId ?? x.title),
         contest: x,
       }));
-  }, [source, deb, canQuery]);
+  }, [apiResults, deb, canQuery]);
 
   const fade = useRef(new Animated.Value(0)).current;
   useEffect(() => {

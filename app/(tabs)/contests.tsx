@@ -111,8 +111,15 @@ export default function ContestsScreen() {
     setSelectedFilter(opt);
   }, []);
 
+  const lastRefreshRef = useRef(0); // Debounce ref to prevent rapid refresh calls
+
   const onRefresh = useCallback(async () => {
     try {
+      // Debounce: prevent multiple refresh calls within 500ms
+      const now = Date.now();
+      if (now - lastRefreshRef.current < 500) return;
+      lastRefreshRef.current = now;
+
       setRefreshing(true);
       if (isExaminer) {
         await refetchExaminer();
@@ -218,7 +225,7 @@ export default function ContestsScreen() {
         </View>
       ) : (
         <FlatList
-          data={data?.pages.map((page) => page.data).flat()}
+          data={data?.pages?.flatMap((page) => page?.data ?? []) ?? []}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           contentContainerStyle={{
