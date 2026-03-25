@@ -3,25 +3,45 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SignupScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
+  const C = Colors[colorScheme];
 
   return (
-    <View
+    <SafeAreaView
       style={{
         flex: 1,
-        backgroundColor: Colors[colorScheme].background,
+        backgroundColor: C.background,
       }}
     >
-      {/* Back Button */}
+      <StatusBar
+        barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
+        backgroundColor={C.background}
+      />
+
+      {/* Header */}
       <View
         style={{
-          paddingTop: 38,
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: C.card,
           paddingHorizontal: 16,
-          paddingBottom: 8,
+          paddingTop: 12,
+          paddingBottom: 14,
+          borderBottomWidth: 1,
+          borderBottomColor: C.border,
         }}
       >
         <TouchableOpacity
@@ -29,154 +49,200 @@ export default function SignupScreen() {
           style={{
             width: 40,
             height: 40,
-            borderRadius: 20,
-            backgroundColor: Colors[colorScheme].card,
+            borderRadius: 10,
+            backgroundColor: C.input,
             alignItems: "center",
             justifyContent: "center",
-            shadowColor: "#000",
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            shadowOffset: { width: 0, height: 2 },
-            elevation: 2,
           }}
         >
-          <Ionicons
-            name="arrow-back"
-            size={24}
-            color={Colors[colorScheme].foreground}
-          />
+          <Ionicons name="arrow-back" size={24} color={C.primary} />
         </TouchableOpacity>
+        <Text
+          style={{
+            fontSize: 20,
+            fontWeight: "700",
+            color: C.primary,
+            marginLeft: 12,
+            letterSpacing: 0.5,
+          }}
+        >
+          Chọn loại tài khoản
+        </Text>
       </View>
 
       {/* Content */}
-      <View
-        style={{
-          flex: 1,
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
           justifyContent: "center",
-          alignItems: "center",
-          padding: 24,
+          paddingHorizontal: 24,
+          paddingVertical: 32,
         }}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={{ marginTop: 28, alignItems: "center" }}>
+        {/* Title Section */}
+        <View style={{ alignItems: "center", marginBottom: 40 }}>
           <Text
             style={{
               fontSize: 28,
-              fontWeight: "bold",
-              color: Colors[colorScheme].primary,
-              marginBottom: 8,
+              fontWeight: "800",
+              color: C.primary,
+              marginBottom: 12,
+              letterSpacing: 0.3,
             }}
           >
             ARTCHAIN
           </Text>
           <Text
             style={{
-              fontSize: 18,
-              color: Colors[colorScheme].foreground,
-              marginBottom: 32,
+              fontSize: 16,
+              fontWeight: "600",
+              color: C.foreground,
               textAlign: "center",
+              letterSpacing: 0.2,
+              lineHeight: 24,
             }}
           >
-            Chọn loại tài khoản để đăng ký
+            Lựa chọn loại tài khoản phù hợp với bạn
           </Text>
         </View>
 
-        <TouchableOpacity
+        {/* Competitor Button */}
+        <Pressable
           onPress={() => router.push("/competitor-signup")}
-          style={{
-            width: "100%",
-            backgroundColor: Colors[colorScheme].primary,
-            borderRadius: 12,
-            paddingVertical: 20,
-            alignItems: "center",
-            marginBottom: 16,
-            shadowColor: "#000",
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 4,
-          }}
+          style={({ pressed }) => [
+            {
+              backgroundColor: C.primary,
+              borderRadius: 14,
+              paddingVertical: 28,
+              paddingHorizontal: 20,
+              alignItems: "center",
+              marginBottom: 16,
+              shadowColor: C.primary,
+              shadowOpacity: pressed ? 0.35 : 0.25,
+              shadowRadius: 16,
+              shadowOffset: { width: 0, height: 8 },
+              ...(Platform.OS === "android"
+                ? { elevation: pressed ? 6 : 4 }
+                : null),
+              opacity: pressed ? 0.95 : 1,
+            },
+          ]}
         >
           <Ionicons
             name="trophy-outline"
-            size={32}
-            color={Colors[colorScheme].primaryForeground}
-            style={{ marginBottom: 8 }}
+            size={40}
+            color={C.primaryForeground}
+            style={{ marginBottom: 12 }}
           />
           <Text
             style={{
-              color: Colors[colorScheme].primaryForeground,
+              color: C.primaryForeground,
               fontSize: 18,
-              fontWeight: "bold",
+              fontWeight: "700",
+              textAlign: "center",
+              letterSpacing: 0.3,
             }}
           >
-            Thí sinh
+            Tôi là Thí sinh
           </Text>
           <Text
             style={{
-              color: Colors[colorScheme].primaryForeground,
+              color: C.primaryForeground,
               fontSize: 14,
-              opacity: 0.9,
+              fontWeight: "500",
+              opacity: 0.88,
               textAlign: "center",
-              marginTop: 4,
+              marginTop: 8,
+              letterSpacing: 0.2,
+              lineHeight: 20,
             }}
           >
-            Cá nhân tham gia dự thi
+            Tham gia các cuộc thi và showcase tác phẩm
           </Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
+        {/* Guardian Button */}
+        <Pressable
           onPress={() => router.push("/guard-signup")}
-          style={{
-            width: "100%",
-            backgroundColor: Colors[colorScheme].secondary,
-            borderRadius: 12,
-            paddingVertical: 20,
-            alignItems: "center",
-            marginBottom: 32,
-            shadowColor: "#000",
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 4,
-          }}
+          style={({ pressed }) => [
+            {
+              backgroundColor: C.secondary,
+              borderRadius: 14,
+              paddingVertical: 28,
+              paddingHorizontal: 20,
+              alignItems: "center",
+              marginBottom: 32,
+              shadowColor: C.secondary,
+              shadowOpacity: pressed ? 0.3 : 0.15,
+              shadowRadius: 16,
+              shadowOffset: { width: 0, height: 8 },
+              ...(Platform.OS === "android"
+                ? { elevation: pressed ? 5 : 3 }
+                : null),
+              opacity: pressed ? 0.95 : 1,
+            },
+          ]}
         >
           <Ionicons
             name="shield-checkmark-outline"
-            size={32}
-            color={Colors[colorScheme].secondaryForeground}
-            style={{ marginBottom: 8 }}
+            size={40}
+            color={C.secondaryForeground}
+            style={{ marginBottom: 12 }}
           />
           <Text
             style={{
-              color: Colors[colorScheme].secondaryForeground,
+              color: C.secondaryForeground,
               fontSize: 18,
-              fontWeight: "bold",
+              fontWeight: "700",
+              textAlign: "center",
+              letterSpacing: 0.3,
             }}
           >
-            Người đại diện
+            Tôi là Người đại diện
           </Text>
           <Text
             style={{
-              color: Colors[colorScheme].secondaryForeground,
+              color: C.secondaryForeground,
               fontSize: 14,
-              opacity: 0.9,
+              fontWeight: "500",
+              opacity: 0.88,
               textAlign: "center",
-              marginTop: 4,
+              marginTop: 8,
+              letterSpacing: 0.2,
+              lineHeight: 20,
             }}
           >
-            Quản lí các thí sinh của mình
+            Quản lý và hỗ trợ các thí sinh của bạn
           </Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
-          onPress={() => router.replace("/login")}
-          style={{ marginTop: 8 }}
+        {/* Login Link */}
+        <View
+          style={{ flexDirection: "row", justifyContent: "center", gap: 4 }}
         >
-          <Text style={{ color: Colors[colorScheme].primary, fontSize: 15 }}>
-            Đã có tài khoản? Đăng nhập
+          <Text
+            style={{ color: C.foreground, fontSize: 15, fontWeight: "500" }}
+          >
+            Đã có tài khoản?
           </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+          <TouchableOpacity
+            onPress={() => router.replace("/login")}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={{
+                color: C.primary,
+                fontSize: 15,
+                fontWeight: "700",
+                textDecorationLine: "underline",
+              }}
+            >
+              Đăng nhập
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }

@@ -14,8 +14,8 @@ import {
 import Carousel from "react-native-reanimated-carousel";
 
 const { width: W } = Dimensions.get("window");
-const CARD_W = W;
-const CARD_H = 210;
+const CARD_W = W - 32; // Add horizontal padding
+const CARD_H = 270; // Increased height for more premium feel and better spacing
 
 export default function PostCarousel({
   data,
@@ -28,7 +28,7 @@ export default function PostCarousel({
 }) {
   const renderItem = ({ item }: { item: Post }) => (
     <TouchableOpacity
-      activeOpacity={0.95}
+      activeOpacity={0.92}
       onPress={() => onPressItem?.(item)}
       style={styles.touch}
     >
@@ -37,65 +37,73 @@ export default function PostCarousel({
         style={styles.cover}
         imageStyle={styles.coverImg}
       >
+        {/* Enhanced gradient for better text contrast */}
         <LinearGradient
           colors={
             scheme === "dark"
-              ? ["rgba(0,0,0,0.15)", "rgba(0,0,0,0.65)"]
-              : ["rgba(255,255,255,0.1)", "rgba(0,0,0,0.55)"]
+              ? ["rgba(0,0,0,0.2)", "rgba(0,0,0,0.75)"]
+              : ["rgba(0,0,0,0.1)", "rgba(0,0,0,0.6)"]
           }
-          start={{ x: 0, y: 0.2 }}
+          start={{ x: 0, y: 0.15 }}
           end={{ x: 0, y: 1 }}
           style={StyleSheet.absoluteFillObject}
         />
 
-        {/* chips */}
+        {/* Date Chip */}
         <View style={styles.chipsRow}>
           <View style={styles.dateChip}>
-            <Ionicons name="calendar-outline" size={12} color="#423137" />
+            <Ionicons name="calendar-outline" size={13} color="#FFFFFF" />
             <Text style={styles.chipText}>
-              {new Date(item.published_at).toLocaleDateString()}
+              {new Date(item.published_at).toLocaleDateString("vi-VN")}
             </Text>
           </View>
         </View>
 
-        {/* nội dung */}
+        {/* Content Section - Improved spacing and contrast */}
         <View style={styles.content}>
           <Text numberOfLines={2} style={styles.title}>
             {item.title}
           </Text>
           <Text numberOfLines={2} style={styles.desc}>
-            {item.content.length > 150
-              ? item.content.substring(0, 150) + "..."
+            {item.content.length > 120
+              ? item.content.substring(0, 120) + "..."
               : item.content}
           </Text>
 
+          {/* Tags Section */}
           {item.postTags?.length > 0 && (
             <View style={styles.tagsRow}>
-              {item.postTags.slice(0, 3).map((postTag, i) => (
+              {item.postTags.slice(0, 2).map((postTag, i) => (
                 <View key={i} style={styles.tag}>
                   <Ionicons
-                    name="pricetag-outline"
-                    size={10}
-                    color="#fff"
-                    style={{ marginRight: 3 }}
+                    name="pricetag"
+                    size={11}
+                    color="rgba(255,255,255,0.9)"
+                    style={{ marginRight: 4 }}
                   />
                   <Text style={styles.tagText}>{postTag.tag.tag_name}</Text>
                 </View>
               ))}
-              {item.postTags.length > 3 && (
+              {item.postTags.length > 2 && (
                 <View style={styles.tag}>
                   <Text style={styles.tagText}>
-                    +{item.postTags.length - 3}
+                    +{item.postTags.length - 2}
                   </Text>
                 </View>
               )}
             </View>
           )}
 
+          {/* CTA Button */}
           <View style={styles.ctaRow}>
             <Pressable style={styles.detailBtn}>
-              <Text style={styles.detailTxt}>Chi tiết</Text>
-              <Ionicons name="arrow-forward" size={14} color="#fff" />
+              <Text style={styles.detailTxt}>Xem chi tiết</Text>
+              <Ionicons
+                name="arrow-forward"
+                size={14}
+                color="#FFFFFF"
+                style={{ marginLeft: 6 }}
+              />
             </Pressable>
           </View>
         </View>
@@ -104,7 +112,7 @@ export default function PostCarousel({
   );
 
   return (
-    <View>
+    <View style={styles.container}>
       {data.length > 0 ? (
         <>
           <Carousel
@@ -112,20 +120,20 @@ export default function PostCarousel({
             width={CARD_W}
             height={CARD_H}
             autoPlay={true}
-            autoPlayInterval={3500}
+            autoPlayInterval={4000}
             data={data}
             scrollAnimationDuration={1000}
             renderItem={renderItem}
             mode="parallax"
             modeConfig={{
-              parallaxScrollingScale: 0.9,
-              parallaxScrollingOffset: 50,
-              parallaxAdjacentItemScale: 0.8,
+              parallaxScrollingScale: 0.92,
+              parallaxScrollingOffset: 40,
+              parallaxAdjacentItemScale: 0.85,
             }}
             style={styles.carousel}
           />
 
-          {/* dots */}
+          {/* Pagination Dots */}
           <View style={styles.dotsRow}>
             {data.map((_, i) => (
               <View
@@ -133,7 +141,10 @@ export default function PostCarousel({
                 style={[
                   styles.dot,
                   {
-                    backgroundColor: scheme === "dark" ? "#ffffff" : "#111827",
+                    backgroundColor:
+                      scheme === "dark"
+                        ? "rgba(255,255,255,0.6)"
+                        : "rgba(0,0,0,0.4)",
                   },
                 ]}
               />
@@ -144,9 +155,9 @@ export default function PostCarousel({
         <View style={styles.empty}>
           <Ionicons
             name="images-outline"
-            size={48}
+            size={56}
             color={
-              scheme === "dark" ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)"
+              scheme === "dark" ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.25)"
             }
             style={{ marginBottom: 16 }}
           />
@@ -156,8 +167,8 @@ export default function PostCarousel({
               {
                 color:
                   scheme === "dark"
-                    ? "rgba(255,255,255,0.6)"
-                    : "rgba(0,0,0,0.6)",
+                    ? "rgba(255,255,255,0.7)"
+                    : "rgba(0,0,0,0.7)",
               },
             ]}
           >
@@ -169,12 +180,12 @@ export default function PostCarousel({
               {
                 color:
                   scheme === "dark"
-                    ? "rgba(255,255,255,0.4)"
-                    : "rgba(0,0,0,0.4)",
+                    ? "rgba(255,255,255,0.5)"
+                    : "rgba(0,0,0,0.5)",
               },
             ]}
           >
-            Thông báo mới sẽ xuất hiện ở đây
+            Thông báo mới sẽ xuất hiện tại đây
           </Text>
         </View>
       )}
@@ -184,23 +195,34 @@ export default function PostCarousel({
 
 /* =================== Styles =================== */
 const styles = StyleSheet.create({
+  container: {
+    width: "100%",
+    alignItems: "center",
+  },
   carousel: {
     alignItems: "center",
+    justifyContent: "center",
   },
   touch: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: "hidden",
+    marginHorizontal: 12,
+    shadowColor: "#000000",
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  cover: { flex: 1 },
-  coverImg: { borderRadius: 12 },
+  cover: { flex: 1, borderRadius: 16 },
+  coverImg: { borderRadius: 16 },
   chipsRow: {
     position: "absolute",
-    top: 10,
-    left: 10,
-    right: 10,
+    top: 14,
+    left: 14,
+    right: 14,
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
   },
   chip: {
     flexDirection: "row",
@@ -210,60 +232,90 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
   },
-  chipText: { color: "#423137", fontWeight: "800", fontSize: 12 },
+  chipText: { color: "#FFFFFF", fontWeight: "600", fontSize: 12 },
   dateChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 4,
-    backgroundColor: "rgba(0,0,0,0.35)",
+    gap: 7,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.4)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.28)",
+    borderColor: "rgba(255,255,255,0.25)",
   },
-  content: { position: "absolute", left: 12, right: 12, bottom: 12 },
+  content: { position: "absolute", left: 16, right: 16, bottom: 18, gap: 12 },
   title: {
-    color: "#423137",
-    fontSize: 17,
-    fontWeight: "900",
-    marginBottom: 6,
-    letterSpacing: 0.2,
+    color: "#FFFFFF",
+    fontSize: 19,
+    fontWeight: "800",
+    marginBottom: 0,
+    letterSpacing: 0.3,
     fontFamily: "Be Vietnam Pro",
+    lineHeight: 26,
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowOffset: { width: 0, height: 1.5 },
+    textShadowRadius: 4,
   },
   desc: {
-    color: "#423137",
+    color: "rgba(255,255,255,0.95)",
     fontSize: 13,
-    marginBottom: 8,
+    fontWeight: "500",
+    marginBottom: 0,
     fontFamily: "Be Vietnam Pro",
+    lineHeight: 20,
+    textShadowColor: "rgba(0,0,0,0.3)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 0,
+    marginTop: 2,
+  },
   tag: {
-    backgroundColor: "rgba(255,255,255,0.10)",
+    backgroundColor: "rgba(255,255,255,0.12)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderColor: "rgba(255,255,255,0.25)",
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     display: "flex",
     flexDirection: "row",
     alignItems: "center",
+    gap: 4,
     fontFamily: "Be Vietnam Pro",
   },
-  tagText: { color: "#fff", fontSize: 11, fontWeight: "600" },
-  ctaRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  tagText: {
+    color: "rgba(255,255,255,0.95)",
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+  },
+  ctaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
   detailBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 2,
-    borderRadius: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: "hsl(15 85% 55%)",
+    gap: 6,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: "rgba(226, 87, 82, 0.92)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.35)",
+    borderColor: "rgba(255,255,255,0.3)",
+    shadowColor: "rgba(226, 87, 82, 0.5)",
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
   },
-  detailTxt: { color: "#fff", fontWeight: "800", fontSize: 12 },
+  detailTxt: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 13,
+    letterSpacing: 0.3,
+  },
   nextBtn: {
     width: 36,
     height: 36,
@@ -278,25 +330,34 @@ const styles = StyleSheet.create({
   dotsRow: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 6,
-    marginTop: 8,
+    gap: 7,
+    marginTop: 14,
+    paddingHorizontal: 20,
   },
-  dot: { width: 8, height: 8, borderRadius: 999 },
+  dot: { width: 7, height: 7, borderRadius: 3.5, opacity: 0.6 },
   empty: {
     height: CARD_H,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.05)",
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.03)",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.1)",
+    borderColor: "rgba(0,0,0,0.08)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 24,
+    marginHorizontal: 16,
   },
   emptyTitle: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
     textAlign: "center",
     marginBottom: 8,
+    letterSpacing: 0.3,
   },
-  emptyDesc: { fontSize: 14, textAlign: "center" },
+  emptyDesc: {
+    fontSize: 14,
+    fontWeight: "500",
+    textAlign: "center",
+    letterSpacing: 0.2,
+    lineHeight: 20,
+  },
 });

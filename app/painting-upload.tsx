@@ -1,5 +1,5 @@
 // app/painting-upload.tsx
-import AppHeader from "@/components/AppHeader";
+import UnifiedHeader from "@/components/headers/UnifiedHeader";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -388,7 +388,7 @@ export default function PaintingUpload() {
             useNativeDriver: true,
           }).start();
       },
-    })
+    }),
   ).current;
 
   // Image actions
@@ -402,7 +402,7 @@ export default function PaintingUpload() {
           [
             { text: "Hủy", style: "cancel" },
             { text: "Mở cài đặt", onPress: () => Linking.openSettings() },
-          ]
+          ],
         );
         return;
       }
@@ -439,7 +439,7 @@ export default function PaintingUpload() {
           [
             { text: "Hủy", style: "cancel" },
             { text: "Mở cài đặt", onPress: () => Linking.openSettings() },
-          ]
+          ],
         );
         return;
       }
@@ -494,7 +494,7 @@ export default function PaintingUpload() {
         onError: () => {
           Alert.alert("Lỗi", "Gửi bài thi thất bại, vui lòng thử lại.");
         },
-      } as any // tuỳ hook của bạn; xoá `as any` nếu type hỗ trợ
+      } as any, // tuỳ hook của bạn; xoá `as any` nếu type hỗ trợ
     );
   };
 
@@ -546,11 +546,7 @@ export default function PaintingUpload() {
   /* ------------------------ UI ------------------------ */
   return (
     <View style={s.screen}>
-      <AppHeader
-        title="Bài vẽ dự thi"
-        backgroundColor={BORDER_COLOR}
-        borderBottom
-      />
+      <UnifiedHeader title="Bài vẽ dự thi" showBack={true} scheme={scheme} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
