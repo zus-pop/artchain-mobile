@@ -109,12 +109,12 @@ export default function CompetitorProfileComponent() {
     () => [
       {
         icon: "brush-outline" as const,
-        label: "Bài dự thi",
+        label: "Bài Dự Thi",
         value: String(submissions.length),
       },
       {
         icon: "trophy-outline" as const,
-        label: "Giải thưởng",
+        label: "Giải Thưởng",
         value: String(achievements.length),
       },
     ],
@@ -264,7 +264,7 @@ export default function CompetitorProfileComponent() {
   if (!accessToken || !user) {
     return (
       <View style={{ flex: 1, backgroundColor: C.background }}>
-        <TopBar title="Hồ sơ" />
+       
         <CenteredState
           C={C}
           icon="person-circle-outline"
@@ -281,7 +281,7 @@ export default function CompetitorProfileComponent() {
 
   return (
     <View style={{ backgroundColor: C.newbackground, flex: 1 }}>
-      <TopBar title="Hồ sơ thí sinh" withActions />
+      <TopBar title="Hồ Sơ Thí Sinh" withActions />
 
       <Animated.ScrollView
         contentContainerStyle={{ paddingBottom: SP.pagePB }}

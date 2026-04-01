@@ -41,7 +41,7 @@ export function useLoginMutation() {
       // Navigate to profile - profile screen will handle clearing the flag
       router.replace("/profile");
 
-      toast.success("Login successful!");
+      toast.success("Đăng nhập thành công!");
     },
     onError: (error) => {
       toast.error(error.message);
@@ -56,7 +56,7 @@ export function useSignInMutation() {
       return response.data;
     },
     onSuccess: (token) => {
-      toast.success(`Success: [${token}]`);
+      toast.success(`Đăng ký thành công!`);
       router.replace("/login"); // Go back to profile
     },
     onError: (error) => {

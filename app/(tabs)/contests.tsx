@@ -29,18 +29,18 @@ type ContestStatus = "ALL" | "ACTIVE" | "UPCOMING" | "COMPLETED" | "ENDED";
 
 const FILTERS: FilterOption[] = [
   "Tất cả",
-  "Đang diễn ra",
-  "Sắp diễn ra",
-  "Đã kết thúc",
-  "Hoàn thành",
+  "Đang Diễn Ra",
+  "Sắp Diễn Ra",
+  "Đã Kết Thúc",
+  "Hoàn Thành",
 ];
 
 const filterToStatus: Record<FilterOption, ContestStatus> = {
   "Tất cả": "ALL",
-  "Đang diễn ra": "ACTIVE",
-  "Sắp diễn ra": "UPCOMING",
-  "Đã kết thúc": "ENDED",
-  "Hoàn thành": "COMPLETED",
+  "Đang Diễn Ra": "ACTIVE",
+  "Sắp Diễn Ra": "UPCOMING",
+  "Đã Kết Thúc": "ENDED",
+  "Hoàn Thành": "COMPLETED",
 };
 
 /* ======================== Screen ======================== */

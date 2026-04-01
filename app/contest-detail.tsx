@@ -145,7 +145,7 @@ export default function ContestDetail() {
     <View style={s.screen}>
       {/* Unified header with back button */}
       <UnifiedHeader
-        title="Chi tiết cuộc thi"
+        title="Chi tiết Cuộc Thi"
         showBack={true}
         onBack={() => router.back()}
         scheme={scheme}
@@ -334,7 +334,12 @@ export default function ContestDetail() {
           {["ACTIVE", "ENDED"].includes(contest!.status) && (
             <TouchableOpacity
               style={[s.actionButton, s.rewardsButton]}
-              onPress={() => router.push("/reward-painting")}
+              onPress={() =>
+                router.push({
+                  pathname: "/reward-painting",
+                  params: { contestId: String(contest!.contestId) },
+                })
+              }
               activeOpacity={0.9}
             >
               <Text style={s.rewardsButtonText}>Xem giải thưởng</Text>

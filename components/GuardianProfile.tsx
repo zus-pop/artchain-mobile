@@ -181,7 +181,7 @@ export default function GuardianProfileComponent() {
               { backgroundColor: BRAND, borderBottomColor: C.border },
             ]}
           >
-            <Text style={s.headerTitle}>Hồ sơ</Text>
+            <Text style={s.headerTitle}>Hồ Sơ</Text>
           </View>
 
           <View style={s.authWrap}>

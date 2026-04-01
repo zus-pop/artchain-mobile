@@ -52,20 +52,6 @@ export const EnhancedTabBar = memo(function EnhancedTabBar({
   const count = state.routes.length;
   const ITEM_W = width / count;
 
-  const idx = useSharedValue(state.index);
-  useEffect(() => {
-    idx.value = withSpring(state.index, {
-      damping: 15,
-      stiffness: 180,
-      mass: 1,
-    });
-  }, [state.index, idx]);
-
-  // Properly convert index to pixel position
-  const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: idx.value * ITEM_W }],
-  }));
-
   return (
     <View
       style={[
@@ -77,11 +63,6 @@ export const EnhancedTabBar = memo(function EnhancedTabBar({
         },
       ]}
     >
-      {/* Minimal active indicator line */}
-      <Animated.View
-        style={[styles.indicator, { width: ITEM_W - 28 }, indicatorStyle]}
-      />
-
       <View style={styles.row}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key]!;
@@ -243,13 +224,5 @@ const styles = StyleSheet.create({
     fontSize: TAB_LABEL_FONT_SIZE,
     fontWeight: TAB_LABEL_FONT_WEIGHT,
     letterSpacing: 0.15,
-  },
-  indicator: {
-    position: "absolute",
-    bottom: 4,
-    left: 14,
-    height: 2.5,
-    backgroundColor: ACCENT,
-    borderRadius: 1.25,
   },
 });

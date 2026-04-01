@@ -14,8 +14,8 @@ import {
 import Carousel from "react-native-reanimated-carousel";
 
 const { width: W } = Dimensions.get("window");
-const CARD_W = W - 32; // Add horizontal padding
-const CARD_H = 270; // Increased height for more premium feel and better spacing
+const CARD_W = W - 35; // Add horizontal padding
+const CARD_H = 220; // Optimized height for balanced ratio and better content fit
 
 export default function PostCarousel({
   data,
@@ -49,7 +49,7 @@ export default function PostCarousel({
           style={StyleSheet.absoluteFillObject}
         />
 
-        {/* Date Chip */}
+        {/* Metadata Row: Date + Tags */}
         <View style={styles.chipsRow}>
           <View style={styles.dateChip}>
             <Ionicons name="calendar-outline" size={13} color="#FFFFFF" />
@@ -57,42 +57,36 @@ export default function PostCarousel({
               {new Date(item.published_at).toLocaleDateString("vi-VN")}
             </Text>
           </View>
-        </View>
-
-        {/* Content Section - Improved spacing and contrast */}
-        <View style={styles.content}>
-          <Text numberOfLines={2} style={styles.title}>
-            {item.title}
-          </Text>
-          <Text numberOfLines={2} style={styles.desc}>
-            {item.content.length > 120
-              ? item.content.substring(0, 120) + "..."
-              : item.content}
-          </Text>
-
-          {/* Tags Section */}
+          {/* Tags in metadata row */}
           {item.postTags?.length > 0 && (
-            <View style={styles.tagsRow}>
-              {item.postTags.slice(0, 2).map((postTag, i) => (
-                <View key={i} style={styles.tag}>
+            <View style={styles.tagsRowInChip}>
+              {item.postTags.slice(0, 1).map((postTag, i) => (
+                <View key={i} style={styles.tagInChip}>
                   <Ionicons
                     name="pricetag"
-                    size={11}
-                    color="rgba(255,255,255,0.9)"
-                    style={{ marginRight: 4 }}
+                    size={9}
+                    color="rgba(255,255,255,0.8)"
+                    style={{ marginRight: 2 }}
                   />
-                  <Text style={styles.tagText}>{postTag.tag.tag_name}</Text>
-                </View>
-              ))}
-              {item.postTags.length > 2 && (
-                <View style={styles.tag}>
-                  <Text style={styles.tagText}>
-                    +{item.postTags.length - 2}
+                  <Text numberOfLines={1} style={styles.tagTextInChip}>
+                    {postTag.tag.tag_name}
                   </Text>
                 </View>
-              )}
+              ))}
             </View>
           )}
+        </View>
+
+        {/* Content Section */}
+        <View style={styles.content}>
+          <Text numberOfLines={2} ellipsizeMode="tail" style={styles.title}>
+            {item.title}
+          </Text>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={styles.desc}>
+            {item.content.length > 100
+              ? item.content.substring(0, 100) + "..."
+              : item.content}
+          </Text>
 
           {/* CTA Button */}
           <View style={styles.ctaRow}>
@@ -205,7 +199,7 @@ const styles = StyleSheet.create({
   },
   touch: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: "hidden",
     marginHorizontal: 12,
     shadowColor: "#000000",
@@ -214,15 +208,17 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
-  cover: { flex: 1, borderRadius: 16 },
-  coverImg: { borderRadius: 16 },
+  cover: { flex: 1, borderRadius: 12 },
+  coverImg: { borderRadius: 12 },
   chipsRow: {
     position: "absolute",
-    top: 14,
+    top: 10,
     left: 14,
     right: 14,
     flexDirection: "row",
-    justifyContent: "flex-start",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
   },
   chip: {
     flexDirection: "row",
@@ -244,15 +240,47 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
   },
-  content: { position: "absolute", left: 16, right: 16, bottom: 18, gap: 12 },
+  tagsRowInChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  tagInChip: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    fontFamily: "Be Vietnam Pro",
+  },
+  tagTextInChip: {
+    color: "rgba(255,255,255,0.95)",
+    fontSize: 10,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+  },
+  content: {
+    position: "absolute",
+    left: 14,
+    right: 14,
+    bottom: 12,
+    gap: 6,
+    maxHeight: 130,
+  },
   title: {
     color: "#FFFFFF",
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: "800",
     marginBottom: 0,
     letterSpacing: 0.3,
     fontFamily: "Be Vietnam Pro",
-    lineHeight: 26,
+    lineHeight: 24,
     textShadowColor: "rgba(0,0,0,0.35)",
     textShadowOffset: { width: 0, height: 1.5 },
     textShadowRadius: 4,
@@ -263,45 +291,19 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     marginBottom: 0,
     fontFamily: "Be Vietnam Pro",
-    lineHeight: 20,
+    lineHeight: 18,
     textShadowColor: "rgba(0,0,0,0.3)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  tagsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 0,
-    marginTop: 2,
-  },
-  tag: {
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    display: "flex",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    fontFamily: "Be Vietnam Pro",
-  },
-  tagText: {
-    color: "rgba(255,255,255,0.95)",
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.2,
-  },
-  ctaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
+  ctaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 0 },
   detailBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    gap: 5,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: "rgba(226, 87, 82, 0.92)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",
@@ -313,7 +315,7 @@ const styles = StyleSheet.create({
   detailTxt: {
     color: "#FFFFFF",
     fontWeight: "700",
-    fontSize: 13,
+    fontSize: 12,
     letterSpacing: 0.3,
   },
   nextBtn: {
@@ -337,7 +339,7 @@ const styles = StyleSheet.create({
   dot: { width: 7, height: 7, borderRadius: 3.5, opacity: 0.6 },
   empty: {
     height: CARD_H,
-    borderRadius: 16,
+    borderRadius: 12,
     backgroundColor: "rgba(0,0,0,0.03)",
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.08)",

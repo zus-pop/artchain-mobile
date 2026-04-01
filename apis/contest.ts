@@ -50,13 +50,14 @@ export function useSearchContest(keyword?: string) {
   });
 }
 
-export function useContestById(id: string) {
+export function useContestById(id?: string) {
   return useQuery({
     queryKey: ["contest", id],
     queryFn: async () => {
       const response = await myAxios.get(`/contests/${id}`);
       return response.data.data as Contest;
     },
+    enabled: !!id,
   });
 }
 
