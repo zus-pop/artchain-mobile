@@ -31,3 +31,24 @@ export function useUpdateUserById(callback?: () => void) {
   });
 }
 
+export function useDisableAccount() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const response = await myAxios.post("/auth/disable-account");
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success("Tài khoản đã được vô hiệu hóa");
+      client.clear();
+    },
+    onError: (error: any) => {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Vô hiệu hóa tài khoản thất bại";
+      toast.error(errorMessage);
+    },
+  });
+}
+

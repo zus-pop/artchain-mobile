@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { memo, useState } from "react";
 import {
+  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -19,6 +20,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useDisableAccount } from "@/apis/user";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuthStore } from "../store";
@@ -47,11 +49,39 @@ const Setting = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { setAccessToken } = useAuthStore();
+  const disableAccountMutation = useDisableAccount();
+  const [isDisablingAccount, setIsDisablingAccount] = useState(false);
 
   const handleSignOut = () => {
     setAccessToken(null);
     queryClient.invalidateQueries({ queryKey: ["me"] });
     router.replace("/login");
+  };
+
+  const handleDisableAccount = () => {
+    Alert.alert(
+      "Vô hiệu hóa tài khoản",
+      "Tài khoản của bạn sẽ bị vô hiệu hóa vĩnh viễn. Bạn không thể phục hồi lại. Tiếp tục?",
+      [
+        {
+          text: "Hủy",
+          onPress: () => {},
+          style: "cancel",
+        },
+        {
+          text: "Vô hiệu hóa",
+          onPress: async () => {
+            setIsDisablingAccount(true);
+            await disableAccountMutation.mutateAsync(undefined);
+            setAccessToken(null);
+            queryClient.clear();
+            router.replace("/login");
+            setIsDisablingAccount(false);
+          },
+          style: "destructive",
+        },
+      ]
+    );
   };
 
   const sectionCardStyle: StyleProp<ViewStyle> = [
@@ -256,6 +286,44 @@ const Setting = () => {
             accent={ORANGE}
             // onPress={() => router.push("/privacy")}
           />
+        </View>
+
+        {/* ===== Disable Account (Danger Zone) ===== */}
+        <View
+          style={[
+            styles.sectionCard,
+            {
+              backgroundColor: "#FEE2E2",
+              borderColor: "#FECACA",
+              shadowColor: "#991B1B",
+            } as ViewStyle,
+          ]}
+        >
+          <SectionTitle title="Vùng nguy hiểm" />
+
+          <Pressable
+            onPress={handleDisableAccount}
+            disabled={isDisablingAccount || disableAccountMutation.isPending}
+            style={styles.rowHorizontal}
+            android_ripple={{ color: "#FCA5A5" }}
+          >
+            <View
+              style={[
+                styles.leadingIcon,
+                { backgroundColor: "#FECACA", borderRadius: 10 },
+              ]}
+            >
+              <Ionicons name="ban" size={18} color="#DC2626" />
+            </View>
+            <View style={styles.rowTexts}>
+              <Text style={[styles.rowTitle, { color: "#7F1D1D" }]}>
+                Vô hiệu hóa tài khoản
+              </Text>
+              <Text style={[styles.rowSub, { color: "#991B1B" }]}>
+                Tài khoản sẽ bị vô hiệu hóa vĩnh viễn
+              </Text>
+            </View>
+          </Pressable>
         </View>
 
         {/* ===== Sign out (cam, ít rực) ===== */}
