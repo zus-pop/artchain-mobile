@@ -820,7 +820,11 @@ export default function PaintingUpload() {
         message={errorAlert.message}
         scheme={scheme}
         buttons={[
-          { text: "OK", style: "default", onPress: () => setErrorAlert({ ...errorAlert, visible: false }) },
+          {
+            text: "OK",
+            style: "default",
+            onPress: () => setErrorAlert({ ...errorAlert, visible: false }),
+          },
           {
             text: "Thử lại",
             style: "default",

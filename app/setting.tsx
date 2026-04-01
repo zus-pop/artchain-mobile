@@ -80,7 +80,7 @@ const Setting = () => {
           },
           style: "destructive",
         },
-      ]
+      ],
     );
   };
 
