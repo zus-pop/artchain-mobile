@@ -5,12 +5,12 @@ import {
   useGetAchievementByUserId,
   useGetSubmissionsByCompetitorId,
 } from "@/apis/painting";
-import AppHeader from "@/components/AppHeader";
 import AchievementCard from "@/components/cards/competitor/AchievementCard";
 import EmptyState from "@/components/cards/competitor/EmptyState";
 import SubmissionCard, {
   SubmissionItem,
 } from "@/components/cards/competitor/SubmissionCard";
+import UnifiedHeader from "@/components/headers/UnifiedHeader";
 import AchievementModal from "@/components/modals/AchievementModal";
 import SubmissionDetailsModal from "@/components/modals/SubmissionDetailsModal";
 import SegmentedTabsProfile from "@/components/tabs/SegmentedTabsProfile";
@@ -123,16 +123,16 @@ export default function ChildrentDetailScreen() {
   const achievements = achievementData?.achievements ?? [];
   const [openSubmission, setOpenSubmission] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<Painting | null>(
-    null
+    null,
   );
 
   const [activeTab, setActiveTab] = useState<"achievements" | "submissions">(
-    "submissions"
+    "submissions",
   );
 
   const child = useMemo(
     () => children?.find((c) => c.userId === childId),
-    [children, childId]
+    [children, childId],
   );
 
   const insets = useSafeAreaInsets();
@@ -192,11 +192,12 @@ export default function ChildrentDetailScreen() {
 
   return (
     <View style={s.screen}>
-      {/* Header kiểu ContestDetail */}
-      <AppHeader
+      {/* Unified header with back button */}
+      <UnifiedHeader
         title="Chi tiết con em"
-        backgroundColor={C.primary}
+        showBack={true}
         onBack={() => router.back()}
+        scheme={scheme}
       />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>

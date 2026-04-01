@@ -1,5 +1,6 @@
 // app/painting-upload.tsx
-import AppHeader from "@/components/AppHeader";
+import { CustomAlert } from "@/components/alerts/CustomAlert";
+import UnifiedHeader from "@/components/headers/UnifiedHeader";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -356,6 +357,15 @@ export default function PaintingUpload() {
 
   const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [isSheetOpen, setSheetOpen] = useState(false);
+  const [errorAlert, setErrorAlert] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    title: "",
+    message: "",
+  });
   const sheetAnim = useRef(new Animated.Value(0)).current;
 
   // Bottom sheet controls
@@ -388,7 +398,7 @@ export default function PaintingUpload() {
             useNativeDriver: true,
           }).start();
       },
-    })
+    }),
   ).current;
 
   // Image actions
@@ -402,7 +412,7 @@ export default function PaintingUpload() {
           [
             { text: "Hủy", style: "cancel" },
             { text: "Mở cài đặt", onPress: () => Linking.openSettings() },
-          ]
+          ],
         );
         return;
       }
@@ -439,7 +449,7 @@ export default function PaintingUpload() {
           [
             { text: "Hủy", style: "cancel" },
             { text: "Mở cài đặt", onPress: () => Linking.openSettings() },
-          ]
+          ],
         );
         return;
       }
@@ -491,10 +501,18 @@ export default function PaintingUpload() {
             { text: "OK", onPress: () => router.back() },
           ]);
         },
-        onError: () => {
-          Alert.alert("Lỗi", "Gửi bài thi thất bại, vui lòng thử lại.");
+        onError: (error: any) => {
+          const errorMessage =
+            error?.response?.data?.message ||
+            error?.message ||
+            "Gửi bài thi thất bại, vui lòng thử lại.";
+          setErrorAlert({
+            visible: true,
+            title: "Phát Hiện Tranh Có Vấn Đề",
+            message: errorMessage,
+          });
         },
-      } as any // tuỳ hook của bạn; xoá `as any` nếu type hỗ trợ
+      } as any, // tuỳ hook của bạn; xoá `as any` nếu type hỗ trợ
     );
   };
 
@@ -546,11 +564,7 @@ export default function PaintingUpload() {
   /* ------------------------ UI ------------------------ */
   return (
     <View style={s.screen}>
-      <AppHeader
-        title="Bài vẽ dự thi"
-        backgroundColor={BORDER_COLOR}
-        borderBottom
-      />
+      <UnifiedHeader title="Bài vẽ dự thi" showBack={true} scheme={scheme} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -798,6 +812,30 @@ export default function PaintingUpload() {
           </Animated.View>
         </View>
       </Modal>
+
+      <CustomAlert
+        visible={errorAlert.visible}
+        type="error"
+        title={errorAlert.title}
+        message={errorAlert.message}
+        scheme={scheme}
+        buttons={[
+          {
+            text: "OK",
+            style: "default",
+            onPress: () => setErrorAlert({ ...errorAlert, visible: false }),
+          },
+          {
+            text: "Thử lại",
+            style: "default",
+            onPress: () => {
+              setErrorAlert({ ...errorAlert, visible: false });
+              handleSubmit(onSubmit)();
+            },
+          },
+        ]}
+        onDismiss={() => setErrorAlert({ ...errorAlert, visible: false })}
+      />
     </View>
   );
 }

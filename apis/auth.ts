@@ -21,7 +21,7 @@ export function useWhoAmI() {
 }
 
 export function useLoginMutation() {
-  const { setAccessToken } = useAuthStore.getState();
+  const { setAccessToken, setIsAuthenticating } = useAuthStore.getState();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (loginRequest: LoginRequest) => {
@@ -29,9 +29,19 @@ export function useLoginMutation() {
       return response.data;
     },
     onSuccess: (result: AuthResponse) => {
+      // Set the authenticating flag BEFORE setting token and navigating
+      // This prevents the profile screen from briefly showing "not logged in" state
+      setIsAuthenticating(true);
+
       setAccessToken(result.access_token);
+
+      // Invalidate queries to trigger re-fetch of user data
       queryClient.invalidateQueries({ queryKey: ["me"] });
-      router.replace("/profile"); // Go back to profile
+
+      // Navigate to profile - profile screen will handle clearing the flag
+      router.replace("/profile");
+
+      toast.success("Đăng nhập thành công!");
     },
     onError: (error) => {
       toast.error(error.message);
@@ -46,7 +56,7 @@ export function useSignInMutation() {
       return response.data;
     },
     onSuccess: (token) => {
-      toast.success(`Success: [${token}]`);
+      toast.success(`Đăng ký thành công!`);
       router.replace("/login"); // Go back to profile
     },
     onError: (error) => {

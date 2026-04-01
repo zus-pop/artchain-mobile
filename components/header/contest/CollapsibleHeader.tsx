@@ -102,7 +102,7 @@ export default function CollapsibleHeader({
         {/* Title */}
         <View style={s.titleWrap} accessible accessibilityRole="header">
           <Text style={s.title} numberOfLines={1}>
-            Khám phá cuộc thi
+            Khám Phá Cuộc Thi
           </Text>
         </View>
 

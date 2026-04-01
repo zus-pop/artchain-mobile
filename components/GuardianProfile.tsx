@@ -146,7 +146,7 @@ export default function GuardianProfileComponent() {
               { backgroundColor: BRAND, borderBottomColor: C.border },
             ]}
           >
-            <Text style={s.headerTitle}>Hồ sơ</Text>
+         
             <View style={{ flexDirection: "row" }}>
               <TouchableOpacity style={s.iconBtn}>
                 <Ionicons name="notifications-outline" size={22} color="#fff" />
@@ -181,7 +181,7 @@ export default function GuardianProfileComponent() {
               { backgroundColor: BRAND, borderBottomColor: C.border },
             ]}
           >
-            <Text style={s.headerTitle}>Hồ sơ</Text>
+            <Text style={s.headerTitle}>Hồ Sơ</Text>
           </View>
 
           <View style={s.authWrap}>

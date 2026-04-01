@@ -2,7 +2,7 @@
 import { useWhoAmI } from "@/apis/auth";
 import { useCheckUploadCompetitor, useContestById } from "@/apis/contest";
 import ArtchainAnimation from "@/components/animations/ArtchainAnimation";
-import AppHeader from "@/components/AppHeader"; // header tùy biến có nút back
+import UnifiedHeader from "@/components/headers/UnifiedHeader";
 import { Colors, withOpacity } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Rounds } from "@/types";
@@ -71,7 +71,7 @@ export default function ContestDetail() {
   const { data: uploadStatus, isLoading: isCheckingUpload } =
     useCheckUploadCompetitor(
       contest?.contestId,
-      me?.role === "COMPETITOR" && me?.userId ? [me.userId] : []
+      me?.role === "COMPETITOR" && me?.userId ? [me.userId] : [],
     );
 
   const hasUploaded = uploadStatus?.[0]?.isUploaded === true;
@@ -100,7 +100,7 @@ export default function ContestDetail() {
 
   // Normalize status to match our expected values
   const normalizeStatus = (
-    status?: string
+    status?: string,
   ): "ACTIVE" | "UPCOMING" | "ENDED" => {
     if (!status) return "UPCOMING";
     const upperStatus = status.toUpperCase();
@@ -143,11 +143,12 @@ export default function ContestDetail() {
   const round1 = findRound1(contest?.rounds);
   return (
     <View style={s.screen}>
-      {/* Header tái sử dụng với màu brand + nút back */}
-      <AppHeader
-        title="Chi tiết cuộc thi"
-        backgroundColor={C.primary}
+      {/* Unified header with back button */}
+      <UnifiedHeader
+        title="Chi tiết Cuộc Thi"
+        showBack={true}
         onBack={() => router.back()}
+        scheme={scheme}
       />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
@@ -235,7 +236,7 @@ export default function ContestDetail() {
                 <Text style={s.roundTitle}>Bắt đầu</Text>
                 <Text style={s.roundDate}>
                   {round1
-                    ? fmtDateTime(round1.startDate) ?? "—"
+                    ? (fmtDateTime(round1.startDate) ?? "—")
                     : "Chưa có thông tin"}
                 </Text>
               </View>
@@ -247,7 +248,7 @@ export default function ContestDetail() {
                 <Text style={s.roundTitle}>Hạn nộp bài</Text>
                 <Text style={s.roundDate}>
                   {round1
-                    ? fmtDateTime(round1.submissionDeadline) ?? "—"
+                    ? (fmtDateTime(round1.submissionDeadline) ?? "—")
                     : "Chưa có thông tin"}
                 </Text>
               </View>
@@ -259,7 +260,7 @@ export default function ContestDetail() {
                 <Text style={s.roundTitle}>Công bố kết quả</Text>
                 <Text style={s.roundDate}>
                   {round1
-                    ? fmtDateTime(round1.resultAnnounceDate) ?? "—"
+                    ? (fmtDateTime(round1.resultAnnounceDate) ?? "—")
                     : "Chưa có thông tin"}
                 </Text>
               </View>
@@ -271,7 +272,7 @@ export default function ContestDetail() {
                 <Text style={s.roundTitle}>Gửi bản gốc</Text>
                 <Text style={s.roundDate}>
                   {round1
-                    ? fmtDateTime(round1.sendOriginalDeadline) ?? "—"
+                    ? (fmtDateTime(round1.sendOriginalDeadline) ?? "—")
                     : "Chưa có thông tin"}
                 </Text>
               </View>
@@ -333,7 +334,12 @@ export default function ContestDetail() {
           {["ACTIVE", "ENDED"].includes(contest!.status) && (
             <TouchableOpacity
               style={[s.actionButton, s.rewardsButton]}
-              onPress={() => router.push("/reward-painting")}
+              onPress={() =>
+                router.push({
+                  pathname: "/reward-painting",
+                  params: { contestId: String(contest!.contestId) },
+                })
+              }
               activeOpacity={0.9}
             >
               <Text style={s.rewardsButtonText}>Xem giải thưởng</Text>
@@ -350,7 +356,6 @@ export default function ContestDetail() {
                   return;
                 }
 
-               
                 if (disableJoin) return;
 
                 if (me.role === "COMPETITOR") {

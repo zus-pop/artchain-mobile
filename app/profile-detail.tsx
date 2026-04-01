@@ -1,7 +1,7 @@
 // app/profile-detail.tsx
 import { useWhoAmI } from "@/apis/auth";
+import UnifiedHeader from "@/components/headers/UnifiedHeader";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
-import AppHeader from "@/components/ui/AppHeader";
 import myAxios from "@/constants/custom-axios";
 import { Colors, withOpacity } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -163,15 +163,15 @@ export default function ProfileDetailScreen() {
       edges={["top"]}
     >
       <View style={s.container}>
-        {/* Header cố định trong screen */}
-        <AppHeader title="Hồ sơ" showBack />
+        {/* Unified header with back button */}
+        <UnifiedHeader title="Hồ sơ" showBack={true} scheme={scheme} />
 
         <Animated.ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 28 }}
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: true }
+            { useNativeDriver: true },
           )}
           scrollEventThrottle={16}
           refreshControl={
