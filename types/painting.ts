@@ -11,6 +11,7 @@ export interface PaintingUploadRequest {
     type: string;
   };
   roundId: string;
+  ignoreAiCheck?: boolean;
 }
 
 export interface Painting {

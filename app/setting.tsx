@@ -1,7 +1,6 @@
 // app/setting.tsx
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { memo, useState } from "react";
 import {
@@ -9,7 +8,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Switch,
   Text,
@@ -18,12 +16,14 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useDisableAccount } from "@/apis/user";
+import UnifiedHeader from "@/components/headers/UnifiedHeader";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuthStore } from "../store";
+import { LinearGradient } from "expo-linear-gradient";
 
 /* ================== Constants ================== */
 const languages = [
@@ -37,7 +37,6 @@ const languages = [
 const Setting = () => {
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const C = Colors[scheme];
-  const insets = useSafeAreaInsets();
 
   const ORANGE = C?.primary ?? "#F59E0B"; // accent cam chủ đạo
   const ORANGE_DIM = (C?.primary ?? "#F59E0B") + "1F"; // cam mờ
@@ -94,63 +93,18 @@ const Setting = () => {
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: C.newbackground }]}>
-      <StatusBar
-        barStyle={scheme === "dark" ? "light-content" : "dark-content"}
-        backgroundColor="transparent"
-        translucent
-      />
-
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: insets.top + 8,
-            backgroundColor: "transparent",
-            borderBottomColor: "transparent",
-          },
-        ]}
-      >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          hitSlop={{ top: 8, left: 8, right: 8, bottom: 8 }}
-        >
-          <View
-            style={[
-              styles.backPill,
-              {
-                backgroundColor: "#00000033",
-                borderColor: "#FFFFFF33",
-                borderWidth: StyleSheet.hairlineWidth,
-                borderRadius: 12,
-              },
-            ]}
-          >
-            <Ionicons name="chevron-back" size={18} color="#fff" />
-            <Text style={styles.backTxt}>Quay lại</Text>
-          </View>
-        </TouchableOpacity>
-
-        <View style={{ flex: 1 }} />
-
-        <View
-          style={[
-            styles.headerBadge,
-            { backgroundColor: ORANGE, borderRadius: 10 },
-          ]}
-        >
-          <Ionicons name="settings-outline" size={14} color="#fff" />
-          <Text style={styles.headerBadgeTxt}>Cài đặt</Text>
-        </View>
-      </View>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: C.newbackground }]}
+      edges={["left", "right", "bottom"]}
+    >
+      <UnifiedHeader title="Cài đặt" showBack={true} scheme={scheme} />
 
       {/* Content */}
       <ScrollView
         style={styles.content}
         contentContainerStyle={{
           padding: 16,
-          paddingBottom: 28 + Math.max(insets.bottom, 10),
+          paddingBottom: 28,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -345,7 +299,7 @@ const Setting = () => {
 
         {Platform.OS === "ios" && <View style={{ height: 12 }} />}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -454,34 +408,6 @@ const SettingRow = memo(function SettingRow({
 /* ================== Styles ================== */
 const styles = StyleSheet.create({
   container: { flex: 1 },
-
-  /* Header */
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingBottom: 10,
-  },
-  backBtn: {
-    borderRadius: 10,
-  },
-  backPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  backTxt: { color: "#fff", fontWeight: "800", fontSize: 12.5 },
-
-  headerBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  headerBadgeTxt: { color: "#fff", fontWeight: "800", fontSize: 12.5 },
 
   /* Content */
   content: { flex: 1 },

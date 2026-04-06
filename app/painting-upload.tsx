@@ -1,12 +1,11 @@
 // app/painting-upload.tsx
-import { CustomAlert } from "@/components/alerts/CustomAlert";
 import UnifiedHeader from "@/components/headers/UnifiedHeader";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
@@ -357,15 +356,33 @@ export default function PaintingUpload() {
 
   const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [isSheetOpen, setSheetOpen] = useState(false);
-  const [errorAlert, setErrorAlert] = useState<{
-    visible: boolean;
-    title: string;
-    message: string;
-  }>({
-    visible: false,
-    title: "",
-    message: "",
-  });
+  // Error State - now for general upload errors (non-AI-check)
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [errorTitle, setErrorTitle] = useState("");
+  const [errorModalConfirmationInput, setErrorModalConfirmationInput] =
+    useState("");
+  const [isErrorModalConfirmed, setIsErrorModalConfirmed] = useState(false);
+  // AI Check Failed Modal State
+  const [isAiCheckFailed, setIsAiCheckFailed] = useState(false);
+  const [aiCheckErrorMessage, setAiCheckErrorMessage] = useState("");
+  const [aiCheckConfirmationInput, setAiCheckConfirmationInput] = useState("");
+
+  // Use ref to track ignoreAiCheck flag synchronously (state update is async)
+  const ignoreAiCheckRef = useRef(false);
+
+  useEffect(() => {
+    console.log("🎨 [PAINTING UPLOAD] Component mounted - ready to upload", {
+      contestId,
+      competitorId,
+      roundId,
+      currentUser: currentUser?.id,
+    });
+    return () => {
+      console.log("🎨 [PAINTING UPLOAD] Component unmounted/cleaned up");
+    };
+  }, []);
+
   const sheetAnim = useRef(new Animated.Value(0)).current;
 
   // Bottom sheet controls
@@ -432,7 +449,13 @@ export default function PaintingUpload() {
           Alert.alert("Lỗi", "Chỉ hỗ trợ: .jpg, .jpeg, .png, .webp");
           return;
         }
+        console.log("🖼️ [PAINTING UPLOAD] Image selected from library:", {
+          fileName: file.fileName,
+          size: file.fileSize,
+          type: file.mimeType,
+        });
         setImage(file);
+        resetAiCheckState();
       }
     } catch {
       Alert.alert("Lỗi", "Không thể tải ảnh. Vui lòng thử lại.");
@@ -468,20 +491,66 @@ export default function PaintingUpload() {
           Alert.alert("Lỗi", "Chỉ hỗ trợ: .jpg, .jpeg, .png, .webp");
           return;
         }
+        console.log("📸 [PAINTING UPLOAD] Photo taken from camera:", {
+          fileName: file.fileName,
+          size: file.fileSize,
+          type: file.mimeType,
+        });
         setImage(file);
+        resetAiCheckState();
       }
     } catch {
       Alert.alert("Lỗi", "Không thể chụp ảnh. Vui lòng thử lại.");
     }
   };
 
-  const removeImage = () => setImage(null);
+  const removeImage = () => {
+    console.log("🗑️ [PAINTING UPLOAD] Image removed");
+    setImage(null);
+    resetAiCheckState();
+  };
+
+  const resetAiCheckState = () => {
+    console.log("🔄 [PAINTING UPLOAD] Resetting AI check state");
+    setIsAiCheckFailed(false);
+    setAiCheckConfirmationInput("");
+    setAiCheckErrorMessage("");
+  };
 
   const onSubmit = (data: PaintingUploadForm) => {
     if (!image) {
       Alert.alert("Thông báo", "Vui lòng chọn ảnh tranh vẽ để gửi bài thi");
       return;
     }
+
+    // Use ref value to get current ignoreAiCheck flag (synchronous)
+    const ignoreAiCheckFlag = ignoreAiCheckRef.current;
+
+    // Reset all error states before new submission
+    // This ensures each submit is fresh and independent
+    setIsAiCheckFailed(false);
+    setAiCheckErrorMessage("");
+    setAiCheckConfirmationInput("");
+    setIsErrorModalOpen(false);
+    setErrorMessage("");
+    setErrorTitle("");
+    setErrorModalConfirmationInput("");
+    setIsErrorModalConfirmed(false);
+
+    // Reset ref after capturing
+    ignoreAiCheckRef.current = false;
+
+    console.log("🎨 [PAINTING UPLOAD] Submitting painting...", {
+      title: data.title,
+      description: data.description,
+      imageName: image.fileName,
+      imageSize: image.fileSize,
+      contestId,
+      roundId,
+      competitorId,
+      ignoreAiCheck: ignoreAiCheckFlag,
+      timestamp: new Date().toISOString(),
+    });
     mutate(
       {
         title: data.title,
@@ -494,25 +563,69 @@ export default function PaintingUpload() {
         contestId: String(contestId),
         roundId: String(roundId),
         competitorId: String(competitorId),
+        // Send ignoreAiCheck using ref value (synchronous)
+        ignoreAiCheck: ignoreAiCheckFlag,
       },
       {
         onSuccess: () => {
+          console.log("✅ [PAINTING UPLOAD] Upload successful!");
           Alert.alert("Thành công", "Đã gửi bài thi!", [
             { text: "OK", onPress: () => router.back() },
           ]);
+          // Reset AI check state and error modal state after success
+          resetAiCheckState();
+          setIsErrorModalConfirmed(false);
         },
         onError: (error: any) => {
           const errorMessage =
             error?.response?.data?.message ||
             error?.message ||
             "Gửi bài thi thất bại, vui lòng thử lại.";
-          setErrorAlert({
-            visible: true,
-            title: "Phát Hiện Tranh Có Vấn Đề",
+
+          console.log("❌ [PAINTING UPLOAD] Upload error:", {
+            status: error?.response?.status,
             message: errorMessage,
+            isAiCheckError: Boolean(
+              error?.response?.status === 400 &&
+              (errorMessage.toLowerCase().includes("ai") ||
+                errorMessage.toLowerCase().includes("detect") ||
+                errorMessage.toLowerCase().includes("phát hiện") ||
+                errorMessage.toLowerCase().includes("vấn đề")),
+            ),
           });
+
+          // Check if this is an AI check failed error
+          // AI check errors typically contain keywords like "AI", "detect", "phát hiện", etc.
+          const isAiCheckError =
+            error?.response?.status === 400 &&
+            (errorMessage.toLowerCase().includes("ai") ||
+              errorMessage.toLowerCase().includes("detect") ||
+              errorMessage.toLowerCase().includes("phát hiện") ||
+              errorMessage.toLowerCase().includes("vấn đề"));
+
+          if (isAiCheckError && !isAiCheckFailed) {
+            // First time AI check failed - show AI check confirmation modal
+            console.log(
+              "⚠️ [PAINTING UPLOAD] AI check failed - showing AI check modal",
+            );
+            setAiCheckErrorMessage(errorMessage);
+            setIsAiCheckFailed(true);
+            setAiCheckConfirmationInput("");
+          } else {
+            // Other errors - show error modal (not AI check)
+            console.log(
+              "⚠️ [PAINTING UPLOAD] General error - showing error modal",
+            );
+            setErrorTitle("Lỗi Nộp Bài");
+            setErrorMessage(errorMessage);
+            setErrorModalConfirmationInput("");
+            setIsErrorModalConfirmed(false);
+            setIsErrorModalOpen(true);
+            // Reset AI check state when showing other errors
+            resetAiCheckState();
+          }
         },
-      } as any, // tuỳ hook của bạn; xoá `as any` nếu type hỗ trợ
+      } as any,
     );
   };
 
@@ -686,7 +799,15 @@ export default function PaintingUpload() {
             <View style={s.cardInner}>
               <Text style={s.label}>Ảnh tác phẩm *</Text>
               {!image ? (
-                <TouchableOpacity style={s.uploadDrop} onPress={showSheet}>
+                <TouchableOpacity
+                  style={s.uploadDrop}
+                  onPress={() => {
+                    console.log(
+                      "🎨 [PAINTING UPLOAD] User clicked - Tải ảnh tranh vẽ",
+                    );
+                    showSheet();
+                  }}
+                >
                   <Ionicons
                     name="cloud-upload-outline"
                     size={44}
@@ -704,7 +825,15 @@ export default function PaintingUpload() {
                     <TouchableOpacity onPress={removeImage} style={s.chip}>
                       <Ionicons name="close" size={18} color="#fff" />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={showSheet} style={s.chip}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        console.log(
+                          "📷 [PAINTING UPLOAD] User clicked chip camera button",
+                        );
+                        showSheet();
+                      }}
+                      style={s.chip}
+                    >
                       <Ionicons name="camera" size={18} color="#fff" />
                     </TouchableOpacity>
                   </View>
@@ -715,7 +844,12 @@ export default function PaintingUpload() {
 
           {/* SUBMIT */}
           <TouchableOpacity
-            onPress={handleSubmit(onSubmit)}
+            onPress={() => {
+              console.log(
+                "✉️ [PAINTING UPLOAD] Submit button clicked - calling onSubmit",
+              );
+              handleSubmit(onSubmit)();
+            }}
             disabled={isPending || !formState.isValid || !image}
             style={[
               s.submitBtn,
@@ -741,7 +875,10 @@ export default function PaintingUpload() {
         visible={isSheetOpen}
         transparent
         animationType="none"
-        onRequestClose={hideSheet}
+        onRequestClose={() => {
+          console.log("📋 [PAINTING UPLOAD] Image picker sheet closed");
+          hideSheet();
+        }}
         statusBarTranslucent
       >
         <View style={s.modalContainer}>
@@ -774,6 +911,9 @@ export default function PaintingUpload() {
               <TouchableOpacity
                 style={s.sheetOption}
                 onPress={() => {
+                  console.log(
+                    "📚 [PAINTING UPLOAD] User clicked - Chọn từ thư viện",
+                  );
                   hideSheet();
                   pickImage();
                 }}
@@ -785,6 +925,9 @@ export default function PaintingUpload() {
               <TouchableOpacity
                 style={s.sheetOption}
                 onPress={() => {
+                  console.log(
+                    "📷 [PAINTING UPLOAD] User clicked - Chụp ảnh mới",
+                  );
                   hideSheet();
                   takePhoto();
                 }}
@@ -793,7 +936,15 @@ export default function PaintingUpload() {
                 <Text style={s.sheetText}>Chụp ảnh mới</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={s.sheetOption} onPress={hideSheet}>
+              <TouchableOpacity
+                style={s.sheetOption}
+                onPress={() => {
+                  console.log(
+                    "❌ [PAINTING UPLOAD] Image picker sheet - Hủy cancelled",
+                  );
+                  hideSheet();
+                }}
+              >
                 <Ionicons
                   name="close"
                   size={24}
@@ -813,29 +964,358 @@ export default function PaintingUpload() {
         </View>
       </Modal>
 
-      <CustomAlert
-        visible={errorAlert.visible}
-        type="error"
-        title={errorAlert.title}
-        message={errorAlert.message}
-        scheme={scheme}
-        buttons={[
-          {
-            text: "OK",
-            style: "default",
-            onPress: () => setErrorAlert({ ...errorAlert, visible: false }),
-          },
-          {
-            text: "Thử lại",
-            style: "default",
-            onPress: () => {
-              setErrorAlert({ ...errorAlert, visible: false });
-              handleSubmit(onSubmit)();
-            },
-          },
-        ]}
-        onDismiss={() => setErrorAlert({ ...errorAlert, visible: false })}
-      />
+      {/* AI Check Failed Confirmation Modal */}
+      <Modal
+        visible={isAiCheckFailed}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          console.log("❌ [PAINTING UPLOAD] User dismissed AI check modal");
+          setIsAiCheckFailed(false);
+          setAiCheckConfirmationInput("");
+        }}
+        statusBarTranslucent
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "rgba(0,0,0,0.5)",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: C.card,
+              borderRadius: 16,
+              padding: 20,
+              marginHorizontal: 16,
+              maxWidth: "90%",
+            }}
+          >
+            {/* Header */}
+            <View style={{ alignItems: "center", marginBottom: 16 }}>
+              <Ionicons name="warning" size={48} color={BORDER_COLOR} />
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "900",
+                  color: C.foreground,
+                  marginTop: 12,
+                  textAlign: "center",
+                }}
+              >
+                AI Phát Hiện Tranh Có Vấn Đề
+              </Text>
+            </View>
+
+            {/* Message */}
+            <Text
+              style={{
+                fontSize: 14,
+                color: C.mutedForeground,
+                marginBottom: 16,
+                textAlign: "center",
+                lineHeight: 20,
+              }}
+            >
+              {aiCheckErrorMessage
+                ? aiCheckErrorMessage
+                : "Hệ thống AI đã phát hiện tranh của bạn có thể không phù hợp với quy định. Vui lòng xác nhận nếu bạn muốn tiếp tục nộp."}
+            </Text>
+
+            {/* Input Label */}
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: "700",
+                color: C.foreground,
+                marginBottom: 8,
+                textTransform: "uppercase",
+              }}
+            >
+              Xác nhận
+            </Text>
+
+            {/* Confirmation Input */}
+            <TextInput
+              placeholder="GỬI BÀI THI"
+              placeholderTextColor={scheme === "dark" ? "#94a3b8" : "#9aa5b1"}
+              style={{
+                borderWidth: 1.5,
+                borderColor:
+                  scheme === "light"
+                    ? "rgba(0,0,0,0.14)"
+                    : "rgba(255,255,255,0.16)",
+                backgroundColor:
+                  scheme === "light" ? "#fff" : "rgba(255,255,255,0.04)",
+                borderRadius: 10,
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                fontSize: 16,
+                color: C.foreground,
+                marginBottom: 16,
+              }}
+              value={aiCheckConfirmationInput}
+              onChangeText={setAiCheckConfirmationInput}
+              cursorColor={BORDER_COLOR}
+              selectionColor="rgba(220,90,84,0.25)"
+            />
+
+            {/* Buttons */}
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  borderWidth: 1.5,
+                  borderColor: BORDER_COLOR,
+                  alignItems: "center",
+                }}
+                onPress={() => {
+                  console.log(
+                    "❌ [PAINTING UPLOAD] User cancelled AI check modal",
+                  );
+                  setIsAiCheckFailed(false);
+                  setAiCheckErrorMessage("");
+                  setAiCheckConfirmationInput("");
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: BORDER_COLOR,
+                  }}
+                >
+                  Hủy
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  {
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 10,
+                    alignItems: "center",
+                    backgroundColor: BORDER_COLOR,
+                  },
+                  aiCheckConfirmationInput !== "GỬI BÀI THI" && {
+                    opacity: 0.5,
+                  },
+                ]}
+                disabled={aiCheckConfirmationInput !== "GỬI BÀI THI"}
+                onPress={() => {
+                  console.log(
+                    "📝 [PAINTING UPLOAD] User confirmed AI check modal - retrying with ignoreAiCheck = true",
+                  );
+                  // Set ref immediately (synchronous) before submit
+                  ignoreAiCheckRef.current = true;
+                  handleSubmit(onSubmit)();
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: "#fff",
+                  }}
+                >
+                  Gửi
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Error Modal (for non-AI-check errors) */}
+      <Modal
+        visible={isErrorModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          console.log("❌ [PAINTING UPLOAD] User dismissed error modal");
+          setIsErrorModalOpen(false);
+        }}
+        statusBarTranslucent
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "rgba(0,0,0,0.5)",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: C.card,
+              borderRadius: 16,
+              padding: 20,
+              marginHorizontal: 16,
+              maxWidth: "90%",
+            }}
+          >
+            {/* Header */}
+            <View style={{ alignItems: "center", marginBottom: 16 }}>
+              <Ionicons name="alert-circle" size={48} color={BORDER_COLOR} />
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "900",
+                  color: C.foreground,
+                  marginTop: 12,
+                  textAlign: "center",
+                }}
+              >
+                {errorTitle}
+              </Text>
+            </View>
+
+            {/* Error Message */}
+            <Text
+              style={{
+                fontSize: 14,
+                color: C.mutedForeground,
+                marginBottom: 12,
+                textAlign: "center",
+                lineHeight: 20,
+              }}
+            >
+              {errorMessage}
+            </Text>
+
+            {/* Confirm Question */}
+            <Text
+              style={{
+                fontSize: 13,
+                color: C.foreground,
+                marginBottom: 16,
+                textAlign: "center",
+                lineHeight: 18,
+                fontWeight: "600",
+              }}
+            >
+              Bạn muốn vẫn gửi bài thi hiện tại hay chọn tranh khác để nộp lại?
+            </Text>
+
+            {/* Confirmation Input Label */}
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: "700",
+                color: C.foreground,
+                marginBottom: 8,
+              }}
+            >
+              Nhập{" "}
+              <Text style={{ color: "hsl(15 85% 55%))", fontSize: 14 }}>
+                GỬI BÀI THI
+              </Text>{" "}
+              để tiếp tục gửi bài thi hiện tại.
+            </Text>
+
+            {/* Confirmation Input */}
+            <TextInput
+              placeholder="GỬI BÀI THI"
+              placeholderTextColor={scheme === "dark" ? "#94a3b8" : "#9aa5b1"}
+              style={{
+                borderWidth: 1.5,
+                borderColor:
+                  scheme === "light"
+                    ? "rgba(0,0,0,0.14)"
+                    : "rgba(255,255,255,0.16)",
+                backgroundColor:
+                  scheme === "light" ? "#fff" : "rgba(255,255,255,0.04)",
+                borderRadius: 10,
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                fontSize: 16,
+                color: C.foreground,
+                marginBottom: 16,
+              }}
+              value={errorModalConfirmationInput}
+              onChangeText={setErrorModalConfirmationInput}
+              cursorColor={BORDER_COLOR}
+              selectionColor="rgba(220,90,84,0.25)"
+            />
+
+            {/* Buttons */}
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  borderWidth: 1.5,
+                  borderColor: BORDER_COLOR,
+                  alignItems: "center",
+                }}
+                onPress={() => {
+                  console.log(
+                    "🔄 [PAINTING UPLOAD] User chose to reselect image",
+                  );
+                  ignoreAiCheckRef.current = false;
+                  setIsErrorModalOpen(false);
+                  setErrorModalConfirmationInput("");
+                  setIsErrorModalConfirmed(false);
+                  setIsAiCheckFailed(false);
+                  removeImage();
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: BORDER_COLOR,
+                  }}
+                >
+                  Chọn Tranh Khác
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  {
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 10,
+                    alignItems: "center",
+                    backgroundColor: BORDER_COLOR,
+                  },
+                  errorModalConfirmationInput !== "GỬI BÀI THI" && {
+                    opacity: 0.5,
+                  },
+                ]}
+                disabled={errorModalConfirmationInput !== "GỬI BÀI THI"}
+                onPress={() => {
+                  console.log(
+                    "📝 [PAINTING UPLOAD] User confirmed error modal - retrying with ignoreAiCheck = true",
+                  );
+                  // Set ref immediately (synchronous) before submit
+                  ignoreAiCheckRef.current = true;
+                  setIsErrorModalOpen(false);
+                  setErrorModalConfirmationInput("");
+                  handleSubmit(onSubmit)();
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: "#fff",
+                  }}
+                >
+                  Xác Nhận 
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

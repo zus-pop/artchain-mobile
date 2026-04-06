@@ -138,8 +138,8 @@ export default function ContestPaintingsScreen() {
       examinerRole === "ROUND_1"
         ? "ROUND_1"
         : examinerRole === "ROUND_2"
-        ? "ROUND_2"
-        : undefined,
+          ? "ROUND_2"
+          : undefined,
     status: examinerRole !== "ROUND_2" ? "ACCEPTED" : undefined,
     examinerId: user?.userId,
   });
@@ -175,7 +175,7 @@ export default function ContestPaintingsScreen() {
         navLockRef.current = false;
       }, 800);
     },
-    [contestTitle, examinerRole]
+    [contestTitle, examinerRole],
   );
 
   /* ============================ MINIMALIST PAINTING CARD ============================ */
@@ -186,8 +186,8 @@ export default function ContestPaintingsScreen() {
       examinerRole === "ROUND_1"
         ? "Vòng 1"
         : examinerRole === "ROUND_2"
-        ? "Vòng 2"
-        : "Tranh dự thi";
+          ? "Vòng 2"
+          : "Tranh dự thi";
 
     return (
       <PressableScale
@@ -327,7 +327,7 @@ const styles = (C: any) =>
     /* Container */
     container: {
       flex: 1,
-      backgroundColor: C.newbackground, 
+      backgroundColor: C.newbackground,
     },
 
     /* Header */

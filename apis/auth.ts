@@ -45,7 +45,7 @@ export function useLoginMutation() {
       toast.success("Đăng nhập thành công!");
     },
     onError: (error) => {
-      toast.error(error.message);
+      toast.error("Đăng nhập thất bại xin hãy kiểm tra lại thông tin đăng nhập" );
     },
   });
 }
