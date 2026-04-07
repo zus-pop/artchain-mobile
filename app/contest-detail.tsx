@@ -48,7 +48,7 @@ const getStatusStyle = (scheme: "light" | "dark") => {
 const DEFAULT_RULES: string[] = [
   "Tác phẩm phải là sáng tác gốc, không vi phạm bản quyền.",
   "Định dạng: JPG/PNG/PDF, tối thiểu 300 DPI, dung lượng ≤ 10MB.",
-  "Mỗi thí sinh nộp tối đa 3 tác phẩm.",
+  "Mỗi thí sinh nộp tối đa 1 tác phẩm.",
   "Không dùng AI tạo nội dung; chỉnh màu cơ bản được chấp nhận.",
   "Ban tổ chức được quyền sử dụng tác phẩm cho mục đích truyền thông.",
   "Kết quả sẽ công bố trong vòng 7 ngày sau khi cuộc thi kết thúc.",
@@ -333,16 +333,18 @@ export default function ContestDetail() {
           {/* See Rewards */}
           {["ACTIVE", "ENDED"].includes(contest!.status) && (
             <TouchableOpacity
-              style={[s.actionButton, s.rewardsButton]}
+              style={s.rewardsHighlightButton}
               onPress={() =>
                 router.push({
                   pathname: "/reward-painting",
                   params: { contestId: String(contest!.contestId) },
                 })
               }
-              activeOpacity={0.9}
+              activeOpacity={0.85}
             >
-              <Text style={s.rewardsButtonText}>Xem giải thưởng</Text>
+              <Trophy size={22} color="white" />
+              <Text style={s.rewardsHighlightButtonText}>Xem giải thưởng</Text>
+              <View style={{ width: 22 }} />
             </TouchableOpacity>
           )}
 
@@ -678,6 +680,30 @@ const styles = (C: any) => {
     },
     rewardsButtonText: {
       color: C.accentForeground,
+    },
+    rewardsHighlightButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 12,
+      backgroundColor: "#ff9500",
+      borderRadius: 14,
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      marginHorizontal: 16,
+      marginVertical: 12,
+      shadowColor: "#ff9500",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.35,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    rewardsHighlightButtonText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#ffffff",
+      fontFamily: "Be Vietnam Pro",
+      textAlign: "center",
     },
 
     primaryButtonText: {
