@@ -1,3 +1,15 @@
+export interface Award {
+  awardId: number;
+  contestId: number;
+  name: string;
+  description: string;
+  rank: number;
+  quantity: number;
+  prize: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Contest {
   contestId: number;
   title: string;
@@ -12,6 +24,7 @@ export interface Contest {
   createdBy: string;
   rounds: Rounds[];
   examinerRole: ExaminerRole;
+  awards?: Award[];
 }
 export interface ExaminerContest {
   contestId: number;
@@ -29,6 +42,7 @@ export interface ExaminerContest {
   examinerRole: ExaminerRole;
   isScheduleEnforced: boolean;
   canEvaluate: boolean;
+  awards?: Award[];
 }
 
 export interface Rounds {
@@ -50,6 +64,7 @@ export interface ContestFilter {
   status?: ContestStatus;
   page?: number;
   limit?: number;
+  suggest?: string;
 }
 
 // types

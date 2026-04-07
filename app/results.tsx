@@ -1,7 +1,7 @@
 // app/results.tsx
 import { useContest } from "@/apis/contest";
-import AppHeader from "@/components/AppHeader";
 import { ContestCard } from "@/components/cards/ContestCard";
+import UnifiedHeader from "@/components/headers/UnifiedHeader";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { router, useLocalSearchParams } from "expo-router";
@@ -78,11 +78,11 @@ export default function SearchResultsScreen() {
 
   return (
     <View style={s.container}>
-      <AppHeader
+      <UnifiedHeader
         title="Kết quả tìm kiếm"
-        backgroundColor={BRAND}
+        showBack={true}
         onBack={() => router.back()}
-        borderBottom
+        scheme={scheme}
       />
 
       {isLoading ? (

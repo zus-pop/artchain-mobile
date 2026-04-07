@@ -1,7 +1,8 @@
 // app/contest-detail.tsx
 import { useWhoAmI } from "@/apis/auth";
-import { useContestById } from "@/apis/contest";
-import AppHeader from "@/components/AppHeader"; // header tùy biến có nút back
+import { useCheckUploadCompetitor, useContestById } from "@/apis/contest";
+import ArtchainAnimation from "@/components/animations/ArtchainAnimation";
+import UnifiedHeader from "@/components/headers/UnifiedHeader";
 import { Colors, withOpacity } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Rounds } from "@/types";
@@ -9,7 +10,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import { ExternalLink, FileText, Trophy, Users } from "lucide-react-native";
 import React from "react";
 import {
-  ActivityIndicator,
   Image,
   Linking,
   ScrollView,
@@ -48,7 +48,7 @@ const getStatusStyle = (scheme: "light" | "dark") => {
 const DEFAULT_RULES: string[] = [
   "Tác phẩm phải là sáng tác gốc, không vi phạm bản quyền.",
   "Định dạng: JPG/PNG/PDF, tối thiểu 300 DPI, dung lượng ≤ 10MB.",
-  "Mỗi thí sinh nộp tối đa 3 tác phẩm.",
+  "Mỗi thí sinh nộp tối đa 1 tác phẩm.",
   "Không dùng AI tạo nội dung; chỉnh màu cơ bản được chấp nhận.",
   "Ban tổ chức được quyền sử dụng tác phẩm cho mục đích truyền thông.",
   "Kết quả sẽ công bố trong vòng 7 ngày sau khi cuộc thi kết thúc.",
@@ -64,13 +64,25 @@ export default function ContestDetail() {
   } = useContestById(contestId);
   const { data: me } = useWhoAmI();
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
+
   const C = Colors[scheme];
   const s = styles(C);
+
+  const { data: uploadStatus, isLoading: isCheckingUpload } =
+    useCheckUploadCompetitor(
+      contest?.contestId,
+      me?.role === "COMPETITOR" && me?.userId ? [me.userId] : [],
+    );
+
+  const hasUploaded = uploadStatus?.[0]?.isUploaded === true;
+
+  const isCompetitor = me?.role === "COMPETITOR";
+  const disableJoin = isCompetitor && hasUploaded;
 
   if (isLoading) {
     return (
       <View style={[s.screen, s.center]}>
-        <ActivityIndicator size="large" color={C.primary} />
+        <ArtchainAnimation />
         <Text style={[s.muted, { marginTop: 10 }]}>Đang tải…</Text>
       </View>
     );
@@ -88,7 +100,7 @@ export default function ContestDetail() {
 
   // Normalize status to match our expected values
   const normalizeStatus = (
-    status?: string
+    status?: string,
   ): "ACTIVE" | "UPCOMING" | "ENDED" => {
     if (!status) return "UPCOMING";
     const upperStatus = status.toUpperCase();
@@ -131,11 +143,12 @@ export default function ContestDetail() {
   const round1 = findRound1(contest?.rounds);
   return (
     <View style={s.screen}>
-      {/* Header tái sử dụng với màu brand + nút back */}
-      <AppHeader
-        title="Chi tiết cuộc thi"
-        backgroundColor={C.primary}
+      {/* Unified header with back button */}
+      <UnifiedHeader
+        title="Chi tiết Cuộc Thi"
+        showBack={true}
         onBack={() => router.back()}
+        scheme={scheme}
       />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
@@ -223,7 +236,7 @@ export default function ContestDetail() {
                 <Text style={s.roundTitle}>Bắt đầu</Text>
                 <Text style={s.roundDate}>
                   {round1
-                    ? fmtDateTime(round1.startDate) ?? "—"
+                    ? (fmtDateTime(round1.startDate) ?? "—")
                     : "Chưa có thông tin"}
                 </Text>
               </View>
@@ -235,7 +248,7 @@ export default function ContestDetail() {
                 <Text style={s.roundTitle}>Hạn nộp bài</Text>
                 <Text style={s.roundDate}>
                   {round1
-                    ? fmtDateTime(round1.submissionDeadline) ?? "—"
+                    ? (fmtDateTime(round1.submissionDeadline) ?? "—")
                     : "Chưa có thông tin"}
                 </Text>
               </View>
@@ -247,7 +260,7 @@ export default function ContestDetail() {
                 <Text style={s.roundTitle}>Công bố kết quả</Text>
                 <Text style={s.roundDate}>
                   {round1
-                    ? fmtDateTime(round1.resultAnnounceDate) ?? "—"
+                    ? (fmtDateTime(round1.resultAnnounceDate) ?? "—")
                     : "Chưa có thông tin"}
                 </Text>
               </View>
@@ -259,7 +272,7 @@ export default function ContestDetail() {
                 <Text style={s.roundTitle}>Gửi bản gốc</Text>
                 <Text style={s.roundDate}>
                   {round1
-                    ? fmtDateTime(round1.sendOriginalDeadline) ?? "—"
+                    ? (fmtDateTime(round1.sendOriginalDeadline) ?? "—")
                     : "Chưa có thông tin"}
                 </Text>
               </View>
@@ -320,23 +333,33 @@ export default function ContestDetail() {
           {/* See Rewards */}
           {["ACTIVE", "ENDED"].includes(contest!.status) && (
             <TouchableOpacity
-              style={[s.actionButton, s.rewardsButton]}
-              onPress={() => router.push("/reward-painting")}
-              activeOpacity={0.9}
+              style={s.rewardsHighlightButton}
+              onPress={() =>
+                router.push({
+                  pathname: "/reward-painting",
+                  params: { contestId: String(contest!.contestId) },
+                })
+              }
+              activeOpacity={0.85}
             >
-              <Text style={s.rewardsButtonText}>Xem giải thưởng</Text>
+              <Trophy size={22} color="white" />
+              <Text style={s.rewardsHighlightButtonText}>Xem giải thưởng</Text>
+              <View style={{ width: 22 }} />
             </TouchableOpacity>
           )}
 
-          {/* Join Contest */}
           {contest?.status === "ACTIVE" && (
             <TouchableOpacity
-              style={s.primaryButton}
+              style={[s.primaryButton, disableJoin && s.primaryButtonDisabled]}
+              disabled={disableJoin}
               onPress={() => {
                 if (!me) {
                   router.push("/login");
                   return;
                 }
+
+                if (disableJoin) return;
+
                 if (me.role === "COMPETITOR") {
                   const round1Data = findRound1(contest.rounds);
                   router.push({
@@ -363,7 +386,11 @@ export default function ContestDetail() {
                 }
               }}
             >
-              <Text style={s.primaryButtonText}>Tham gia cuộc thi</Text>
+              <Text style={s.primaryButtonText}>
+                {disableJoin
+                  ? "Bạn đã nộp bài cuộc thi này"
+                  : "Tham gia cuộc thi"}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -398,6 +425,15 @@ const styles = (C: any) => {
   const R = 8; // ít bo tròn hơn
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: C.background },
+    primaryButton: {
+      backgroundColor: C.primary,
+      borderRadius: 12,
+      padding: 16,
+      alignItems: "center",
+    },
+    primaryButtonDisabled: {
+      opacity: 0.5,
+    },
 
     // HERO BANNER
     heroContainer: {
@@ -645,12 +681,31 @@ const styles = (C: any) => {
     rewardsButtonText: {
       color: C.accentForeground,
     },
-    primaryButton: {
-      backgroundColor: C.primary,
-      borderRadius: 12,
-      padding: 16,
+    rewardsHighlightButton: {
+      flexDirection: "row",
       alignItems: "center",
+      justifyContent: "center",
+      gap: 12,
+      backgroundColor: "#ff9500",
+      borderRadius: 14,
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      marginHorizontal: 16,
+      marginVertical: 12,
+      shadowColor: "#ff9500",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.35,
+      shadowRadius: 8,
+      elevation: 8,
     },
+    rewardsHighlightButtonText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#ffffff",
+      fontFamily: "Be Vietnam Pro",
+      textAlign: "center",
+    },
+
     primaryButtonText: {
       fontSize: 16,
       fontWeight: "600",

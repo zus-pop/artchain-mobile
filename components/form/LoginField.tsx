@@ -53,10 +53,10 @@ export default function LoginField({
   };
 
   // --- Layout constants (để label không dính icon & căn giữa)
-  const INPUT_HEIGHT = 56;
-  const ICON_SIZE = 20;
-  const H_PADDING = 12;
-  const GAP = 8;
+  const INPUT_HEIGHT = 62; // Increased from 56
+  const ICON_SIZE = 22; // Slightly larger
+  const H_PADDING = 16; // Increased from 12
+  const GAP = 10; // Increased from 8
   const labelLeft = icon ? H_PADDING + ICON_SIZE + GAP : H_PADDING;
 
   // Interpolations
@@ -132,7 +132,7 @@ export default function LoginField({
         marginLeft: 4,
       },
     }),
-    [scheme]
+    [scheme],
   );
 
   return (
@@ -196,8 +196,8 @@ export default function LoginField({
                       fieldState.error
                         ? C.destructive
                         : hasValue
-                        ? C.primary
-                        : C.mutedForeground
+                          ? C.primary
+                          : C.mutedForeground
                     }
                     style={S.leftIcon}
                   />

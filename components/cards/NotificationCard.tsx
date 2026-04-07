@@ -27,12 +27,14 @@ function fromNow(dateISO: string) {
   return new Date(d).toLocaleDateString("vi-VN");
 }
 
+// Tone cam chủ đạo – gọn, vuông vức
 const TYPE_GRAD: Record<NotificationItem["type"], [string, string]> = {
-  contest: ["#60A5FA", "#7C3AED"],
-  submission: ["#34D399", "#10B981"],
-  result: ["#F59E0B", "#F97316"],
-  system: ["#A78BFA", "#8B5CF6"],
+  contest: ["#FDBA74", "#F97316"],
+  submission: ["#FED7AA", "#F97316"],
+  result: ["#FB923C", "#EA580C"],
+  system: ["#FACC15", "#FB923C"],
 };
+
 const TYPE_ICON: Record<
   NotificationItem["type"],
   keyof typeof Ionicons.glyphMap
@@ -86,14 +88,14 @@ const NotificationCard: React.FC<Props> = ({ item, onPress, onLongPress }) => {
 
   const scale = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 1.15],
+    outputRange: [1, 1.12],
   });
-  const opacity = pulse.interpolate({
+  const auraOpacity = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.25, 0],
+    outputRange: [0.22, 0],
   });
 
-  const unreadGlowShadow = item.isRead ? 0 : 0.18;
+  const unreadShadow = item.isRead ? 0 : 0.18;
 
   return (
     <Pressable
@@ -103,11 +105,11 @@ const NotificationCard: React.FC<Props> = ({ item, onPress, onLongPress }) => {
       style={({ pressed }) => [
         styles.wrap,
         {
-          backgroundColor: isDark ? "#0B1220" : "#FFFFFF",
-          borderColor: item.isRead ? C.border : `${grad[1]}55`,
-          opacity: pressed ? 0.96 : 1,
+          backgroundColor: isDark ? "#020617" : "#FFFBEB",
+          borderColor: item.isRead ? "#FED7AA" : `${grad[1]}AA`,
+          opacity: pressed ? 0.97 : 1,
           shadowColor: item.isRead ? (isDark ? "#000" : "#111827") : grad[1],
-          shadowOpacity: item.isRead ? 0.06 : unreadGlowShadow,
+          shadowOpacity: item.isRead ? 0.04 : unreadShadow,
         },
       ]}
       accessibilityRole="button"
@@ -115,29 +117,8 @@ const NotificationCard: React.FC<Props> = ({ item, onPress, onLongPress }) => {
         item.isRead ? "" : ", chưa đọc"
       }`}
     >
-      {/* accent bar (đậm hơn khi chưa đọc) */}
-      <LinearGradient
-        colors={
-          item.isRead ? [`${grad[0]}26`, `${grad[1]}26`] : [grad[0], grad[1]]
-        }
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={[styles.accent, !item.isRead && { width: 7 }]}
-      />
-
-      {/* unread background sheen */}
-      {!item.isRead && (
-        <LinearGradient
-          colors={[`${grad[0]}10`, `${grad[1]}14`]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-      )}
-
-      {/* left column: icon + pulse */}
+      {/* Icon column – gọn, vuông, chính giữa */}
       <View style={styles.leftCol}>
-        {/* pulse aura */}
         {!item.isRead && (
           <Animated.View
             style={[
@@ -145,13 +126,12 @@ const NotificationCard: React.FC<Props> = ({ item, onPress, onLongPress }) => {
               {
                 transform: [{ scale }],
                 backgroundColor: grad[1],
-                opacity,
+                opacity: auraOpacity,
               },
             ]}
           />
         )}
 
-        {/* icon ring */}
         <LinearGradient
           colors={grad}
           start={{ x: 0, y: 0 }}
@@ -161,7 +141,7 @@ const NotificationCard: React.FC<Props> = ({ item, onPress, onLongPress }) => {
           <View
             style={[
               styles.iconInner,
-              { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" },
+              { backgroundColor: isDark ? "#020617" : "#FFF7ED" },
             ]}
           >
             <Ionicons name={TYPE_ICON[item.type]} size={18} color={grad[1]} />
@@ -169,7 +149,7 @@ const NotificationCard: React.FC<Props> = ({ item, onPress, onLongPress }) => {
         </LinearGradient>
       </View>
 
-      {/* content */}
+      {/* Content column */}
       <View style={styles.content}>
         <View style={styles.titleRow}>
           {!item.isRead && (
@@ -180,27 +160,24 @@ const NotificationCard: React.FC<Props> = ({ item, onPress, onLongPress }) => {
               ]}
             />
           )}
+
           <Text
             numberOfLines={2}
             style={[
               styles.title,
-              { color: C.cardForeground ?? C.foreground },
-              !item.isRead && { fontWeight: "900" }, // đậm hơn khi chưa đọc
+              {
+                color: isDark ? "#F9FAFB" : "#1F2933",
+                fontWeight: item.isRead ? "800" : "900",
+              },
             ]}
           >
             {item.title}
           </Text>
 
-          {/* NEW badge */}
           {!item.isRead && (
-            <LinearGradient
-              colors={[`${grad[0]}`, `${grad[1]}`]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.badge}
-            >
+            <View style={styles.badge}>
               <Text style={styles.badgeTxt}>MỚI</Text>
-            </LinearGradient>
+            </View>
           )}
         </View>
 
@@ -209,8 +186,15 @@ const NotificationCard: React.FC<Props> = ({ item, onPress, onLongPress }) => {
             numberOfLines={2}
             style={[
               styles.msg,
-              { color: C.mutedForeground },
-              !item.isRead && { color: isDark ? "#E5E7EB" : "#334155" }, // tăng tương phản chưa đọc
+              {
+                color: item.isRead
+                  ? isDark
+                    ? "#9CA3AF"
+                    : "#4B5563"
+                  : isDark
+                  ? "#E5E7EB"
+                  : "#374151",
+              },
             ]}
           >
             {String(item.message).replace(/\s+/g, " ").trim()}
@@ -218,11 +202,15 @@ const NotificationCard: React.FC<Props> = ({ item, onPress, onLongPress }) => {
         )}
 
         <View style={styles.metaRow}>
-          <Text style={[styles.metaTxt, { color: C.mutedForeground }]}>
+          <Text
+            style={[styles.metaTxt, { color: isDark ? "#9CA3AF" : "#6B7280" }]}
+          >
             {fromNow(item.date)}
           </Text>
           <View style={styles.dot} />
-          <Text style={[styles.metaTxt, { color: C.mutedForeground }]}>
+          <Text
+            style={[styles.metaTxt, { color: isDark ? "#9CA3AF" : "#6B7280" }]}
+          >
             {TYPE_LABEL[item.type]}
           </Text>
           <View style={{ flex: 1 }} />
@@ -239,24 +227,24 @@ const styles = StyleSheet.create({
   wrap: {
     marginHorizontal: 12,
     marginTop: 10,
-    borderRadius: 14,
+    borderRadius: 12, // vuông vức, không quá bo
     borderWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     overflow: "hidden",
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  accent: { width: 6, opacity: 0.95 },
+
   leftCol: {
+    width: 60,
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    width: 64,
+    justifyContent: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 10,
   },
   pulseAura: {
     position: "absolute",
-    top: 8,
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -264,19 +252,29 @@ const styles = StyleSheet.create({
   iconRing: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12, // icon block vuông hơn
     alignItems: "center",
     justifyContent: "center",
   },
   iconInner: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
-  content: { flex: 1, paddingVertical: 12, paddingRight: 12, paddingLeft: 4 },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+
+  content: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingRight: 12,
+    paddingLeft: 4,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    columnGap: 8,
+  },
   newDot: {
     width: 8,
     height: 8,
@@ -285,31 +283,50 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },
   },
-  title: { fontSize: 16, letterSpacing: 0.2, flex: 1 },
+  title: {
+    flex: 1,
+    fontSize: 15.5,
+    letterSpacing: 0.1,
+    fontFamily: "Be Vietnam Pro",
+  },
+
   badge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 3,
     borderRadius: 999,
+    backgroundColor: "#F97316",
   },
   badgeTxt: {
     color: "#fff",
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: "900",
     letterSpacing: 0.3,
+    fontFamily: "Be Vietnam Pro",
   },
-  msg: { marginTop: 6, fontSize: 13.5, lineHeight: 20 },
+
+  msg: {
+    marginTop: 4,
+    fontSize: 13.5,
+    lineHeight: 19,
+    fontFamily: "Be Vietnam Pro",
+  },
+
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginTop: 10,
+    columnGap: 6,
+    marginTop: 8,
   },
-  metaTxt: { fontSize: 12.5, fontWeight: "700" },
+  metaTxt: {
+    fontSize: 12,
+    fontWeight: "700",
+    fontFamily: "Be Vietnam Pro",
+  },
   dot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    opacity: 0.5,
-    backgroundColor: "#94A3B8",
+    backgroundColor: "#FDBA74",
+    opacity: 0.7,
   },
 });

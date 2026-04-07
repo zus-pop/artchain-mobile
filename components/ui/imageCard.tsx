@@ -21,9 +21,9 @@ type Props = {
 };
 
 export default function ImageCard({
-  title = "CUỘC THI \nNÉT VẼ XANH 2025",
-  subtitle = "Gửi gắm những câu chuyện,\ný tưởng và khát vọng qua \nmàu sắc độc đáo của riêng mình. ",
-  buttonText = "Xem Triển Lãm ",
+  title = " - NƠI SÁNG TẠO KHÔNG GIỚI HẠN",
+  subtitle = "Tham gia ngay để khám phá thế giới nghệ thuật số độc đáo và kết nối với cộng đồng sáng tạo toàn cầu!",
+
   image,
   onPress,
   height = 180,
@@ -54,19 +54,11 @@ export default function ImageCard({
 
         {/* Nội dung */}
         <View style={styles.contentWrap}>
-          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.title}><Text style={{color :"hsl(15 85% 55%)"}}>ARTCHAIN</Text>
+          {title}</Text>
           <Text style={styles.subtitle}>{subtitle}</Text>
 
-          <Pressable
-            onPress={onPress}
-            style={({ pressed }) => [
-              styles.cta,
-              { opacity: pressed ? 0.5 : 1 },
-            ]}
-          >
-            <Text style={styles.ctaText}>{buttonText}</Text>
-            <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
-          </Pressable>
+         
         </View>
       </ImageBackground>
     </View>

@@ -1,5 +1,6 @@
 import PillButton from "@/components/buttons/PillButton";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
+import ExaminerContestsPanel from "@/components/panels/ExaminerContestsPanel";
 import SegmentedTabsForExaminer, {
   TabItem,
 } from "@/components/tabs/SegmentedTabsForExamine";
@@ -28,7 +29,6 @@ import { useAuthStore } from "@/store/auth-store";
 import type { ExaminerContest, Schedule } from "@/types";
 import type { ColorTokens, KPIProps } from "@/types/tabkey";
 import { useSchedules } from "../apis/schedule";
-import ContestCardForTab from "./cards/ContestCardForTab";
 import ScheduleCard from "./cards/ScheduleCard";
 import EmptyTab from "./tabs/EmptyTab";
 
@@ -64,18 +64,18 @@ export default function ExaminerProfileScreen() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const { data: user, isLoading, refetch: reloadMe } = useWhoAmI();
   const { data: ongoingContests, refetch: reloadContest } = useExaminerContest(
-    user?.userId
+    user?.userId,
   );
 
   const [openDetails, setOpenDetails] = useState(false);
   const [activeTab, setActiveTab] = useState<"contests" | "schedules">(
-    "contests"
+    "contests",
   );
   const [refreshing, setRefreshing] = useState(false);
 
   // Schedules
   const { data: schedules, refetch: reloadSchedules } = useSchedules(
-    user?.userId
+    user?.userId,
   );
 
   const onRefresh = useCallback(async () => {
@@ -103,13 +103,13 @@ export default function ExaminerProfileScreen() {
       const h = e.nativeEvent.layout.height;
       if (h && Math.abs(h - headerH) > 1) setHeaderH(h);
     },
-    [headerH]
+    [headerH],
   );
 
   useFocusEffect(
     useCallback(() => {
       reloadMe();
-    }, [reloadMe])
+    }, [reloadMe]),
   );
 
   // KPIs
@@ -128,7 +128,7 @@ export default function ExaminerProfileScreen() {
         value: String(examinerStats.activeContests),
       },
     ],
-    [examinerStats]
+    [examinerStats],
   );
 
   // Tabs
@@ -137,7 +137,7 @@ export default function ExaminerProfileScreen() {
       { key: "contests", label: "Cuộc thi", icon: "color-palette-outline" },
       { key: "schedules", label: "Lịch trình", icon: "calendar-outline" },
     ],
-    []
+    [],
   );
 
   // Dynamic styles that use theme colors
@@ -295,16 +295,14 @@ export default function ExaminerProfileScreen() {
     );
   }
 
-  const TOP_PAD = Math.max(headerH, insets.top + 54); 
+  const TOP_PAD = Math.max(headerH, insets.top + 54);
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
-      
       <View style={t.topbarHolder} pointerEvents="box-none">
         <TopBar C={C} title="Hồ sơ giám khảo" withActions />
       </View>
 
-      
       <View style={{ flex: 1, marginTop: TOP_PAD }}>
         <Animated.ScrollView
           style={{ flex: 1 }}
@@ -322,11 +320,10 @@ export default function ExaminerProfileScreen() {
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
             {
               useNativeDriver: true,
-            }
+            },
           )}
           scrollEventThrottle={16}
         >
-         
           <Animated.View
             style={[
               s.headerWrap,
@@ -344,7 +341,7 @@ export default function ExaminerProfileScreen() {
             >
               <View>
                 <Avatar />
-                
+
                 <View style={[s.addBadge, { borderColor: C.background }]}>
                   {(() => {
                     const [b0, b1] = pickGrad("badge");
@@ -426,47 +423,28 @@ export default function ExaminerProfileScreen() {
           {/* Tab content */}
           <View style={{ paddingHorizontal: 16 }}>
             {activeTab === "contests" ? (
-              ongoingContests && ongoingContests.length > 0 ? (
-                <View style={{ gap: 30 }}>
-                  {ongoingContests.map((contest: ExaminerContest) => (
-                    <ContestCardForTab
-                      key={contest.contestId}
-                      C={C}
-                      contest={contest}
-                      onEvaluate={(c) => {
-                        router.push({
-                          pathname: "/contest-paintings",
-                          params: {
-                            contestId: c.contestId,
-                            contestTitle: c.title,
-                            examinerRole: c.examinerRole,
-                          },
-                        });
-                      }}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <EmptyTab
-                  C={C}
-                  icon="time-outline"
-                  text="Chưa có cuộc thi nào được giao"
-                />
-              )
+              <ExaminerContestsPanel
+                C={C}
+                userId={user?.userId}
+                vertical={false}
+              />
             ) : (
               <>
                 {schedules?.data && schedules.data.length > 0 ? (
                   Object.entries(
-                    schedules.data.reduce((groups, schedule) => {
-                      const dateKey = schedule.date.toString().split("T")[0];
-                      if (!groups[dateKey]) groups[dateKey] = [];
-                      groups[dateKey].push(schedule);
-                      return groups;
-                    }, {} as Record<string, Schedule[]>)
+                    schedules.data.reduce(
+                      (groups, schedule) => {
+                        const dateKey = schedule.date.toString().split("T")[0];
+                        if (!groups[dateKey]) groups[dateKey] = [];
+                        groups[dateKey].push(schedule);
+                        return groups;
+                      },
+                      {} as Record<string, Schedule[]>,
+                    ),
                   )
                     .sort(
                       ([a], [b]) =>
-                        new Date(a).getTime() - new Date(b).getTime()
+                        new Date(a).getTime() - new Date(b).getTime(),
                     )
                     .map(([dateKey, daySchedules]) => {
                       const [g0, g1] = pickGrad(dateKey);
@@ -519,7 +497,7 @@ export default function ExaminerProfileScreen() {
                             {daySchedules
                               .sort(
                                 (a, b) =>
-                                  a.createdAt.getTime() - b.createdAt.getTime()
+                                  a.createdAt.getTime() - b.createdAt.getTime(),
                               )
                               .map((schedule) => (
                                 <ScheduleCard

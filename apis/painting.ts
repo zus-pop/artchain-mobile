@@ -60,6 +60,7 @@ export function useGetPaintings(filters: PaintingFilter) {
 }
 
 export function useUploadPainting() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (paintingUploadRequest: PaintingUploadRequest) => {
       const formData = new FormData();
@@ -71,6 +72,13 @@ export function useUploadPainting() {
       formData.append("competitorId", paintingUploadRequest.competitorId);
       formData.append("contestId", paintingUploadRequest.contestId);
       formData.append("roundId", paintingUploadRequest.roundId);
+      // Append ignoreAiCheck flag if provided
+      if (paintingUploadRequest.ignoreAiCheck !== undefined) {
+        formData.append(
+          "ignoreAiCheck",
+          String(paintingUploadRequest.ignoreAiCheck),
+        );
+      }
       const response = await myAxios.post("/paintings/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
@@ -79,7 +87,8 @@ export function useUploadPainting() {
       return response.data;
     },
     onSuccess: () => {
-      toast.success(`Upload painting successfully!`);
+      toast.success(`Nộp Bài Thành Công!`);
+      queryClient.invalidateQueries({ queryKey: ["/contests/check-uploaded"] });
       router.back();
     },
     onError: (error) => {
@@ -96,11 +105,11 @@ export function useEvaluationPaintingRound1Preliminary() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (
-      evaluationRequest: Round1PreliminaryEvaluationRequest
+      evaluationRequest: Round1PreliminaryEvaluationRequest,
     ) => {
       const response = await myAxios.post(
         "/paintings/evaluate/preliminary",
-        evaluationRequest
+        evaluationRequest,
       );
       return response.data;
     },
@@ -125,7 +134,7 @@ export function useReviewEvaluationRound1Drop() {
     mutationFn: async (evaluationRequest: ReviewRound1EvaluationRequest) => {
       const response = await myAxios.post(
         "/paintings/batch/preliminary-review",
-        evaluationRequest
+        evaluationRequest,
       );
       return response.data;
     },
@@ -150,7 +159,7 @@ export function useEvaluatePaintingRound1() {
     mutationFn: async (evaluationRequest: Round1EvaluationRequest) => {
       const response = await myAxios.post(
         "/paintings/evaluate",
-        evaluationRequest
+        evaluationRequest,
       );
       return response.data;
     },
@@ -175,7 +184,7 @@ export function useEvaluatePaintingRound2() {
     mutationFn: async (evaluationRequest: Round2EvaluationRequest) => {
       const response = await myAxios.post(
         "/paintings/evaluate/round2",
-        evaluationRequest
+        evaluationRequest,
       );
       return response.data;
     },
@@ -199,7 +208,7 @@ export function usePaintingEvaluations(paintingId: string) {
     queryKey: ["paintings/evaluations", paintingId],
     queryFn: async () => {
       const response = await myAxios.get<PaintingEvaluation[]>(
-        `/paintings/${paintingId}/evaluations`
+        `/paintings/${paintingId}/evaluations`,
       );
       return response.data;
     },
@@ -213,7 +222,7 @@ export function useGetAchievementByUserId(userId: string) {
     enabled: !!userId,
     queryFn: async () => {
       const res = await myAxios.get<AchievementsApiResponse>(
-        `/users/${userId}/achievements`
+        `/users/${userId}/achievements`,
       );
       return res.data.data;
     },
@@ -227,7 +236,7 @@ export function useGetSubmissionsByCompetitorId(competitorId?: string) {
     enabled: !!competitorId,
     queryFn: async () => {
       const res = await myAxios.get<Painting[]>(
-        `/guardians/competitor/${competitorId}/submissions`
+        `/guardians/competitor/${competitorId}/submissions`,
       );
       return res.data;
     },
