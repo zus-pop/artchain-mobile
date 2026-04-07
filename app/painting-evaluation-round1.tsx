@@ -1,5 +1,4 @@
-// app/.../PaintingEvaluationScreen.tsx
-// import ArtworkViewer from "@/components/media/ArtworkViewer"; // <- bỏ
+
 import EvaluationSubmitModal from "@/components/modals/EvaluationSubmitModal"; // <-- NEW
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";

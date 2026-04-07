@@ -3,6 +3,7 @@ import { useAuthStore } from "@/store";
 import { AuthResponse, LoginRequest, RegisterRequest, WhoAmI } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
+import { Linking } from "react-native";
 import { toast } from "sonner-native";
 
 export function useWhoAmI() {
@@ -21,7 +22,7 @@ export function useWhoAmI() {
 }
 
 export function useLoginMutation() {
-  const { setAccessToken } = useAuthStore.getState();
+  const { setAccessToken, setIsAuthenticating } = useAuthStore.getState();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (loginRequest: LoginRequest) => {
@@ -29,9 +30,39 @@ export function useLoginMutation() {
       return response.data;
     },
     onSuccess: (result: AuthResponse) => {
+      // Set the authenticating flag BEFORE setting token and navigating
+      // This prevents the profile screen from briefly showing "not logged in" state
+      setIsAuthenticating(true);
+
       setAccessToken(result.access_token);
+
+      // Invalidate queries to trigger re-fetch of user data
       queryClient.invalidateQueries({ queryKey: ["me"] });
-      router.replace("/profile"); // Go back to profile
+
+      // Navigate to profile - profile screen will handle clearing the flag
+      router.replace("/profile");
+
+      toast.success("Đăng nhập thành công!");
+    },
+    onError: (error) => {
+      toast.error("Đăng nhập thất bại xin hãy kiểm tra lại thông tin đăng nhập" );
+    },
+  });
+}
+
+export function useSignInMutation() {
+  const { setPendingEmail } = useAuthStore.getState();
+  return useMutation({
+    mutationFn: async (registerRequest: RegisterRequest) => {
+      const response = await myAxios.post("/auth/register", registerRequest);
+      return response.data;
+    },
+    onSuccess: (data: any, variables) => {
+      // Save pending email for verify screen
+      setPendingEmail(variables.email);
+      toast.success(`Đăng ký thành công!`);
+      // Navigate to verify email screen
+      router.replace("/verify-email");
     },
     onError: (error) => {
       toast.error(error.message);
@@ -39,18 +70,61 @@ export function useLoginMutation() {
   });
 }
 
-export function useSignInMutation() {
+export function useVerifyEmailMutation() {
+  const { setPendingEmail, setAccessToken, setIsAuthenticating } =
+    useAuthStore.getState();
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (registerRequest: RegisterRequest) => {
-      const response = await myAxios.post("/auth/register", registerRequest);
+    mutationFn: async () => {
+      const response = await myAxios.post("/auth/verify-check");
       return response.data;
     },
-    onSuccess: (token) => {
-      toast.success(`Success: [${token}]`);
-      router.replace("/login"); // Go back to profile
+    onSuccess: (result: AuthResponse) => {
+      // Email verified, clear pending email
+      setPendingEmail(null);
+      setIsAuthenticating(true);
+      setAccessToken(result.access_token);
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+      router.replace("/profile");
+      toast.success("Email xác minh thành công!");
     },
     onError: (error) => {
-      toast.error(error.message);
+      toast.error(
+        error.message || "Email chưa được xác minh, vui lòng thử lại",
+      );
     },
   });
+}
+
+export function useResendVerifyEmailMutation() {
+  return useMutation({
+    mutationFn: async (email: string) => {
+      const response = await myAxios.post("/auth/resend-verify-email", {
+        email,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success("Email xác minh đã được gửi lại!");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Gửi lại email thất bại");
+    },
+  });
+}
+
+export async function openGmail() {
+  const scheme = "googlegmail://";
+  try {
+    // Try Gmail first
+    if (await Linking.canOpenURL(scheme)) {
+      await Linking.openURL(scheme);
+    } else {
+      // Fallback to browser
+      await Linking.openURL("https://mail.google.com");
+    }
+  } catch (error) {
+    console.error("Failed to open Gmail:", error);
+    await Linking.openURL("https://mail.google.com");
+  }
 }

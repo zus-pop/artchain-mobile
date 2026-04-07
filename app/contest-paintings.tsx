@@ -17,6 +17,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useWhoAmI } from "../apis/auth";
 
 function toAlpha(hex: string, a: number) {
@@ -137,8 +138,8 @@ export default function ContestPaintingsScreen() {
       examinerRole === "ROUND_1"
         ? "ROUND_1"
         : examinerRole === "ROUND_2"
-        ? "ROUND_2"
-        : undefined,
+          ? "ROUND_2"
+          : undefined,
     status: examinerRole !== "ROUND_2" ? "ACCEPTED" : undefined,
     examinerId: user?.userId,
   });
@@ -174,7 +175,7 @@ export default function ContestPaintingsScreen() {
         navLockRef.current = false;
       }, 800);
     },
-    [contestTitle, examinerRole]
+    [contestTitle, examinerRole],
   );
 
   /* ============================ MINIMALIST PAINTING CARD ============================ */
@@ -185,8 +186,8 @@ export default function ContestPaintingsScreen() {
       examinerRole === "ROUND_1"
         ? "Vòng 1"
         : examinerRole === "ROUND_2"
-        ? "Vòng 2"
-        : "Tranh dự thi";
+          ? "Vòng 2"
+          : "Tranh dự thi";
 
     return (
       <PressableScale
@@ -251,7 +252,7 @@ export default function ContestPaintingsScreen() {
   /* ============================ Render ============================ */
   if (isLoading) {
     return (
-      <View style={s.container}>
+      <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
         <View style={s.header}>
           <Pressable onPress={() => router.back()} style={s.backBtn}>
             <Ionicons name="arrow-back" size={22} color={C.primaryForeground} />
@@ -262,13 +263,13 @@ export default function ContestPaintingsScreen() {
           <ActivityIndicator size="large" color={C.primaryForeground} />
           <Text style={s.loadingText}>Đang tải tranh...</Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={s.container}>
+      <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
         <View style={s.header}>
           <Pressable onPress={() => router.back()} style={s.backBtn}>
             <Ionicons name="arrow-back" size={22} color={C.primaryForeground} />
@@ -286,12 +287,12 @@ export default function ContestPaintingsScreen() {
             <Text style={s.retryText}>Thử lại</Text>
           </Pressable>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={s.container}>
+    <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
       {/* Header */}
       <View style={s.header}>
         <Pressable onPress={() => router.back()} style={s.backBtn}>
@@ -316,7 +317,7 @@ export default function ContestPaintingsScreen() {
           <Text style={s.emptyText}>Chưa có bài dự thi hoặc đã chấm hết</Text>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -326,7 +327,7 @@ const styles = (C: any) =>
     /* Container */
     container: {
       flex: 1,
-      backgroundColor: C.newbackground, 
+      backgroundColor: C.newbackground,
     },
 
     /* Header */

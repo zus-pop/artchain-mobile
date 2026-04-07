@@ -150,6 +150,10 @@ export default function RootLayout() {
                     name="childrent-detail"
                     options={{ headerShown: false }}
                   />
+                  <Stack.Screen
+                    name="reward-painting"
+                    options={{ title: "Giải Thưởng", headerShown: false }}
+                  />
                 </Stack>
 
                 <Toaster richColors />

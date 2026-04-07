@@ -10,14 +10,17 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useContest } from "@/apis/contest";
+import { useWhoAmI } from "@/apis/auth";
+import { useContest, useExaminerContest } from "@/apis/contest";
 import ArtchainAnimation from "@/components/animations/ArtchainAnimation";
 import { ContestCard } from "@/components/cards/ContestCard";
 import CollapsibleHeader, {
   FilterOption,
 } from "@/components/header/contest/CollapsibleHeader";
+import ExaminerContestsPanel from "@/components/panels/ExaminerContestsPanel";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useAuthStore } from "@/store/auth-store";
 import { Contest } from "@/types";
 import { FlatList } from "react-native-gesture-handler";
 
@@ -26,18 +29,18 @@ type ContestStatus = "ALL" | "ACTIVE" | "UPCOMING" | "COMPLETED" | "ENDED";
 
 const FILTERS: FilterOption[] = [
   "Tất cả",
-  "Đang diễn ra",
-  "Sắp diễn ra",
-  "Đã kết thúc",
-  "Hoàn thành",
+  "Đang Diễn Ra",
+  "Sắp Diễn Ra",
+  "Đã Kết Thúc",
+  "Hoàn Thành",
 ];
 
 const filterToStatus: Record<FilterOption, ContestStatus> = {
   "Tất cả": "ALL",
-  "Đang diễn ra": "ACTIVE",
-  "Sắp diễn ra": "UPCOMING",
-  "Đã kết thúc": "ENDED",
-  "Hoàn thành": "COMPLETED",
+  "Đang Diễn Ra": "ACTIVE",
+  "Sắp Diễn Ra": "UPCOMING",
+  "Đã Kết Thúc": "ENDED",
+  "Hoàn Thành": "COMPLETED",
 };
 
 /* ======================== Screen ======================== */
@@ -54,11 +57,23 @@ export default function ContestsScreen() {
   const insets = useSafeAreaInsets();
   const TOP_INSET = insets.top ?? 0;
 
-  // ===== API =====
+  // ===== Auth & User Info =====
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const { data: user } = useWhoAmI();
+  const isExaminer = user?.role === "EXAMINER";
+
+  // ===== API - Normal contests (for non-examiners) =====
   const { data, isPending, error, fetchNextPage, isFetchingNextPage, refetch } =
     useContest({
       status: filterToStatus[selectedFilter],
     });
+
+  // ===== API - Examiner contests (only when user is examiner) =====
+  const {
+    data: examinerContests,
+    isLoading: examinerLoading,
+    refetch: refetchExaminer,
+  } = useExaminerContest(isExaminer ? user?.userId : undefined);
 
   // ===== Collapsible header =====
   const isDraggingRef = useRef(false);
@@ -74,7 +89,7 @@ export default function ContestsScreen() {
         setHeaderHeight(h);
       }
     },
-    [headerHeight]
+    [headerHeight],
   );
 
   const translateY = new Animated.Value(0); // Keep header always visible
@@ -96,14 +111,25 @@ export default function ContestsScreen() {
     setSelectedFilter(opt);
   }, []);
 
+  const lastRefreshRef = useRef(0); // Debounce ref to prevent rapid refresh calls
+
   const onRefresh = useCallback(async () => {
     try {
+      // Debounce: prevent multiple refresh calls within 500ms
+      const now = Date.now();
+      if (now - lastRefreshRef.current < 500) return;
+      lastRefreshRef.current = now;
+
       setRefreshing(true);
-      await refetch();
+      if (isExaminer) {
+        await refetchExaminer();
+      } else {
+        await refetch();
+      }
     } finally {
       setRefreshing(false);
     }
-  }, [refetch]);
+  }, [refetch, refetchExaminer, isExaminer]);
 
   const onEndReached = useCallback(() => {
     fetchNextPage();
@@ -111,7 +137,7 @@ export default function ContestsScreen() {
 
   const keyExtractor = useCallback(
     (c: Contest, i: number) => String(c.contestId ?? i),
-    []
+    [],
   );
 
   const renderItem = useCallback(
@@ -128,7 +154,7 @@ export default function ContestsScreen() {
         />
       </View>
     ),
-    []
+    [],
   );
 
   const listFooterComponent = useCallback(() => {
@@ -156,6 +182,17 @@ export default function ContestsScreen() {
   }, [isPending, s]);
 
   /* ======================== UI ======================== */
+
+  // If user is examiner, show examiner contests panel instead
+  if (isExaminer) {
+    return (
+      <View style={s.screen}>
+        <ExaminerContestsPanel C={C} userId={user?.userId} vertical={true} />
+      </View>
+    );
+  }
+
+  // Normal UI for non-examiner users
   const TOP_PADDING = headerHeight + HEADER_EXTRA_GAP + TOP_INSET;
 
   return (
@@ -188,7 +225,7 @@ export default function ContestsScreen() {
         </View>
       ) : (
         <FlatList
-          data={data?.pages.map((page) => page.data).flat()}
+          data={data?.pages?.flatMap((page) => page?.data ?? []) ?? []}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           contentContainerStyle={{
