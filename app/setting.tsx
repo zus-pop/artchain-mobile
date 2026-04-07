@@ -22,8 +22,8 @@ import { useDisableAccount } from "@/apis/user";
 import UnifiedHeader from "@/components/headers/UnifiedHeader";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { useAuthStore } from "../store";
 import { LinearGradient } from "expo-linear-gradient";
+import { useAuthStore } from "../store";
 
 /* ================== Constants ================== */
 const languages = [
