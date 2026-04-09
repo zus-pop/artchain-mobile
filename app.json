@@ -4,7 +4,7 @@
         "slug": "artchain-mobile",
         "version": "1.0.0",
         "orientation": "default",
-        "icon": "./assets/images/logo.png",
+        "icon": "./assets/images/icon.png",
         "scheme": "artchainmobile",
         "userInterfaceStyle": "light",
         "newArchEnabled": true,
@@ -56,7 +56,7 @@
             [
                 "expo-splash-screen",
                 {
-                    "image": "./assets/images/banner.png",
+                    "image": "./assets/images/splash.png",
                     "imageWidth": 200,
                     "resizeMode": "contain",
                     "backgroundColor": "#ffffff",
