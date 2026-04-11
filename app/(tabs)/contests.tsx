@@ -25,22 +25,20 @@ import { Contest } from "@/types";
 import { FlatList } from "react-native-gesture-handler";
 
 /* ======================== Types & helpers ======================== */
-type ContestStatus = "ALL" | "ACTIVE" | "UPCOMING" | "COMPLETED" | "ENDED";
+type ContestStatus = "ALL" | "UPCOMING" | "ACTIVE" | "ENDED";
 
 const FILTERS: FilterOption[] = [
   "Tất cả",
-  "Đang Diễn Ra",
-  "Sắp Diễn Ra",
-  "Đã Kết Thúc",
-  "Hoàn Thành",
+  "Sắp diễn ra",
+  "Đang diễn ra",
+  "Đã kết thúc",
 ];
 
 const filterToStatus: Record<FilterOption, ContestStatus> = {
   "Tất cả": "ALL",
-  "Đang Diễn Ra": "ACTIVE",
-  "Sắp Diễn Ra": "UPCOMING",
-  "Đã Kết Thúc": "ENDED",
-  "Hoàn Thành": "COMPLETED",
+  "Sắp diễn ra": "UPCOMING",
+  "Đang diễn ra": "ACTIVE",
+  "Đã kết thúc": "ENDED",
 };
 
 /* ======================== Screen ======================== */

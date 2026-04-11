@@ -17,8 +17,7 @@ export type FilterOption =
   | "Tất cả"
   | "Đang diễn ra"
   | "Sắp diễn ra"
-  | "Đã kết thúc"
-  | "Hoàn thành";
+  | "Đã kết thúc";
 
 type Props = {
   scheme: "light" | "dark";

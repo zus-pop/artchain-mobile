@@ -7,7 +7,6 @@ import { useRouter } from "expo-router";
 import React from "react";
 import { useForm } from "react-hook-form";
 import {
-  Dimensions,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -21,17 +20,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
 import { useLoginMutation } from "../apis/auth";
 
-const { height } = Dimensions.get("window");
-
 const schema = z.object({
   username: z
-    .string({ message: "Username is required" })
+    .string({ message: "Tên đăng nhập là bắt buộc" })
     .trim()
-    .nonempty("Username is required"),
+    .nonempty("Tên đăng nhập là bắt buộc"),
   password: z
-    .string({ message: "Password is required" })
+    .string({ message: "Mật khẩu là bắt buộc" })
     .trim()
-    .nonempty("Password is required"),
+    .nonempty("Mật khẩu là bắt buộc"),
 });
 type Schema = z.infer<typeof schema>;
 
@@ -50,7 +47,6 @@ export default function LoginScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const C = Colors[colorScheme];
   const { mutate, isPending } = useLoginMutation();
-
   const handleLogin = (data: Schema) => {
     mutate({ username: data.username, password: data.password });
   };
@@ -99,8 +95,8 @@ export default function LoginScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
       >
         <ScrollView
           contentContainerStyle={{
@@ -111,21 +107,20 @@ export default function LoginScreen() {
           }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          scrollEnabled={false}
+          automaticallyAdjustKeyboardInsets={true}
         >
           {/* Logo Section - Reduced size */}
           <View style={{ alignItems: "center", marginBottom: 28 }}>
             <Image
-              source={require("../assets/logo/Logo.png")}
-              style={{ width: 140, height: 140 }}
+              source={require("@/assets/images/splash.png")}
+              style={{ width: 180, height: 180 }}
               resizeMode="contain"
             />
             <Text
               style={{
-                fontSize: 20,
-                fontWeight: "700",
+                fontSize: 25,
+                fontWeight: "900",
                 color: C.primary,
-                marginTop: 14,
                 letterSpacing: 0.5,
               }}
             >

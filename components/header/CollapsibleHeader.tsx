@@ -38,9 +38,6 @@ export default function CollapsibleHeader({
     outputRange: [1, 1, 1],
   });
 
-  // giữ avatar đứng yên khi header trượt
-  const avatarCounterY = Animated.multiply(translateY, -1);
-
   return (
     <Animated.View
       style={[
@@ -90,7 +87,7 @@ export default function CollapsibleHeader({
               },
             ]}
           >
-            Hi,
+            Chào,
           </Animated.Text>
           <Animated.Text
             style={[

@@ -1,7 +1,7 @@
 // components/header/contest/ScreenGradientHeader.tsx
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { ColorValue, Platform, StyleSheet, Text, View } from "react-native";
 
 export default function ScreenGradientHeader({
   title = "Contest",
@@ -10,7 +10,7 @@ export default function ScreenGradientHeader({
 }: {
   title?: string;
   subtitle?: string;
-  colors: string[];
+  colors: [ColorValue, ColorValue, ...ColorValue[]];
 }) {
   return (
     <LinearGradient

@@ -11,8 +11,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-  Dimensions,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -81,7 +79,7 @@ const userSchema = z.object({
     .optional()
     .refine(
       (val) => !val || val === "" || phoneRegex.test(val),
-      "Số điện thoại không hợp lệ (VD: 0987654321 hoặc +84987654321)"
+      "Số điện thoại không hợp lệ (VD: 0987654321 hoặc +84987654321)",
     ),
   //   avatar: z.string().optional(),
   //   birthday: z
@@ -100,18 +98,6 @@ type Props = {
   onClose: () => void;
   scheme: Scheme;
   user: UserShape;
-};
-
-const { height: SCREEN_H } = Dimensions.get("window");
-const FOOTER_H = 100;
-
-const COLORFUL = {
-  blue: { bg: "rgba(37, 99, 235, 0.12)", fg: "#2563EB" },
-  green: { bg: "rgba(5, 150, 105, 0.12)", fg: "#059669" },
-  purple: { bg: "rgba(147, 51, 234, 0.12)", fg: "#9333EA" },
-  amber: { bg: "rgba(245, 158, 11, 0.12)", fg: "#F59E0B" },
-  pink: { bg: "rgba(219, 39, 119, 0.12)", fg: "#DB2777" },
-  sky: { bg: "rgba(2, 132, 199, 0.12)", fg: "#0284C7" },
 };
 
 const ProfileDetailsModal: React.FC<Props> = ({
@@ -203,7 +189,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
         onClose();
       }
     },
-    [onClose]
+    [onClose],
   );
 
   const { mutate, isPending } = useUpdateUserById(() => {
@@ -261,7 +247,6 @@ const ProfileDetailsModal: React.FC<Props> = ({
             flexGrow: 1,
             paddingHorizontal: 14,
             paddingTop: 6,
-            
           }}
           keyboardShouldPersistTaps="handled"
           bounces
@@ -362,10 +347,8 @@ const ProfileDetailsModal: React.FC<Props> = ({
             />
           </View>
 
-     
           <View style={{ flex: 1, minHeight: 20 }} />
 
-          
           <View
             style={[
               s.footer,
@@ -494,8 +477,6 @@ function Field({
     </View>
   );
 }
-
-
 
 export default ProfileDetailsModal;
 
