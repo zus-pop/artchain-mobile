@@ -44,16 +44,6 @@ const getStatusStyle = (scheme: "light" | "dark") => {
   } as const;
 };
 
-/** Fake rules khi API chưa có dữ liệu */
-const DEFAULT_RULES: string[] = [
-  "Tác phẩm phải là sáng tác gốc, không vi phạm bản quyền.",
-  "Định dạng: JPG/PNG/PDF, tối thiểu 300 DPI, dung lượng ≤ 10MB.",
-  "Mỗi thí sinh nộp tối đa 1 tác phẩm.",
-  "Không dùng AI tạo nội dung; chỉnh màu cơ bản được chấp nhận.",
-  "Ban tổ chức được quyền sử dụng tác phẩm cho mục đích truyền thông.",
-  "Kết quả sẽ công bố trong vòng 7 ngày sau khi cuộc thi kết thúc.",
-];
-
 export default function ContestDetail() {
   const { contestId } = useLocalSearchParams<{ contestId: string }>();
   const {
@@ -127,7 +117,6 @@ export default function ContestDetail() {
   };
 
   const tone = getStatusStyle(scheme)[normalizeStatus(contest?.status)];
-  const rules = DEFAULT_RULES;
 
   // Get ROUND_1 and ROUND_2 data
   const findRound1 = (rounds?: Rounds[]) => {
@@ -317,15 +306,6 @@ export default function ContestDetail() {
               <ExternalLink size={16} color={C.primary} />
             </TouchableOpacity>
           )}
-
-          <View style={s.rulesContainer}>
-            {rules.map((rule, i) => (
-              <View key={i} style={s.ruleItem}>
-                <View style={s.ruleBullet} />
-                <Text style={s.ruleText}>{rule}</Text>
-              </View>
-            ))}
-          </View>
         </View>
 
         {/* ACTION BUTTONS */}
@@ -410,11 +390,7 @@ function fmtDateTime(v?: string | Date | null) {
       month: "2-digit",
       year: "numeric",
     });
-    const time = d.toLocaleTimeString("vi-VN", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    return `${time} ${date}`;
+    return `${date}`;
   } catch {
     return undefined;
   }
@@ -427,7 +403,7 @@ const styles = (C: any) => {
     screen: { flex: 1, backgroundColor: C.background },
     primaryButton: {
       backgroundColor: C.primary,
-      borderRadius: 12,
+      borderRadius: 8,
       padding: 16,
       alignItems: "center",
     },
@@ -687,7 +663,7 @@ const styles = (C: any) => {
       justifyContent: "center",
       gap: 12,
       backgroundColor: "#ff9500",
-      borderRadius: 14,
+      borderRadius: 8,
       paddingVertical: 16,
       paddingHorizontal: 24,
       marginHorizontal: 16,

@@ -44,8 +44,10 @@ export function useLoginMutation() {
 
       toast.success("Đăng nhập thành công!");
     },
-    onError: (error) => {
-      toast.error("Đăng nhập thất bại xin hãy kiểm tra lại thông tin đăng nhập" );
+    onError: () => {
+      toast.error(
+        "Đăng nhập thất bại xin hãy kiểm tra lại thông tin đăng nhập",
+      );
     },
   });
 }
@@ -114,17 +116,19 @@ export function useResendVerifyEmailMutation() {
 }
 
 export async function openGmail() {
-  const scheme = "googlegmail://";
+  //   const scheme =  "googlegmail://";
+  const scheme = "https://gmail.app.goo.gl";
+  const fallback = "https://mail.google.com";
   try {
     // Try Gmail first
     if (await Linking.canOpenURL(scheme)) {
       await Linking.openURL(scheme);
     } else {
       // Fallback to browser
-      await Linking.openURL("https://mail.google.com");
+      await Linking.openURL(fallback);
     }
   } catch (error) {
     console.error("Failed to open Gmail:", error);
-    await Linking.openURL("https://mail.google.com");
+    await Linking.openURL(fallback);
   }
 }

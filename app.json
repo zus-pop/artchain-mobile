@@ -22,7 +22,7 @@
         "android": {
             "adaptiveIcon": {
                 "backgroundColor": "#E6F4FE",
-                "foregroundImage": "./assets/images/android-icon-foreground.png",
+                "foregroundImage": "./assets/images/icon.png",
                 "backgroundImage": "./assets/images/android-icon-background.png",
                 "monochromeImage": "./assets/images/android-icon-monochrome.png"
             },
@@ -39,11 +39,24 @@
             "favicon": "./assets/images/favicon.png"
         },
         "plugins": [
+            [
+                "expo-build-properties",
+                {
+                    "android": {
+                        "compileSdkVersion": 36,
+                        "targetSdkVersion": 36,
+                        "buildToolsVersion": "36.0.0"
+                    },
+                    "ios": {
+                        "deploymentTarget": "15.1"
+                    }
+                }
+            ],
             "expo-router",
             [
                 "expo-splash-screen",
                 {
-                    "image": "./assets/images/splash-icon.png",
+                    "image": "./assets/images/splash.png",
                     "imageWidth": 200,
                     "resizeMode": "contain",
                     "backgroundColor": "#ffffff",
@@ -58,7 +71,8 @@
                 {
                     "photosPermission": "The app accesses your photos to let you share them with your friends."
                 }
-            ]
+            ],
+            "expo-build-properties"
         ],
         "experiments": {
             "typedRoutes": true,
