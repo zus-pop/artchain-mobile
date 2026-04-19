@@ -285,7 +285,7 @@ export default function PaintingEvaluationRound2Screen() {
               <Ionicons name="chevron-back" size={18} color={colors.primary} />
             </PressableScale>
             <ThemedText style={styles(colors).headerTitle}>
-              Đánh giá Vòng 2
+              Đánh giá Vòng Chung Khảo
             </ThemedText>
             <View style={styles(colors).headerRight} />
           </View>

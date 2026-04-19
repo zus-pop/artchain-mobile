@@ -167,7 +167,7 @@ export default function ContestDetail() {
           <View style={s.infoCard}>
             <Users size={20} color={C.primary} />
             <Text style={s.infoCardValue}>{contest?.round2Quantity ?? 0}</Text>
-            <Text style={s.infoCardLabel}>Vào vòng 2</Text>
+            <Text style={s.infoCardLabel}>Vào Chung Khảo</Text>
           </View>
         </View>
 
@@ -215,7 +215,7 @@ export default function ContestDetail() {
         {/* ROUND 1 TIMELINE - Always show */}
         <View style={s.section}>
           <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Lịch trình Vòng 1</Text>
+            <Text style={s.sectionTitle}>Lịch trình Vòng Sơ Khảo</Text>
           </View>
 
           <View style={s.roundTimeline}>
@@ -272,7 +272,7 @@ export default function ContestDetail() {
         {/* ROUND 2 INFO */}
         <View style={s.section}>
           <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Vòng 2</Text>
+            <Text style={s.sectionTitle}>Vòng Chung Khảo</Text>
           </View>
 
           <View style={s.roundTimeline}>
@@ -281,7 +281,7 @@ export default function ContestDetail() {
               <View style={s.roundContent}>
                 <Text style={s.roundTitle}>Số lượng tham gia</Text>
                 <Text style={s.roundDate}>
-                  Top {contest?.round2Quantity ?? 0} từ Vòng 1
+                  Top {contest?.round2Quantity ?? 0} từ Sơ Khảo
                 </Text>
               </View>
             </View>

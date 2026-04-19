@@ -71,6 +71,14 @@ function getStatusMeta(status: Schedule["status"], baseGrad: [string, string]) {
   };
 }
 
+function getRoundLabel(round2Table: any | null): string {
+  return round2Table ? "Vòng 2" : "Vòng 1";
+}
+
+function getRoundIcon(round2Table: any | null): string {
+  return round2Table ? "trophy-outline" : "medal-outline";
+}
+
 /* -------------------- Component -------------------- */
 function ScheduleCardRainbow({
   C,
@@ -82,11 +90,11 @@ function ScheduleCardRainbow({
   const date = useMemo(() => new Date(schedule.date), [schedule.date]);
   const baseGrad = useMemo(
     () => pickGradById(String(schedule.scheduleId ?? ""), schedule.task ?? ""),
-    [schedule.scheduleId, schedule.task]
+    [schedule.scheduleId, schedule.task],
   );
   const status = useMemo(
     () => getStatusMeta(schedule.status, baseGrad),
-    [schedule.status, baseGrad]
+    [schedule.status, baseGrad],
   );
   const timeString = useMemo(
     () =>
@@ -94,7 +102,7 @@ function ScheduleCardRainbow({
         hour: "2-digit",
         minute: "2-digit",
       }),
-    [date]
+    [date],
   );
 
   // Press scale animation (use ONE spring param group)
@@ -197,24 +205,32 @@ function ScheduleCardRainbow({
             </Text>
 
             <View style={styles.meta}>
+              {/* Round badge */}
               <View
-                style={
-                  styles.statusBadge && {
-                    backgroundColor: "#E8F5E8",
-                    borderColor: "#4CAF50",
-                    borderWidth: 1,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 6,
-                    paddingVertical: 7,
-                    paddingHorizontal: 12,
-                    borderRadius: 4,
-                  }
-                }
+                style={[
+                  styles.roundBadge,
+                  {
+                    backgroundColor: schedule.round2Table
+                      ? "#FFF3E0"
+                      : "#E3F2FD",
+                    borderColor: schedule.round2Table ? "#FF9800" : "#2196F3",
+                  },
+                ]}
               >
-                <Ionicons name={status.icon} size={12} color={"#4CAF50"} />
-                <Text style={[styles.statusText, { color: "#4CAF50" }]}>
-                  {status.label}
+                <Ionicons
+                  name={getRoundIcon(schedule.round2Table)}
+                  size={12}
+                  color={schedule.round2Table ? "#FF9800" : "#2196F3"}
+                />
+                <Text
+                  style={[
+                    styles.roundText,
+                    {
+                      color: schedule.round2Table ? "#FF9800" : "#2196F3",
+                    },
+                  ]}
+                >
+                  {getRoundLabel(schedule.round2Table)}
                 </Text>
               </View>
 
@@ -365,15 +381,16 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
 
-  statusBadge: {
-    paddingVertical: 7,
-    paddingHorizontal: 12,
+  roundBadge: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 999,
+    borderWidth: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 5,
   },
-  statusText: {
+  roundText: {
     fontSize: 12,
     fontWeight: "800",
   },

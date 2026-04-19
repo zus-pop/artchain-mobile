@@ -451,7 +451,7 @@ export default function PaintingReviewRound1Screen() {
             <Pressable onPress={() => router.back()} style={s.backBtn}>
               <Ionicons name="arrow-back" size={22} color={C.foreground} />
             </Pressable>
-            <Text style={s.headerTitle}>Xem lại Vòng 1</Text>
+            <Text style={s.headerTitle}>Xem lại Vòng Sơ Khảo</Text>
           </View>
           <View style={s.loading}>
             <ActivityIndicator size="large" color={C.primary} />
@@ -476,7 +476,7 @@ export default function PaintingReviewRound1Screen() {
             <Pressable onPress={() => router.back()} style={s.backBtn}>
               <Ionicons name="arrow-back" size={22} color={C.foreground} />
             </Pressable>
-            <Text style={s.headerTitle}>Xem lại Vòng 1</Text>
+            <Text style={s.headerTitle}>Xem lại Vòng Sơ Khảo</Text>
           </View>
           <View style={s.center}>
             <Ionicons
@@ -511,7 +511,7 @@ export default function PaintingReviewRound1Screen() {
               <Ionicons name="arrow-back" size={22} color={C.foreground} />
             </Pressable>
             <Text style={s.headerTitle} numberOfLines={1}>
-              {contestTitle ? `Xem lại — ${contestTitle}` : "Xem lại Vòng 1"}
+              {contestTitle ? `Xem lại — ${contestTitle}` : "Xem lại Vòng Sơ Khảo"}
             </Text>
           </View>
 

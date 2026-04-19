@@ -12,12 +12,17 @@ import {
   ActivityIndicator,
   Animated,
   FlatList,
+  Platform,
   Pressable,
+  StatusBar,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { useWhoAmI } from "../apis/auth";
 
 function toAlpha(hex: string, a: number) {
@@ -124,6 +129,7 @@ export default function ContestPaintingsScreen() {
 
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const C = Colors[scheme];
+  const insets = useSafeAreaInsets();
   const s = styles(C);
   const { data: user } = useWhoAmI();
 
@@ -184,9 +190,9 @@ export default function ContestPaintingsScreen() {
 
     const roundLabel =
       examinerRole === "ROUND_1"
-        ? "Vòng 1"
+        ? "Vòng Sơ Khảo"
         : examinerRole === "ROUND_2"
-          ? "Vòng 2"
+          ? "Vòng Chung Khảo"
           : "Tranh dự thi";
 
     return (
@@ -252,10 +258,20 @@ export default function ContestPaintingsScreen() {
   /* ============================ Render ============================ */
   if (isLoading) {
     return (
-      <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
-        <View style={s.header}>
-          <Pressable onPress={() => router.back()} style={s.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={C.primaryForeground} />
+      <View style={[s.container, { backgroundColor: C.background }]}>
+        <StatusBar barStyle="light-content" backgroundColor={C.primary} />
+        <View style={[s.header, { paddingTop: insets.top }]}>
+          <Pressable
+            onPress={() => router.back()}
+            style={s.backBtn}
+            android_ripple={{ color: "rgba(255,255,255,0.2)" }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={24}
+              color={C.primaryForeground}
+            />
           </Pressable>
           <Text style={s.headerTitle}>Tranh</Text>
         </View>
@@ -263,16 +279,26 @@ export default function ContestPaintingsScreen() {
           <ActivityIndicator size="large" color={C.primaryForeground} />
           <Text style={s.loadingText}>Đang tải tranh...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
-        <View style={s.header}>
-          <Pressable onPress={() => router.back()} style={s.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={C.primaryForeground} />
+      <View style={[s.container, { backgroundColor: C.background }]}>
+        <StatusBar barStyle="light-content" backgroundColor={C.primary} />
+        <View style={[s.header, { paddingTop: insets.top }]}>
+          <Pressable
+            onPress={() => router.back()}
+            style={s.backBtn}
+            android_ripple={{ color: "rgba(255,255,255,0.2)" }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={24}
+              color={C.primaryForeground}
+            />
           </Pressable>
           <Text style={s.headerTitle}>Tranh</Text>
         </View>
@@ -287,37 +313,54 @@ export default function ContestPaintingsScreen() {
             <Text style={s.retryText}>Thử lại</Text>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
+    <View style={[s.container, { backgroundColor: C.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor={C.primary} />
       {/* Header */}
-      <View style={s.header}>
-        <Pressable onPress={() => router.back()} style={s.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={C.primaryForeground} />
+      <View style={[s.header, { paddingTop: insets.top }]}>
+        <Pressable
+          onPress={() => router.back()}
+          style={s.backBtn}
+          android_ripple={{ color: "rgba(255,255,255,0.2)" }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="chevron-back" size={24} color={C.primaryForeground} />
         </Pressable>
         <Text style={s.headerTitle} numberOfLines={1}>
-          {contestTitle ? `${contestTitle} — Tranh` : "Tranh cuộc thi"}
+          {contestTitle ? `${contestTitle}` : "Tranh cuộc thi"}
         </Text>
       </View>
 
       {paintings && paintings.paintings.length > 0 ? (
-        <FlatList
-          data={paintings.paintings}
-          keyExtractor={(item) => item.paintingId}
-          renderItem={({ item }) => <PaintingItem painting={item} />}
-          contentContainerStyle={s.list}
-          showsVerticalScrollIndicator={false}
-        />
+        <SafeAreaView edges={["left", "right", "bottom"]} style={{ flex: 1 }}>
+          <FlatList
+            data={paintings.paintings}
+            keyExtractor={(item) => item.paintingId}
+            renderItem={({ item }) => <PaintingItem painting={item} />}
+            contentContainerStyle={s.list}
+            showsVerticalScrollIndicator={false}
+          />
+        </SafeAreaView>
       ) : (
-        <View style={s.center}>
-          <Ionicons name="images-outline" size={64} color={C.mutedForeground} />
-          <Text style={s.emptyText}>Chưa có bài dự thi hoặc đã chấm hết</Text>
-        </View>
+        <SafeAreaView
+          edges={["left", "right", "bottom"]}
+          style={{ flex: 1, justifyContent: "center" }}
+        >
+          <View style={s.center}>
+            <Ionicons
+              name="images-outline"
+              size={64}
+              color={C.mutedForeground}
+            />
+            <Text style={s.emptyText}>Chưa có bài dự thi hoặc đã chấm hết</Text>
+          </View>
+        </SafeAreaView>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -334,28 +377,32 @@ const styles = (C: any) =>
     header: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: 14,
-      paddingVertical: 14,
-      backgroundColor: C.primary, // header dùng C.primary
+      justifyContent: "flex-start",
+      paddingHorizontal: 12,
+      paddingBottom: 10,
+      backgroundColor: C.primary,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: toAlpha("#000000", 0.12),
+      borderBottomColor: toAlpha("#000000", 0.15),
       shadowColor: "#000",
-      shadowOpacity: 0.12,
+      shadowOpacity: Platform.OS === "ios" ? 0.12 : 0.08,
       shadowRadius: 8,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 4,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 3,
     },
     backBtn: {
-      padding: 8,
-      marginRight: 8,
-      borderRadius: 999,
-      backgroundColor: toAlpha("#000000", 0.16),
+      width: 40,
+      height: 40,
+      justifyContent: "center",
+      alignItems: "center",
+      borderRadius: 8,
+      backgroundColor: toAlpha("#ffffff", 0.15),
     },
     headerTitle: {
-      fontSize: 18,
-      fontWeight: "800",
+      fontSize: 16,
+      fontWeight: "900",
       color: C.primaryForeground,
       flex: 1,
+      marginLeft: 10,
     },
 
     /* Loading / Error */

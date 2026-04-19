@@ -91,14 +91,14 @@ function statusMeta(status: ExaminerContest["status"], C: ColorTokens) {
 
 function examinerRoleMeta(
   C: ColorTokens,
-  role?: ExaminerContest["examinerRole"]
+  role?: ExaminerContest["examinerRole"],
 ) {
   if (!role) return null;
 
   switch (role) {
     case "ROUND_1":
       return {
-        label: "Chấm Vòng 1",
+        label: "Chấm Vòng Sơ Khảo",
         icon: "medal-outline" as const,
         grad: [C.primary, C.chart1],
         fg: C.primaryForeground,
@@ -106,7 +106,7 @@ function examinerRoleMeta(
       };
     case "ROUND_2":
       return {
-        label: "Chấm Vòng 2",
+        label: "Chấm Vòng Chung Khảo",
         icon: "trophy-outline" as const,
         grad: [C.destructive, C.primary],
         fg: C.primaryForeground,
@@ -159,7 +159,6 @@ function ContestCardColorful({
         style,
       ]}
     >
-     
       <LinearGradient
         colors={[C.card, C.card]}
         start={{ x: 0.1, y: 0 }}
@@ -258,8 +257,8 @@ function ContestCardColorful({
                     isEvaluating || !contest.canEvaluate
                       ? 0.6
                       : pressed
-                      ? 0.96
-                      : 1,
+                        ? 0.96
+                        : 1,
                   shadowColor: st.grad[1],
                 },
               ]}
@@ -279,8 +278,8 @@ function ContestCardColorful({
                   {isEvaluating
                     ? "Đang xử lý..."
                     : !contest.canEvaluate
-                    ? "Chưa tới lịch chấm"
-                    : "Đánh giá"}
+                      ? "Chưa tới lịch chấm"
+                      : "Đánh giá"}
                 </Text>
               </LinearGradient>
             </Pressable>
@@ -300,7 +299,7 @@ const styles = StyleSheet.create({
   wrapper: {
     borderRadius: R,
     shadowOpacity: 0.09,
-    shadowRadius: 14,
+    shadowRadius: 4,
     shadowOffset: { width: 0, height: 6 },
     elevation: 3,
     overflow: Platform.select({ android: "hidden", ios: "visible" }),
@@ -358,7 +357,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 4,
+    borderRadius: 2,
     flexDirection: "row",
     alignItems: "center",
   },
@@ -371,7 +370,7 @@ const styles = StyleSheet.create({
   rowBetween: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 12,
+    gap:12,
   },
   metaChip: {
     flexDirection: "row",
@@ -381,7 +380,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   metaText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
   },
 
