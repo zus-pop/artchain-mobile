@@ -22,7 +22,6 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
-
 function TopBar({ C, title }: { C: ColorTokens; title: string }) {
   const insets = useSafeAreaInsets();
 
@@ -32,7 +31,7 @@ function TopBar({ C, title }: { C: ColorTokens; title: string }) {
         styles.topbarGrad,
         {
           paddingTop: insets.top,
-          backgroundColor: "", 
+          backgroundColor: "",
         },
       ]}
     >
@@ -219,6 +218,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "transparent",
   },
-  headerTitle: { fontSize: 24, fontWeight: "600" },
+  headerTitle: { fontSize: 20, fontWeight: "700" },
   iconBtn: { padding: 8, marginLeft: 4 },
 });

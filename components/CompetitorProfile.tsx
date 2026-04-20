@@ -10,12 +10,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
-  Animated,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Animated,
+    Image,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -29,7 +30,7 @@ import { formatDateDisplay } from "@/utils/date";
 import AchievementCard from "./cards/competitor/AchievementCard";
 import EmptyState from "./cards/competitor/EmptyState";
 import SubmissionCard, {
-  SubmissionItem,
+    SubmissionItem,
 } from "./cards/competitor/SubmissionCard";
 import SegmentedTabsProfile from "./tabs/SegmentedTabsProfile";
 
@@ -77,7 +78,7 @@ export default function CompetitorProfileComponent() {
 
   const [openAchModal, setOpenAchModal] = useState(false);
   const [selectedAch, setSelectedAch] = useState<ApiAchievementItem | null>(
-    null
+    null,
   );
   const [refreshing, setRefreshing] = useState(false);
 
@@ -97,10 +98,10 @@ export default function CompetitorProfileComponent() {
   const [openDetails, setOpenDetails] = useState(false);
   const [openSubmission, setOpenSubmission] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<Painting | null>(
-    null
+    null,
   );
   const [activeTab, setActiveTab] = useState<"achievements" | "submissions">(
-    "submissions"
+    "submissions",
   );
 
   const achievements = achievementData?.achievements ?? [];
@@ -118,13 +119,13 @@ export default function CompetitorProfileComponent() {
         value: String(achievements.length),
       },
     ],
-    [submissions.length, achievements.length]
+    [submissions.length, achievements.length],
   );
 
   useFocusEffect(
     useCallback(() => {
       reloadMe();
-    }, [])
+    }, []),
   );
 
   const onRefresh = useCallback(async () => {
@@ -148,7 +149,7 @@ export default function CompetitorProfileComponent() {
       const h = e.nativeEvent.layout.height;
       if (h && Math.abs(h - headerH) > 1) setHeaderH(h);
     },
-    [headerH]
+    [headerH],
   );
 
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -209,27 +210,25 @@ export default function CompetitorProfileComponent() {
 
   const Avatar = () => {
     return (
-      <View style={{ width: 64, height: 64 }}>
-        <View
+      <View
+        style={{
+          width: 64,
+          height: 64,
+          borderRadius: 999,
+          overflow: "hidden",
+          borderWidth: 2,
+          borderColor: C.primary,
+        }}
+      >
+        <Image
+            source={require("../assets/images/AVT1.png")}
           style={{
-            position: "absolute",
-            inset: 0,
+            width: "100%",
+            height: "100%",
             borderRadius: 999,
-            backgroundColor: C.primary,
           }}
+          resizeMode="cover"
         />
-        <View
-          style={{
-            position: "absolute",
-            inset: 2,
-            borderRadius: 999,
-            backgroundColor: C.card,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Ionicons name="person-outline" size={22} color={C.mutedForeground} />
-        </View>
       </View>
     );
   };
@@ -264,7 +263,6 @@ export default function CompetitorProfileComponent() {
   if (!accessToken || !user) {
     return (
       <View style={{ flex: 1, backgroundColor: C.background }}>
-       
         <CenteredState
           C={C}
           icon="person-circle-outline"
@@ -288,7 +286,7 @@ export default function CompetitorProfileComponent() {
         showsVerticalScrollIndicator={false}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
+          { useNativeDriver: true },
         )}
         scrollEventThrottle={16}
         contentInsetAdjustmentBehavior="automatic"
@@ -332,7 +330,10 @@ export default function CompetitorProfileComponent() {
             <Text style={[s.name, { color: C.foreground }]}>
               {user.fullName}
             </Text>
-            <Text style={[s.handle, { color: C.mutedForeground }]}>
+            <Text
+              style={[s.handle, { color: C.mutedForeground }]}
+              numberOfLines={1}
+            >
               {user.email}
             </Text>
           </View>
@@ -434,7 +435,6 @@ export default function CompetitorProfileComponent() {
                   C={C}
                   icon="document-text-outline"
                   title="Chưa có bài nộp nào"
-                  action="Nộp bài dự thi"
                   compact
                 />
               )}
@@ -452,24 +452,16 @@ export default function CompetitorProfileComponent() {
               ) : achievements.length > 0 ? (
                 <View style={{ gap: SP.blockGap, marginBottom: SP.sectionGap }}>
                   {achievements.map((a) => (
-                    <TouchableOpacity
+                    <AchievementCard
                       key={a.paintingId}
-                      activeOpacity={0.9}
+                      item={a}
+                      pickGrad={pickGrad}
+                      borderColor={C.border}
                       onPress={() => {
                         setSelectedAch(a);
                         setOpenAchModal(true);
                       }}
-                    >
-                      <AchievementCard
-                        item={{
-                          id: a.paintingId,
-                          title: `${a.award.name} - ${a.contest.title}`,
-                          achievedDate: fmtDateOnly(a.achievedDate),
-                        }}
-                        pickGrad={pickGrad}
-                        borderColor={C.border}
-                      />
-                    </TouchableOpacity>
+                    />
                   ))}
                 </View>
               ) : (
@@ -477,7 +469,6 @@ export default function CompetitorProfileComponent() {
                   C={C}
                   icon="trophy-outline"
                   title="Chưa có thành tích nào"
-                  action="Tham gia cuộc thi"
                   compact
                 />
               )}
@@ -604,7 +595,7 @@ const s = StyleSheet.create({
     backgroundColor: "transparent",
   },
   name: { fontSize: 19, fontWeight: "700", fontFamily: "Be Vietnam Pro" },
-  handle: { marginTop: 2, opacity: 0.85 },
+  handle: { marginTop: 2, opacity: 0.85, overflow: "hidden" },
   addBadge: {
     position: "absolute",
     right: -2,
@@ -617,7 +608,7 @@ const s = StyleSheet.create({
   kpiCard: {
     flexDirection: "row",
     alignItems: "stretch",
-    borderRadius: 4,
+    borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 14,
     shadowOpacity: 0.08,
@@ -642,7 +633,7 @@ const t = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "transparent",
   },
-  headerTitle: { fontSize: 24, fontWeight: "900" },
+  headerTitle: { fontSize: 20, fontWeight: "700" },
   iconBtn: { padding: 8, marginLeft: 4 },
 });
 
@@ -650,7 +641,7 @@ const k = StyleSheet.create({
   kpiIconGrad: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
     shadowOpacity: 0.25,

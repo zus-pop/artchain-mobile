@@ -3,8 +3,11 @@ export interface Schedule {
   contestId: number;
   examinerId: string;
   task: string;
-  date: Date;
-  status: "ACTIVE";
-  createdAt: Date;
-  updatedAt: Date;
+  round2Table: any | null; // If null = Round 1, if has data = Round 2
+  date: Date | string;
+  status: "ACTIVE" | "UPCOMING" | "ENDED";
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  canEvaluate: boolean;
+  isScheduleEnforced: boolean;
 }

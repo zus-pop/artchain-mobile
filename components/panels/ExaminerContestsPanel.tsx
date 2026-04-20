@@ -6,18 +6,26 @@ import type { ColorTokens } from "@/types/tabkey";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Animated,
   Dimensions,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -67,6 +75,12 @@ export default function ExaminerContestsPanel({
     error,
     refetch,
   } = useExaminerContest(userId);
+
+  // ===== Sort data: newest contests first (higher contestId = newer) =====
+  const sortedContests = useMemo(() => {
+    if (!ongoingContests) return undefined;
+    return [...ongoingContests].sort((a, b) => b.contestId - a.contestId);
+  }, [ongoingContests]);
 
   // ===== Bouncing Animation =====
   useEffect(() => {
@@ -124,7 +138,7 @@ export default function ExaminerContestsPanel({
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await refetch();
+      await refetch?.();
     } finally {
       setRefreshing(false);
     }
@@ -341,7 +355,7 @@ export default function ExaminerContestsPanel({
         )}
       </LinearGradient>
     );
-  }, [vertical, C.primary, C.border, insets.top, isLoading, ongoingContests]);
+  }, [vertical, C.primary, insets.top, isLoading, ongoingContests]);
 
   // ===== Creative Loading State =====
   if (isLoading && (!ongoingContests || ongoingContests.length === 0)) {
@@ -427,8 +441,27 @@ export default function ExaminerContestsPanel({
           style={{ flex: 1, backgroundColor: C.background ?? "#FAF7F2" }}
           edges={["left", "right", "bottom"]}
         >
-          {renderHeader()}
-          {loadingContent}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            scrollEventThrottle={16}
+            contentContainerStyle={{
+              paddingVertical: 0,
+              paddingHorizontal: 0,
+              paddingBottom: (insets.bottom || 0) + 20,
+            }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={C.primary ?? "#5C1A1A"}
+                colors={[C.primary ?? "#5C1A1A"]}
+                progressBackgroundColor={C.background ?? "#FAF7F2"}
+              />
+            }
+          >
+            {renderHeader()}
+            {loadingContent}
+          </ScrollView>
         </SafeAreaView>
       );
     }
@@ -456,7 +489,7 @@ export default function ExaminerContestsPanel({
             justifyContent: "center",
             alignItems: "center",
             marginBottom: 32,
-            backgroundColor: `${C.destructive ?? "#EF4444"}12`,
+            backgroundColor: (C.destructive ?? "#EF4444") + "12",
           }}
         >
           <MaterialCommunityIcons
@@ -523,8 +556,27 @@ export default function ExaminerContestsPanel({
           style={{ flex: 1, backgroundColor: C.background ?? "#FAF7F2" }}
           edges={["left", "right", "bottom"]}
         >
-          {renderHeader()}
-          {errorContent}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            scrollEventThrottle={16}
+            contentContainerStyle={{
+              paddingVertical: 0,
+              paddingHorizontal: 0,
+              paddingBottom: (insets.bottom || 0) + 20,
+            }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={C.primary ?? "#5C1A1A"}
+                colors={[C.primary ?? "#5C1A1A"]}
+                progressBackgroundColor={C.background ?? "#FAF7F2"}
+              />
+            }
+          >
+            {renderHeader()}
+            {errorContent}
+          </ScrollView>
         </SafeAreaView>
       );
     }
@@ -552,7 +604,7 @@ export default function ExaminerContestsPanel({
             justifyContent: "center",
             alignItems: "center",
             marginBottom: 32,
-            backgroundColor: `${C.chart1 ?? "#C9A96E"}12`,
+            backgroundColor: (C.chart1 ?? "#C9A96E") + "12",
           }}
         >
           <MaterialCommunityIcons
@@ -595,8 +647,27 @@ export default function ExaminerContestsPanel({
           style={{ flex: 1, backgroundColor: C.background ?? "#FAF7F2" }}
           edges={["left", "right", "bottom"]}
         >
-          {renderHeader()}
-          {emptyContent}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            scrollEventThrottle={16}
+            contentContainerStyle={{
+              paddingVertical: 0,
+              paddingHorizontal: 0,
+              paddingBottom: (insets.bottom || 0) + 20,
+            }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={C.primary ?? "#5C1A1A"}
+                colors={[C.primary ?? "#5C1A1A"]}
+                progressBackgroundColor={C.background ?? "#FAF7F2"}
+              />
+            }
+          >
+            {renderHeader()}
+            {emptyContent}
+          </ScrollView>
         </SafeAreaView>
       );
     }
@@ -613,7 +684,7 @@ export default function ExaminerContestsPanel({
         paddingBottom: SECTION_PADDING,
       }}
     >
-      {ongoingContests.map((contest: ExaminerContest) => (
+      {sortedContests?.map((contest: ExaminerContest) => (
         <View
           key={contest.contestId}
           style={{
@@ -645,6 +716,7 @@ export default function ExaminerContestsPanel({
           contentContainerStyle={{
             paddingVertical: 0,
             paddingHorizontal: 0,
+            paddingBottom: (insets.bottom || 0) + 20,
           }}
           refreshControl={
             <RefreshControl

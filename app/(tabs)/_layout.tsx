@@ -1,11 +1,17 @@
 // app/(tabs)/_layout.tsx
+import { useWhoAmI } from "@/apis/auth";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 
 import { EnhancedTabBar } from "@/components/tabs/EnhancedTabBar";
 
 export default function TabLayout() {
+  const { data: user } = useWhoAmI();
+
+  const contestsTabTitle = useMemo(() => {
+    return user?.role === "EXAMINER" ? "Chấm Thi" : "Cuộc thi";
+  }, [user?.role]);
   return (
     <Tabs
       screenOptions={{
@@ -26,7 +32,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="contests"
         options={{
-          title: "Cuộc thi",
+          title: contestsTabTitle,
           tabBarIcon: ({ color }) => (
             <Ionicons name="brush" size={24} color={color} />
           ),

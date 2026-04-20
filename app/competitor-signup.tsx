@@ -7,15 +7,15 @@ import PressSelect from "@/components/form/PressSelect";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
+import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   Dimensions,
   FlatList,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   ScrollView,
   Text,
@@ -55,10 +55,9 @@ const competitorSchema = z
       .string({ message: "Lớp là bắt buộc" })
       .trim()
       .min(1, "Lớp là bắt buộc")
-      .refine(
-        (val) => ["1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(val),
-        { message: "Lớp phải là từ 1 đến 9" }
-      ),
+      .refine((val) => ["6", "7", "8", "9"].includes(val), {
+        message: "Lớp phải là từ 6 đến 9",
+      }),
     ward: z
       .string({ message: "Khu vực là bắt buộc" })
       .trim()
@@ -67,7 +66,7 @@ const competitorSchema = z
       .string({ message: "Ngày sinh là bắt buộc" })
       .min(1, "Ngày sinh là bắt buộc"),
   })
-  .superRefine(({ confirmPassword, password }, ctx) => {
+  .superRefine(({ confirmPassword, password, birthday, grade }, ctx) => {
     if (confirmPassword !== password) {
       ctx.addIssue({
         code: "custom",
@@ -75,40 +74,135 @@ const competitorSchema = z
         path: ["confirmPassword"],
       });
     }
+
+    // Cross-validate birthday with grade
+    if (birthday && grade && !isValidBirthdayForGrade(birthday, grade)) {
+      const range = GRADE_BIRTH_YEARS[grade as keyof typeof GRADE_BIRTH_YEARS];
+      ctx.addIssue({
+        code: "custom",
+        message: `Ngày sinh không phù hợp với lớp ${grade}. Sinh năm ${range?.min}-${range?.max}`,
+        path: ["birthday"],
+      });
+    }
   });
 
 type CompetitorForm = z.infer<typeof competitorSchema>;
 
 const { height: SCREEN_H } = Dimensions.get("window");
-const grades = [1, 2, 3, 4, 5, 6, 7, 8, 9]; // hoặc props/biến của bạn
+const grades = [6, 7, 8, 9]; // Grades 6-9 only
 
-// Tính chiều cao động
-const HEADER_H = 64;
-const PADDING_V = 20;
-const ITEM_H = 66; // item dạng list
-const CHIP_H = 48; // item dạng chip
-const MAX_RATIO = 0.75; // tối đa 75% chiều cao màn hình
-const GAP = 10;
+// Grade picker constants
+const GRADE_PICKER_HEADER_H = 60;
+const GRADE_CHIP_SIZE = 56;
+const GRADE_GAP = 12;
+const GRADE_NUM_COLS = 2;
+const GRADE_ROWS = Math.ceil(grades.length / GRADE_NUM_COLS);
+const GRADE_PICKER_H = GRADE_ROWS * (GRADE_CHIP_SIZE + GRADE_GAP) + 40;
 
-// Chọn layout: ít item → list; nhiều item → grid
-const USE_GRID = grades.length >= 7;
-const NUM_COLS = 3;
+// Ward picker constants
+const MAX_RATIO = 0.75; // 75% of screen height for bottom sheet
+const WARD_SNAP_POINTS = ["70%", "90%"];
+const GRADE_SNAP_POINTS = ["40%"];
 
-const rows = USE_GRID ? Math.ceil(grades.length / NUM_COLS) : grades.length;
-const contentH = USE_GRID
-  ? rows * (CHIP_H + GAP) + PADDING_V * 2
-  : rows * (ITEM_H + GAP) + PADDING_V * 2;
+// ===== Helper Functions for Birthday-Grade Validation =====
+const CURRENT_YEAR = new Date().getFullYear();
 
-const SHEET_MAX_H = Math.min(HEADER_H + contentH, SCREEN_H * MAX_RATIO);
+// Grade-to-birth-year mapping (2026 năm hiện tại)
+const GRADE_BIRTH_YEARS = {
+  "6": { min: 2012, max: 2013 },
+  "7": { min: 2011, max: 2012 },
+  "8": { min: 2010, max: 2011 },
+  "9": { min: 2009, max: 2010 },
+};
+
+const getMinBirthdayForGrade = (grade: string): Date => {
+  const range = GRADE_BIRTH_YEARS[grade as keyof typeof GRADE_BIRTH_YEARS];
+  if (!range) return new Date(1900, 0, 1);
+  return new Date(range.min, 0, 1); // Tối sớm: 1/1/năm min
+};
+
+const getMaxBirthdayForGrade = (grade: string): Date => {
+  const range = GRADE_BIRTH_YEARS[grade as keyof typeof GRADE_BIRTH_YEARS];
+  if (!range) return new Date();
+  return new Date(range.max, 11, 31); // Tối muộn: 31/12/năm max
+};
+
+const getGradeFromBirthday = (birthdayStr: string): string | null => {
+  if (!birthdayStr) return null;
+  try {
+    const date = new Date(birthdayStr);
+    const birthYear = date.getFullYear();
+
+    for (const [grade, range] of Object.entries(GRADE_BIRTH_YEARS)) {
+      if (birthYear >= range.min && birthYear <= range.max) {
+        return grade;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const isValidBirthdayForGrade = (
+  birthdayStr: string,
+  grade: string,
+): boolean => {
+  if (!birthdayStr || !grade) return true; // Allow empty
+  try {
+    const date = new Date(birthdayStr);
+    const birthYear = date.getFullYear();
+    const range = GRADE_BIRTH_YEARS[grade as keyof typeof GRADE_BIRTH_YEARS];
+
+    if (!range) return false;
+    return birthYear >= range.min && birthYear <= range.max;
+  } catch {
+    return false;
+  }
+};
 
 export default function CompetitorSignupScreen() {
-  const [showWardPicker, setShowWardPicker] = useState(false);
-  const [showGradePicker, setShowGradePicker] = useState(false);
+  const wardSheetRef = useRef<BottomSheet>(null);
+  const gradeSheetRef = useRef<BottomSheet>(null);
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleNavigation = (path: string) => {
+    if (isNavigating) return;
+
+    setIsNavigating(true);
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current);
+    }
+
+    navigationTimeoutRef.current = setTimeout(() => {
+      setIsNavigating(false);
+    }, 600);
+
+    router.replace(path);
+  };
 
   const [q, setQ] = useState("");
-
+  // Track selected values for validation
+  const [selectedBirthday, setSelectedBirthday] = useState("");
+  const [selectedGrade, setSelectedGrade] = useState("");
+  const [suggestedGrade, setSuggestedGrade] = useState<string | null>(null);
+  const [minBirthdayDate, setMinBirthdayDate] = useState(new Date(2009, 0, 1));
+  const [maxBirthdayDate, setMaxBirthdayDate] = useState(
+    new Date(2013, 11, 31),
+  );
   const { data: wards = [], isLoading: wardsLoading } = useWards();
 
   const filteredWards = useMemo(() => {
@@ -117,7 +211,7 @@ export default function CompetitorSignupScreen() {
     return (wards || []).filter(
       (w: any) =>
         (w.name || "").toLowerCase().includes(key) ||
-        (w.code || "").toLowerCase().includes(key)
+        (w.code || "").toLowerCase().includes(key),
     );
   }, [q, wards]);
 
@@ -134,7 +228,30 @@ export default function CompetitorSignupScreen() {
   const {
     control,
     formState: { errors },
+    watch,
   } = competitorForm;
+
+  // Watch birthday field to suggest grade
+  const watchBirthday = watch("birthday");
+  const watchGrade = watch("grade");
+
+  // When birthday changes → suggest grade
+  useMemo(() => {
+    if (watchBirthday) {
+      setSelectedBirthday(watchBirthday);
+      const suggested = getGradeFromBirthday(watchBirthday);
+      setSuggestedGrade(suggested);
+    }
+  }, [watchBirthday]);
+
+  // When grade changes → update min/max dates for picker
+  useMemo(() => {
+    if (watchGrade) {
+      setSelectedGrade(watchGrade);
+      setMinBirthdayDate(getMinBirthdayForGrade(watchGrade));
+      setMaxBirthdayDate(getMaxBirthdayForGrade(watchGrade));
+    }
+  }, [watchGrade]);
 
   const handleSignup = (data: CompetitorForm) => {
     mutate({
@@ -279,12 +396,24 @@ export default function CompetitorSignupScreen() {
               render={({ field }) => (
                 <View style={{ flex: 1 }}>
                   <PressSelect
-                    label=" Chọn Lớp"
+                    label="Chọn Lớp"
                     value={field.value}
-                    onPress={() => setShowGradePicker(true)}
+                    onPress={() => gradeSheetRef.current?.expand()}
                     leftIcon="layers-outline"
                     errorText={errors.grade?.message}
                   />
+                  {suggestedGrade && !field.value && (
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: C.primary,
+                        marginTop: 4,
+                        fontWeight: "500",
+                      }}
+                    >
+                      💡 Gợi ý: Lớp {suggestedGrade}
+                    </Text>
+                  )}
                 </View>
               )}
             />
@@ -297,7 +426,7 @@ export default function CompetitorSignupScreen() {
                     label="Khu vực"
                     value={field.value}
                     placeholder="Chọn khu vực"
-                    onPress={() => setShowWardPicker(true)}
+                    onPress={() => wardSheetRef.current?.expand()}
                     leftIcon="location-outline"
                     errorText={errors.ward?.message}
                   />
@@ -315,8 +444,8 @@ export default function CompetitorSignupScreen() {
                 label="Ngày sinh"
                 value={field.value}
                 onChange={field.onChange}
-                minDate={new Date(1900, 0, 1)}
-                maxDate={new Date()}
+                minDate={minBirthdayDate}
+                maxDate={maxBirthdayDate}
                 leftIcon="calendar-outline"
                 errorText={errors.birthday?.message}
               />
@@ -394,8 +523,9 @@ export default function CompetitorSignupScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => router.replace("/login")}
-            style={{ marginTop: 8 }}
+            disabled={isNavigating}
+            onPress={() => handleNavigation("/login")}
+            style={{ marginTop: 8, opacity: isNavigating ? 0.5 : 1 }}
           >
             <Text style={{ color: C.primary, fontSize: 15 }}>
               Đã có tài khoản? Đăng nhập
@@ -404,377 +534,251 @@ export default function CompetitorSignupScreen() {
         </View>
       </ScrollView>
 
-      {/* Ward Picker Modal */}
-      <Modal
-        visible={showWardPicker}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setShowWardPicker(false)}
+      {/* Ward Picker Bottom Sheet */}
+      <BottomSheet
+        ref={wardSheetRef}
+        snapPoints={WARD_SNAP_POINTS}
+        index={-1}
+        enablePanDownToClose
+        backgroundStyle={{ backgroundColor: C.background }}
+        handleIndicatorStyle={{ backgroundColor: C.border }}
       >
-        {/* backdrop */}
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setShowWardPicker(false)}
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.35)",
-            justifyContent: "flex-end",
-          }}
-        >
-          {/* bottom sheet */}
+        <BottomSheetView style={{ flex: 1, paddingHorizontal: 12 }}>
+          {/* header + title */}
           <View
             style={{
-              maxHeight: SCREEN_H * MAX_RATIO,
-              backgroundColor: C.background,
-              borderTopLeftRadius: 16,
-              borderTopRightRadius: 16,
-              overflow: "hidden",
-              borderWidth: 1,
-              borderColor: C.border,
+              alignItems: "center",
+              paddingVertical: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: C.border,
             }}
           >
-            {/* header + grabber */}
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: "700",
+                color: C.foreground,
+              }}
+            >
+              Chọn khu vực
+            </Text>
+          </View>
+          {/* body */}
+          {wardsLoading ? (
             <View
               style={{
-                backgroundColor: C.card,
-                borderBottomWidth: 1,
-                borderBottomColor: C.border,
-                paddingTop: 10,
-                paddingBottom: 10,
+                flex: 1,
+                justifyContent: "center",
                 alignItems: "center",
               }}
             >
-              <View
-                style={{
-                  width: 40,
-                  height: 4,
-                  borderRadius: 2,
-                  backgroundColor: C.border,
-                  marginBottom: 8,
-                }}
-              />
+              <Text style={{ color: C.mutedForeground }}>
+                Đang tải danh sách khu vực...
+              </Text>
+            </View>
+          ) : (
+            <View style={{ padding: 12, paddingTop: 12, flex: 1 }}>
+              {/* search box */}
               <View
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  width: "100%",
-                  paddingHorizontal: 16,
+                  borderWidth: 1,
+                  borderColor: C.border,
+                  backgroundColor: C.card,
+                  borderRadius: 10,
+                  paddingHorizontal: 10,
+                  height: 42,
+                  marginBottom: 10,
                 }}
               >
-                <TouchableOpacity
-                  onPress={() => setShowWardPicker(false)}
-                  style={{ padding: 8, marginRight: 8 }}
-                >
-                  <Ionicons name="close" size={22} color={C.primary} />
-                </TouchableOpacity>
-                <Text
+                <Ionicons
+                  name="search-outline"
+                  size={18}
+                  color={C.mutedForeground}
+                />
+                <Text style={{ color: C.mutedForeground, marginHorizontal: 6 }}>
+                  |
+                </Text>
+                <TextInput
+                  placeholder="Tìm theo tên hoặc mã..."
+                  placeholderTextColor={C.mutedForeground}
+                  value={q}
+                  onChangeText={setQ}
                   style={{
-                    fontSize: 16,
-                    fontWeight: "700",
-                    color: C.foreground,
                     flex: 1,
+                    color: C.foreground,
+                    fontSize: 14,
+                    paddingVertical: 0,
                   }}
-                  numberOfLines={1}
-                >
-                  Chọn khu vực
-                </Text>
-              </View>
-            </View>
-
-            {/* body */}
-            {wardsLoading ? (
-              <View
-                style={{
-                  height: SCREEN_H * MAX_RATIO - HEADER_H,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ color: C.mutedForeground }}>
-                  Đang tải danh sách khu vực...
-                </Text>
-              </View>
-            ) : (
-              <View style={{ padding: 12, paddingTop: 12 }}>
-                {/* search box */}
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    borderWidth: 1,
-                    borderColor: C.border,
-                    backgroundColor: C.card,
-                    borderRadius: 10,
-                    paddingHorizontal: 10,
-                    height: 42,
-                    marginBottom: 10,
-                  }}
-                >
-                  <Ionicons
-                    name="search-outline"
-                    size={18}
-                    color={C.mutedForeground}
-                  />
-                  <Text
-                    style={{ color: C.mutedForeground, marginHorizontal: 6 }}
+                  autoCapitalize="none"
+                />
+                {q ? (
+                  <TouchableOpacity
+                    onPress={() => setQ("")}
+                    style={{ padding: 6 }}
                   >
-                    |
-                  </Text>
-                  <TextInput
-                    placeholder="Tìm theo tên hoặc mã..."
-                    placeholderTextColor={C.mutedForeground}
-                    value={q}
-                    onChangeText={setQ}
-                    style={{
-                      flex: 1,
-                      color: C.foreground,
-                      fontSize: 14,
-                      paddingVertical: 0,
-                    }}
-                    autoCapitalize="none"
-                  />
-                  {q ? (
-                    <TouchableOpacity
-                      onPress={() => setQ("")}
-                      style={{ padding: 6 }}
-                    >
-                      <Ionicons
-                        name="close-circle"
-                        size={18}
-                        color={C.mutedForeground}
-                      />
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-
-                {/* list (cuộn trong sheet) */}
-                <FlatList
-                  data={filteredWards}
-                  keyExtractor={(item: any) => item.code}
-                  keyboardShouldPersistTaps="handled"
-                  style={{
-                    maxHeight: SCREEN_H * MAX_RATIO - HEADER_H - 42 - 20,
-                  }}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      onPress={() => {
-                        competitorForm.setValue("ward", item.name, {
-                          shouldValidate: true,
-                          shouldDirty: true,
-                        });
-                        setShowWardPicker(false);
-                        setQ("");
-                      }}
-                      style={{
-                        paddingVertical: 12,
-                        paddingHorizontal: 14,
-                        borderRadius: 10,
-                        backgroundColor: C.card,
-                        borderWidth: 1,
-                        borderColor: C.border,
-                        marginBottom: 8,
-                      }}
-                    >
-                      <Text
-                        style={{ fontSize: 15, color: C.foreground }}
-                        numberOfLines={1}
-                      >
-                        {item.name}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          color: C.mutedForeground,
-                          marginTop: 2,
-                        }}
-                        numberOfLines={1}
-                      >
-                        {item.code}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  ListEmptyComponent={
-                    <View style={{ paddingVertical: 24, alignItems: "center" }}>
-                      <Text style={{ color: C.mutedForeground }}>
-                        Không có dữ liệu khu vực
-                      </Text>
-                    </View>
-                  }
-                />
+                    <Ionicons
+                      name="close-circle"
+                      size={18}
+                      color={C.mutedForeground}
+                    />
+                  </TouchableOpacity>
+                ) : null}
               </View>
-            )}
-          </View>
-        </TouchableOpacity>
-      </Modal>
-      {/* Grade Picker Modal */}
-      <Modal
-        visible={showGradePicker}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setShowGradePicker(false)}
+
+              {/* list (cuộn trong sheet) */}
+              <FlatList
+                data={filteredWards}
+                keyExtractor={(item: any) => item.code}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    onPress={() => {
+                      competitorForm.setValue("ward", item.name, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
+                      wardSheetRef.current?.close();
+                      setQ("");
+                    }}
+                    style={{
+                      paddingVertical: 12,
+                      paddingHorizontal: 14,
+                      borderRadius: 10,
+                      backgroundColor: C.card,
+                      borderWidth: 1,
+                      borderColor: C.border,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Text
+                      style={{ fontSize: 15, color: C.foreground }}
+                      numberOfLines={1}
+                    >
+                      {item.name}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: C.mutedForeground,
+                        marginTop: 2,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {item.code}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={
+                  <View style={{ paddingVertical: 24, alignItems: "center" }}>
+                    <Text style={{ color: C.mutedForeground }}>
+                      Không có dữ liệu khu vực
+                    </Text>
+                  </View>
+                }
+              />
+            </View>
+          )}
+        </BottomSheetView>
+      </BottomSheet>
+      {/* Grade Picker Bottom Sheet */}
+      <BottomSheet
+        ref={gradeSheetRef}
+        snapPoints={GRADE_SNAP_POINTS}
+        index={-1}
+        enablePanDownToClose
+        backgroundStyle={{ backgroundColor: C.background }}
+        handleIndicatorStyle={{ backgroundColor: C.border }}
       >
-        {/* backdrop */}
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setShowGradePicker(false)}
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.35)",
-            justifyContent: "flex-end",
-          }}
+        <BottomSheetView
+          style={{ paddingHorizontal: 16, paddingVertical: 12, flex: 1 }}
         >
-          {/* bottom sheet */}
+          {/* header + title */}
           <View
             style={{
-              maxHeight: SHEET_MAX_H,
-              backgroundColor: C.background,
-              borderTopLeftRadius: 16,
-              borderTopRightRadius: 16,
-              overflow: "hidden",
-              borderWidth: 1,
-              borderColor: C.border,
+              alignItems: "center",
+              paddingBottom: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: C.border,
             }}
           >
-            {/* header + grabber */}
-            <View
+            <Text
               style={{
-                alignItems: "center",
-                backgroundColor: C.card,
-                borderBottomWidth: 1,
-                borderBottomColor: C.border,
-                paddingTop: 10,
-                paddingBottom: 10,
+                fontSize: 16,
+                fontWeight: "700",
+                color: C.foreground,
               }}
             >
-              <View
-                style={{
-                  width: 40,
-                  height: 4,
-                  borderRadius: 2,
-                  backgroundColor: C.border,
-                  marginBottom: 8,
-                }}
-              />
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  width: "100%",
-                  paddingHorizontal: 16,
-                }}
-              >
+              Chọn lớp
+            </Text>
+          </View>
+
+          {/* content: auto change list/grid + tối đa chiều cao */}
+          <FlatList
+            data={grades}
+            numColumns={GRADE_NUM_COLS}
+            keyExtractor={(g) => String(g)}
+            scrollEnabled={false}
+            columnWrapperStyle={{
+              justifyContent: "space-between",
+              marginBottom: GRADE_GAP,
+            }}
+            renderItem={({ item: grade }) => {
+              const isSuggested = suggestedGrade === String(grade);
+              return (
                 <TouchableOpacity
-                  onPress={() => setShowGradePicker(false)}
-                  style={{ padding: 8, marginRight: 8 }}
-                >
-                  <Ionicons name="close" size={22} color={C.primary} />
-                </TouchableOpacity>
-
-                <Text
+                  onPress={() => {
+                    competitorForm.setValue("grade", String(grade), {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
+                    gradeSheetRef.current?.close();
+                  }}
                   style={{
-                    fontSize: 16,
-                    fontWeight: "700",
-                    color: C.foreground,
-                    flex: 1,
+                    width: `${100 / GRADE_NUM_COLS - 2}%`,
+                    height: GRADE_CHIP_SIZE,
+                    borderRadius: 14,
+                    backgroundColor: C.primary,
+                    borderWidth: isSuggested ? 3 : 2,
+                    borderColor: isSuggested ? C.accent : C.primary,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    shadowColor: "#000",
+                    shadowOpacity: isSuggested ? 0.2 : 0.1,
+                    shadowRadius: isSuggested ? 8 : 6,
+                    shadowOffset: { width: 0, height: 2 },
+                    elevation: isSuggested ? 4 : 2,
+                    opacity: isSuggested ? 1 : 0.8,
                   }}
-                  numberOfLines={1}
                 >
-                  Chọn lớp
-                </Text>
-              </View>
-            </View>
-
-            {/* content: auto change list/grid + tối đa chiều cao */}
-            <View style={{ padding: PADDING_V, paddingTop: 16 }}>
-              {USE_GRID ? (
-                // GRID CHIP 3 cột
-                <FlatList
-                  data={grades}
-                  numColumns={NUM_COLS}
-                  keyExtractor={(g) => String(g)}
-                  columnWrapperStyle={{
-                    justifyContent: "space-between",
-                    marginBottom: GAP,
-                  }}
-                  renderItem={({ item: grade }) => {
-                    return (
-                      <TouchableOpacity
-                        onPress={() => {
-                          competitorForm.setValue("grade", String(grade), {
-                            shouldValidate: true,
-                            shouldDirty: true,
-                          });
-                          setShowGradePicker(false);
-                        }}
-                        style={{
-                          width: `${100 / NUM_COLS - 2}%`,
-                          paddingVertical: 12,
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: C.border,
-                          backgroundColor: C.card,
-                          alignItems: "center",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            fontWeight: "600",
-                            color: C.foreground,
-                          }}
-                        >
-                          Lớp {grade}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  }}
-                  // Nếu quá nhiều, FlatList vẫn cuộn trong sheet
-                  style={{ maxHeight: SCREEN_H * MAX_RATIO - HEADER_H }}
-                  keyboardShouldPersistTaps="handled"
-                />
-              ) : (
-                // LIST ITEM GỌN
-                <FlatList
-                  data={grades}
-                  keyExtractor={(g) => String(g)}
-                  renderItem={({ item: grade, index }) => (
-                    <TouchableOpacity
-                      onPress={() => {
-                        competitorForm.setValue("grade", String(grade), {
-                          shouldValidate: true,
-                          shouldDirty: true,
-                        });
-                        setShowGradePicker(false);
-                      }}
+                  <Text
+                    style={{
+                      fontSize: 18,
+                      fontWeight: "900",
+                      color: C.primaryForeground,
+                    }}
+                  >
+                    Lớp {grade}
+                  </Text>
+                  {isSuggested && (
+                    <Text
                       style={{
-                        height: ITEM_H,
-                        paddingHorizontal: 14,
-                        borderRadius: 10,
-                        backgroundColor: C.card,
-                        borderWidth: 1,
-                        borderColor: C.border,
-                        justifyContent: "center",
-                        marginBottom: index === grades.length - 1 ? 0 : GAP,
+                        fontSize: 10,
+                        color: C.primaryForeground,
+                        fontWeight: "600",
+                        marginTop: 2,
                       }}
                     >
-                      <Text style={{ fontSize: 16, color: C.foreground }}>
-                        Lớp {grade}
-                      </Text>
-                    </TouchableOpacity>
+                      ✓ Gợi ý
+                    </Text>
                   )}
-                  getItemLayout={(_, i) => ({
-                    length: ITEM_H + GAP,
-                    offset: (ITEM_H + GAP) * i,
-                    index: i,
-                  })}
-                  style={{ maxHeight: SCREEN_H * MAX_RATIO - HEADER_H }}
-                  keyboardShouldPersistTaps="handled"
-                />
-              )}
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </BottomSheetView>
+      </BottomSheet>
     </KeyboardAvoidingView>
   );
 }

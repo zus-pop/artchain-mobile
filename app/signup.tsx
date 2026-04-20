@@ -2,7 +2,7 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -18,6 +18,37 @@ export default function SignupScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const C = Colors[colorScheme];
+
+  // Prevent double tap
+  const [isNavigating, setIsNavigating] = useState(false);
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleNavigation = (path: string) => {
+    if (isNavigating) return; // Ignore if already navigating
+
+    setIsNavigating(true);
+
+    // Clear any existing timeout
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current);
+    }
+
+    // Reset after 600ms to allow normal navigation
+    navigationTimeoutRef.current = setTimeout(() => {
+      setIsNavigating(false);
+    }, 600);
+
+    router.push(path);
+  };
 
   return (
     <SafeAreaView
@@ -109,23 +140,24 @@ export default function SignupScreen() {
 
         {/* Competitor Button */}
         <Pressable
-          onPress={() => router.push("/competitor-signup")}
+          disabled={isNavigating}
+          onPress={() => handleNavigation("/competitor-signup")}
           style={({ pressed }) => [
             {
-              backgroundColor: C.primary,
+              backgroundColor: isNavigating ? C.muted : C.primary,
               borderRadius: 14,
               paddingVertical: 28,
               paddingHorizontal: 20,
               alignItems: "center",
               marginBottom: 16,
               shadowColor: C.primary,
-              shadowOpacity: pressed ? 0.35 : 0.25,
+              shadowOpacity: pressed && !isNavigating ? 0.35 : 0.25,
               shadowRadius: 16,
               shadowOffset: { width: 0, height: 8 },
               ...(Platform.OS === "android"
-                ? { elevation: pressed ? 6 : 4 }
+                ? { elevation: pressed && !isNavigating ? 6 : 4 }
                 : null),
-              opacity: pressed ? 0.95 : 1,
+              opacity: pressed && !isNavigating ? 0.95 : isNavigating ? 0.7 : 1,
             },
           ]}
         >
@@ -164,23 +196,24 @@ export default function SignupScreen() {
 
         {/* Guardian Button */}
         <Pressable
-          onPress={() => router.push("/guard-signup")}
+          disabled={isNavigating}
+          onPress={() => handleNavigation("/guard-signup")}
           style={({ pressed }) => [
             {
-              backgroundColor: C.secondary,
+              backgroundColor: isNavigating ? C.muted : C.secondary,
               borderRadius: 14,
               paddingVertical: 28,
               paddingHorizontal: 20,
               alignItems: "center",
               marginBottom: 32,
               shadowColor: C.secondary,
-              shadowOpacity: pressed ? 0.3 : 0.15,
+              shadowOpacity: pressed && !isNavigating ? 0.3 : 0.15,
               shadowRadius: 16,
               shadowOffset: { width: 0, height: 8 },
               ...(Platform.OS === "android"
-                ? { elevation: pressed ? 5 : 3 }
+                ? { elevation: pressed && !isNavigating ? 5 : 3 }
                 : null),
-              opacity: pressed ? 0.95 : 1,
+              opacity: pressed && !isNavigating ? 0.95 : isNavigating ? 0.7 : 1,
             },
           ]}
         >

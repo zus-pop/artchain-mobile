@@ -356,24 +356,16 @@ export default function ChildrentDetailScreen() {
           ) : achievements.length > 0 ? (
             <View style={{ gap: SP.blockGap, marginBottom: SP.sectionGap }}>
               {achievements.map((a) => (
-                <TouchableOpacity
+                <AchievementCard
                   key={a.paintingId}
-                  activeOpacity={0.9}
+                  item={a}
+                  pickGrad={pickGrad}
+                  borderColor={C.border}
                   onPress={() => {
                     setSelectedAch(a);
                     setOpenAchModal(true);
                   }}
-                >
-                  <AchievementCard
-                    item={{
-                      id: a.paintingId,
-                      title: `${a.award.name} - ${a.contest.title}`,
-                      achievedDate: fmtDateOnly(a.achievedDate),
-                    }}
-                    pickGrad={pickGrad}
-                    borderColor={C.border}
-                  />
-                </TouchableOpacity>
+                />
               ))}
             </View>
           ) : (

@@ -47,7 +47,7 @@ export default function PostDetail() {
             year: "numeric",
           })
         : "",
-    [post?.published_at]
+    [post?.published_at],
   );
 
   if (!post) {
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
 
   outerPad: { paddingHorizontal: 16, marginTop: 8 },
 
-  title: { fontSize: 19, fontWeight: "700", letterSpacing: 0.2 },
+  title: { fontSize: 20, fontWeight: "700", letterSpacing: 0.3 },
 
   metaRow: {
     flexDirection: "row",
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
 /* =================== MARKDOWN THEME =================== */
 function mdStyles(
   scheme: "light" | "dark",
-  C: Record<string, string>
+  C: Record<string, string>,
 ): MarkdownProps["style"] {
   const fg = C.foreground;
   const link = scheme === "dark" ? "#93C5FD" : "#2563EB";

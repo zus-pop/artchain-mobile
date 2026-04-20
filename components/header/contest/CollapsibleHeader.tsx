@@ -1,7 +1,6 @@
 // components/header/contest/CollapsibleHeader.tsx
 import { Colors } from "@/constants/theme";
-import { router } from "expo-router";
-import { Filter, Search } from "lucide-react-native";
+import { Filter, Search, X } from "lucide-react-native";
 import React from "react";
 import {
   Animated,
@@ -10,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 
@@ -46,6 +46,7 @@ export default function CollapsibleHeader({
   translateY,
   headerOnLayout,
   searchQuery,
+  onChangeSearch,
   onToggleFilters,
   showFilters,
   selectedFilter,
@@ -107,27 +108,26 @@ export default function CollapsibleHeader({
 
         {/* Search + Filter */}
         <View style={s.searchRow}>
-          <Pressable
-            onPress={() =>
-              router.push({
-                pathname: "/searchContest",
-                params: { q: searchQuery ?? "" },
-              })
-            }
-            style={({ pressed }) => [
-              s.searchContainer,
-              { opacity: pressed ? 0.9 : 1 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Mở màn hình tìm kiếm"
-          >
+          <View style={s.searchContainer}>
             <Search size={18} color={C.mutedForeground} style={s.searchIcon} />
-            <Text style={s.searchInput} numberOfLines={1}>
-              {searchQuery?.trim()?.length
-                ? searchQuery
-                : "Tìm kiếm cuộc thi..."}
-            </Text>
-          </Pressable>
+            <TextInput
+              placeholder="Tìm kiếm cuộc thi..."
+              placeholderTextColor={C.mutedForeground}
+              value={searchQuery}
+              onChangeText={onChangeSearch}
+              style={s.searchInput}
+              maxLength={50}
+              clearButtonMode="while-editing"
+            />
+            {searchQuery.trim().length > 0 && (
+              <Pressable
+                onPress={() => onChangeSearch("")}
+                style={{ padding: 4 }}
+              >
+                <X size={16} color={C.mutedForeground} />
+              </Pressable>
+            )}
+          </View>
 
           <Pressable
             onPress={onToggleFilters}
@@ -199,16 +199,17 @@ const styles = (C: any) =>
       backgroundColor: C.background,
       borderRadius: 16,
       paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingVertical: 8,
       borderWidth: 1,
       borderColor: C.border,
     },
     searchIcon: { marginRight: 8 },
     searchInput: {
       flex: 1,
-      paddingVertical: 4,
       fontSize: 15,
-      color: C.mutedForeground,
+      color: C.foreground,
+      fontWeight: "500",
+      padding: 0,
     },
 
     filterBtn: {

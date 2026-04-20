@@ -5,6 +5,7 @@ import BrushButton from "@/components/buttons/BrushButton";
 import EvaluationSubmitModal from "@/components/modals/EvaluationSubmitModal";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { HEADER_HEIGHT } from "@/constants/headerConfig";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,7 +14,7 @@ import { Zoomable } from "@likashefqet/react-native-image-zoom";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   Animated,
@@ -22,11 +23,13 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   TextInput,
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { toast } from "sonner-native";
 import { z } from "zod";
 
@@ -165,10 +168,16 @@ export default function PaintingEvaluationRound2Screen() {
 
   const scheme = useColorScheme();
   const colors = Colors[scheme ?? "light"];
-  const glassBg =
-    scheme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)";
-  const glassBgStrong =
-    scheme === "dark" ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.06)";
+  const insets = useSafeAreaInsets();
+
+  const topInset = useMemo(() => {
+    if (insets.top === 0) {
+      return Platform.OS === "ios" ? 44 : 0;
+    }
+    return insets.top;
+  }, [insets.top]);
+
+  const headerHeight = HEADER_HEIGHT + topInset;
 
   const {
     control,
@@ -216,7 +225,7 @@ export default function PaintingEvaluationRound2Screen() {
           setConfirmOpen(false);
           setSuccessOpen(true);
         },
-      }
+      },
     );
   };
   const onSubmit = () => setConfirmOpen(true);
@@ -274,20 +283,47 @@ export default function PaintingEvaluationRound2Screen() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
         >
+          {/* Status Bar */}
+          <StatusBar
+            barStyle={scheme === "dark" ? "light-content" : "dark-content"}
+            backgroundColor={colors.card}
+          />
+
           {/* Header */}
           <View
-            style={[styles(colors).header, { backgroundColor: glassBgStrong }]}
+            style={[
+              styles(colors).customHeader,
+              {
+                height: headerHeight,
+                paddingTop: topInset,
+                backgroundColor: colors.card,
+              },
+            ]}
           >
-            <PressableScale
-              onPress={handleBack}
-              style={styles(colors).circleBtn}
-            >
-              <Ionicons name="chevron-back" size={18} color={colors.primary} />
-            </PressableScale>
-            <ThemedText style={styles(colors).headerTitle}>
-              Đánh giá Vòng 2
-            </ThemedText>
-            <View style={styles(colors).headerRight} />
+            <View style={styles(colors).headerContent}>
+              <Pressable
+                onPress={handleBack}
+                style={styles(colors).backButton}
+                android_ripple={{ color: "rgba(0,0,0,0.08)" }}
+                hitSlop={8}
+              >
+                <Ionicons
+                  name={Platform.OS === "ios" ? "chevron-back" : "arrow-back"}
+                  size={24}
+                  color={colors.foreground}
+                />
+              </Pressable>
+              <ThemedText
+                style={[
+                  styles(colors).headerTitle,
+                  { color: colors.foreground },
+                ]}
+                numberOfLines={1}
+              >
+                Đánh giá Vòng Chung Khảo
+              </ThemedText>
+              <View style={{ width: 48 }} />
+            </View>
           </View>
 
           {/* Content */}
@@ -868,34 +904,35 @@ export default function PaintingEvaluationRound2Screen() {
 const styles = (colors: typeof Colors.light) =>
   StyleSheet.create({
     container: { flex: 1 },
-    header: {
+    customHeader: {
+      justifyContent: "flex-end",
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+      shadowColor: "#000",
+      shadowOpacity: 0.08,
+      shadowRadius: 3,
+      shadowOffset: { width: 0, height: 1 },
+      elevation: 2,
+    },
+    headerContent: {
+      height: HEADER_HEIGHT,
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: 18,
-      paddingVertical: 14,
-      paddingTop: Platform.OS === "ios" ? 52 : 18,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-      gap: 10,
+      paddingHorizontal: 12,
+      gap: 8,
+    },
+    backButton: {
+      width: 48,
+      height: 48,
+      borderRadius: 8,
+      justifyContent: "center",
+      alignItems: "center",
     },
     headerTitle: {
-      fontSize: 20,
-      fontWeight: "900",
-      color: colors.foreground,
       flex: 1,
+      fontSize: 20,
+      fontWeight: "700",
       textAlign: "center",
-      letterSpacing: 0.4,
-    },
-    headerRight: { width: 48, alignItems: "flex-end" },
-    circleBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: 999,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     circleBtnLg: {
       width: 44,

@@ -1,5 +1,6 @@
 import { useGetPaintings } from "@/apis/painting";
 import { useUserById } from "@/apis/user";
+import { HEADER_HEIGHT } from "@/constants/headerConfig";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { ExaminerRole, Painting } from "@/types";
@@ -7,17 +8,22 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
   ActivityIndicator,
   Animated,
   FlatList,
+  Platform,
   Pressable,
+  StatusBar,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { useWhoAmI } from "../apis/auth";
 
 function toAlpha(hex: string, a: number) {
@@ -124,8 +130,18 @@ export default function ContestPaintingsScreen() {
 
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
   const C = Colors[scheme];
+  const insets = useSafeAreaInsets();
   const s = styles(C);
   const { data: user } = useWhoAmI();
+
+  const topInset = useMemo(() => {
+    if (insets.top === 0) {
+      return Platform.OS === "ios" ? 44 : 0;
+    }
+    return insets.top;
+  }, [insets.top]);
+
+  const headerHeight = HEADER_HEIGHT + topInset;
 
   /* API */
   const {
@@ -184,9 +200,9 @@ export default function ContestPaintingsScreen() {
 
     const roundLabel =
       examinerRole === "ROUND_1"
-        ? "Vòng 1"
+        ? "Vòng Sơ Khảo"
         : examinerRole === "ROUND_2"
-          ? "Vòng 2"
+          ? "Vòng Chung Khảo"
           : "Tranh dự thi";
 
     return (
@@ -252,29 +268,77 @@ export default function ContestPaintingsScreen() {
   /* ============================ Render ============================ */
   if (isLoading) {
     return (
-      <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
-        <View style={s.header}>
-          <Pressable onPress={() => router.back()} style={s.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={C.primaryForeground} />
-          </Pressable>
-          <Text style={s.headerTitle}>Tranh</Text>
+      <View style={[s.container, { backgroundColor: C.background }]}>
+        <StatusBar barStyle="light-content" backgroundColor={C.primary} />
+        <View
+          style={[
+            s.customHeader,
+            {
+              height: headerHeight,
+              paddingTop: topInset,
+              backgroundColor: C.primary,
+            },
+          ]}
+        >
+          <View style={s.headerContent}>
+            <Pressable
+              onPress={() => router.back()}
+              style={s.backButton}
+              android_ripple={{ color: "rgba(255,255,255,0.2)" }}
+              hitSlop={8}
+            >
+              <Ionicons
+                name={Platform.OS === "ios" ? "chevron-back" : "arrow-back"}
+                size={24}
+                color="#fff"
+              />
+            </Pressable>
+            <Text style={[s.headerTitle, { color: "#fff" }]} numberOfLines={1}>
+              Tranh
+            </Text>
+            <View style={{ width: 48 }} />
+          </View>
         </View>
         <View style={s.loading}>
           <ActivityIndicator size="large" color={C.primaryForeground} />
           <Text style={s.loadingText}>Đang tải tranh...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
-        <View style={s.header}>
-          <Pressable onPress={() => router.back()} style={s.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={C.primaryForeground} />
-          </Pressable>
-          <Text style={s.headerTitle}>Tranh</Text>
+      <View style={[s.container, { backgroundColor: C.background }]}>
+        <StatusBar barStyle="light-content" backgroundColor={C.primary} />
+        <View
+          style={[
+            s.customHeader,
+            {
+              height: headerHeight,
+              paddingTop: topInset,
+              backgroundColor: C.primary,
+            },
+          ]}
+        >
+          <View style={s.headerContent}>
+            <Pressable
+              onPress={() => router.back()}
+              style={s.backButton}
+              android_ripple={{ color: "rgba(255,255,255,0.2)" }}
+              hitSlop={8}
+            >
+              <Ionicons
+                name={Platform.OS === "ios" ? "chevron-back" : "arrow-back"}
+                size={24}
+                color="#fff"
+              />
+            </Pressable>
+            <Text style={[s.headerTitle, { color: "#fff" }]} numberOfLines={1}>
+              Tranh
+            </Text>
+            <View style={{ width: 48 }} />
+          </View>
         </View>
         <View style={s.center}>
           <Ionicons
@@ -287,37 +351,70 @@ export default function ContestPaintingsScreen() {
             <Text style={s.retryText}>Thử lại</Text>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
+    <View style={[s.container, { backgroundColor: C.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor={C.primary} />
       {/* Header */}
-      <View style={s.header}>
-        <Pressable onPress={() => router.back()} style={s.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={C.primaryForeground} />
-        </Pressable>
-        <Text style={s.headerTitle} numberOfLines={1}>
-          {contestTitle ? `${contestTitle} — Tranh` : "Tranh cuộc thi"}
-        </Text>
+      <View
+        style={[
+          s.customHeader,
+          {
+            height: headerHeight,
+            paddingTop: topInset,
+            backgroundColor: C.primary,
+          },
+        ]}
+      >
+        <View style={s.headerContent}>
+          <Pressable
+            onPress={() => router.back()}
+            style={s.backButton}
+            android_ripple={{ color: "rgba(255,255,255,0.2)" }}
+            hitSlop={8}
+          >
+            <Ionicons
+              name={Platform.OS === "ios" ? "chevron-back" : "arrow-back"}
+              size={24}
+              color="#fff"
+            />
+          </Pressable>
+          <Text style={[s.headerTitle, { color: "#fff" }]} numberOfLines={1}>
+            {contestTitle ? `${contestTitle}` : "Tranh cuộc thi"}
+          </Text>
+          <View style={{ width: 48 }} />
+        </View>
       </View>
 
       {paintings && paintings.paintings.length > 0 ? (
-        <FlatList
-          data={paintings.paintings}
-          keyExtractor={(item) => item.paintingId}
-          renderItem={({ item }) => <PaintingItem painting={item} />}
-          contentContainerStyle={s.list}
-          showsVerticalScrollIndicator={false}
-        />
+        <SafeAreaView edges={["left", "right", "bottom"]} style={{ flex: 1 }}>
+          <FlatList
+            data={paintings.paintings}
+            keyExtractor={(item) => item.paintingId}
+            renderItem={({ item }) => <PaintingItem painting={item} />}
+            contentContainerStyle={s.list}
+            showsVerticalScrollIndicator={false}
+          />
+        </SafeAreaView>
       ) : (
-        <View style={s.center}>
-          <Ionicons name="images-outline" size={64} color={C.mutedForeground} />
-          <Text style={s.emptyText}>Chưa có bài dự thi hoặc đã chấm hết</Text>
-        </View>
+        <SafeAreaView
+          edges={["left", "right", "bottom"]}
+          style={{ flex: 1, justifyContent: "center" }}
+        >
+          <View style={s.center}>
+            <Ionicons
+              name="images-outline"
+              size={64}
+              color={C.mutedForeground}
+            />
+            <Text style={s.emptyText}>Chưa có bài dự thi hoặc đã chấm hết</Text>
+          </View>
+        </SafeAreaView>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -331,31 +428,35 @@ const styles = (C: any) =>
     },
 
     /* Header */
-    header: {
+    customHeader: {
+      justifyContent: "flex-end",
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: C.border,
+      shadowColor: "#000",
+      shadowOpacity: 0.08,
+      shadowRadius: 3,
+      shadowOffset: { width: 0, height: 1 },
+      elevation: 2,
+    },
+    headerContent: {
+      height: HEADER_HEIGHT,
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: 14,
-      paddingVertical: 14,
-      backgroundColor: C.primary, // header dùng C.primary
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: toAlpha("#000000", 0.12),
-      shadowColor: "#000",
-      shadowOpacity: 0.12,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 4,
+      paddingHorizontal: 12,
+      gap: 8,
     },
-    backBtn: {
-      padding: 8,
-      marginRight: 8,
-      borderRadius: 999,
-      backgroundColor: toAlpha("#000000", 0.16),
+    backButton: {
+      width: 48,
+      height: 48,
+      borderRadius: 8,
+      justifyContent: "center",
+      alignItems: "center",
     },
     headerTitle: {
-      fontSize: 18,
-      fontWeight: "800",
-      color: C.primaryForeground,
       flex: 1,
+      fontSize: 20,
+      fontWeight: "700",
+      textAlign: "center",
     },
 
     /* Loading / Error */
