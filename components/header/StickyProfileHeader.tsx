@@ -174,5 +174,5 @@ const styles = StyleSheet.create({
   },
   side: { width: 44, alignItems: "center", justifyContent: "center" },
   iconBtn: { padding: 8, borderRadius: 999 },
-  title: { fontSize: 18, fontWeight: "800", letterSpacing: 0.2 },
+  title: { fontSize: 20, fontWeight: "700", letterSpacing: 0.3 },
 });

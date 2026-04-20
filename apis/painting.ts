@@ -79,6 +79,10 @@ export function useUploadPainting() {
           String(paintingUploadRequest.ignoreAiCheck),
         );
       }
+      // Append isFlagged flag if provided
+      if (paintingUploadRequest.isFlagged !== undefined) {
+        formData.append("isFlagged", String(paintingUploadRequest.isFlagged));
+      }
       const response = await myAxios.post("/paintings/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",

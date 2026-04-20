@@ -4,7 +4,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Post } from "@/types/post";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 type Props = {
@@ -38,14 +38,25 @@ export default function PostCard({
   const R = radiusOverride ?? radius.lg;
   const dateStr = useMemo(
     () => fmtVNDate(item.published_at),
-    [item.published_at]
+    [item.published_at],
   );
   const firstTag = item.postTags?.[0]?.tag?.tag_name;
+
+  // Debounce ref to prevent spam clicks
+  const lastPressRef = useRef(0);
+  const DEBOUNCE_DELAY = 600;
+
+  const handlePress = useCallback(() => {
+    const now = Date.now();
+    if (now - lastPressRef.current < DEBOUNCE_DELAY) return;
+    lastPressRef.current = now;
+    onPress?.(item);
+  }, [onPress, item]);
 
   return (
     <View style={[styles.container]}>
       <Pressable
-        onPress={() => onPress?.(item)}
+        onPress={handlePress}
         android_ripple={{
           color:
             scheme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
@@ -135,7 +146,13 @@ export default function PostCard({
                 </View>
               )}
             </View>
-            <Pressable style={styles.ctaBtn}>
+            <Pressable
+              onPress={handlePress}
+              style={({ pressed }) => [
+                styles.ctaBtn,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
               <Text style={{ color: "white", fontWeight: "600", fontSize: 10 }}>
                 Chi tiết
               </Text>

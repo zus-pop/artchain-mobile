@@ -46,15 +46,15 @@ export default function CollapsibleHeader({
           height: HEADER_EXPANDED + insets.top,
           paddingTop: insets.top,
         },
-        { backgroundColor: colors.foreground80 },
+        { backgroundColor: colors.primary },
       ]}
       pointerEvents="box-none"
     >
       {/* SUBTLE PRIMARY GRADIENT - SYNCED WITH BACKGROUND */}
       <LinearGradient
         colors={[
-          "rgba(239, 68, 68, 0.12)",
-          "rgba(239, 68, 68, 0.06)",
+          "rgba(192, 100, 27, 0.15)",
+          "rgba(192, 100, 27, 0.08)",
           "rgba(0,0,0,0)",
         ]}
         start={{ x: 0, y: 0 }}
@@ -66,7 +66,7 @@ export default function CollapsibleHeader({
       {/* Nhóm text + avatar */}
       <View style={styles.headerTextWrap}>
         <TouchableOpacity activeOpacity={0.8} style={[styles.avatarBtn]}>
-          <Ionicons name="person-circle" size={42} color={colors.background} />
+          <Ionicons name="person-circle" size={42} color="#fff" />
         </TouchableOpacity>
 
         <View
@@ -83,7 +83,7 @@ export default function CollapsibleHeader({
               styles.username,
               {
                 opacity: nameOpacity,
-                color: colors.background,
+                color: "#fff",
               },
             ]}
           >
@@ -94,7 +94,7 @@ export default function CollapsibleHeader({
               styles.username,
               {
                 opacity: nameOpacity,
-                color: colors.background,
+                color: "#fff",
               },
             ]}
           >

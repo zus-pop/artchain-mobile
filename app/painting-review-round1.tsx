@@ -226,7 +226,7 @@ export default function PaintingReviewRound1Screen() {
 
   // State to track which paintings are selected (temporarily changed isPassed status)
   const [selectedPaintings, setSelectedPaintings] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   // State for modals
@@ -236,7 +236,7 @@ export default function PaintingReviewRound1Screen() {
   // State for image viewer modal
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [selectedPainting, setSelectedPainting] = useState<Painting | null>(
-    null
+    null,
   );
 
   /* Initialize selected paintings - all start as passed (true) */
@@ -511,7 +511,9 @@ export default function PaintingReviewRound1Screen() {
               <Ionicons name="arrow-back" size={22} color={C.foreground} />
             </Pressable>
             <Text style={s.headerTitle} numberOfLines={1}>
-              {contestTitle ? `Xem lại — ${contestTitle}` : "Xem lại Vòng Sơ Khảo"}
+              {contestTitle
+                ? `Xem lại — ${contestTitle}`
+                : "Xem lại Vòng Sơ Khảo"}
             </Text>
           </View>
 
@@ -643,8 +645,8 @@ const styles = (C: typeof Colors.light) =>
     },
     backBtn: { padding: 6, marginRight: 8, borderRadius: 10 },
     headerTitle: {
-      fontSize: 18,
-      fontWeight: "800",
+      fontSize: 20,
+      fontWeight: "700",
       color: C.foreground,
       flex: 1,
     },

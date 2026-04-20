@@ -8,9 +8,16 @@ import {
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
+  Image as RNImage,
   StyleSheet,
   Text,
   TextInput,
@@ -128,7 +135,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
   const {
     control,
     handleSubmit,
-    formState: { errors, isValid },
+    formState: { errors, isValid, dirtyFields },
     reset,
     setValue,
     watch,
@@ -267,21 +274,14 @@ const ProfileDetailsModal: React.FC<Props> = ({
             <View style={s.divider} />
           </View>
 
-          {/* INFO / AVATAR */}
+          {/* INFO / AVATAR & FULLNAME */}
           <View style={s.infoRow}>
             <View style={[s.avatarRing, { shadowColor: C.mutedForeground }]}>
-              <View
-                style={[
-                  s.avatar,
-                  { alignItems: "center", justifyContent: "center" },
-                ]}
-              >
-                <Ionicons
-                  name="person-outline"
-                  size={28}
-                  color={C.mutedForeground}
-                />
-              </View>
+              <RNImage
+                source={require("../../assets/images/AVT1.png")}
+                style={[s.avatar, { borderRadius: 999 }]}
+                resizeMode="cover"
+              />
               <TouchableOpacity
                 activeOpacity={0.9}
                 style={[
@@ -297,6 +297,23 @@ const ProfileDetailsModal: React.FC<Props> = ({
             </View>
 
             <View style={{ flex: 1, marginLeft: 12 }}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+              >
+                <Text style={[local.label, { color: C.mutedForeground }]}>
+                  Họ và tên
+                </Text>
+                {dirtyFields.fullname && (
+                  <View
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: C.primary,
+                    }}
+                  />
+                )}
+              </View>
               <Controller
                 name="fullname"
                 control={control}
@@ -309,12 +326,27 @@ const ProfileDetailsModal: React.FC<Props> = ({
                     placeholderTextColor={C.mutedForeground}
                     style={[
                       local.input,
-                      { color: C.foreground, borderColor: C.border },
+                      {
+                        color: C.foreground,
+                        borderColor: dirtyFields.fullname
+                          ? C.primary
+                          : C.border,
+                        borderWidth: dirtyFields.fullname
+                          ? 1.5
+                          : StyleSheet.hairlineWidth,
+                      },
                       errors.fullname ? local.inputError : null,
                     ]}
                   />
                 )}
               />
+              {errors.fullname && (
+                <Text
+                  style={[local.err, { color: C.destructive ?? "#EF4444" }]}
+                >
+                  {errors.fullname.message}
+                </Text>
+              )}
             </View>
           </View>
 
@@ -332,6 +364,7 @@ const ProfileDetailsModal: React.FC<Props> = ({
               C={C}
               keyboardType="email-address"
               error={errors.email?.message}
+              isDirty={dirtyFields.email}
             />
 
             <Field
@@ -344,6 +377,8 @@ const ProfileDetailsModal: React.FC<Props> = ({
               C={C}
               keyboardType="phone-pad"
               error={errors.phone?.message}
+              isDirty={dirtyFields.phone}
+              last
             />
           </View>
 
@@ -415,6 +450,7 @@ function Field({
   last,
   iconColor,
   chipColor,
+  isDirty,
 }: {
   icon: keyof typeof Ionicons.glyphMap | any;
   label: string;
@@ -427,14 +463,31 @@ function Field({
   last?: boolean;
   iconColor?: string;
   chipColor?: { bg: string; fg: string };
+  isDirty?: boolean;
 }) {
   return (
     <View style={{ paddingVertical: 8 }}>
-      <Text style={[local.label, { color: C.mutedForeground }]}>{label}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <Text style={[local.label, { color: C.mutedForeground }]}>{label}</Text>
+        {isDirty && (
+          <View
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: C.primary,
+            }}
+          />
+        )}
+      </View>
       <View
         style={[
           local.row,
-          { borderColor: C.border, backgroundColor: chipColor?.bg ?? C.card },
+          {
+            borderColor: isDirty ? C.primary : C.border,
+            backgroundColor: chipColor?.bg ?? C.card,
+            borderWidth: isDirty ? 1.5 : StyleSheet.hairlineWidth,
+          },
         ]}
       >
         <Ionicons
@@ -510,10 +563,21 @@ const local = StyleSheet.create({
     flex: 1,
     paddingVertical: 0,
     fontWeight: "600",
+    paddingHorizontal: 12,
+    borderRadius: 10,
   },
   inputError: {
     borderWidth: 1,
     borderColor: "#EF4444",
+  },
+  readOnlyValue: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    fontWeight: "600",
+    backgroundColor: "rgba(0,0,0,0.02)",
   },
   label: {
     fontSize: 12,

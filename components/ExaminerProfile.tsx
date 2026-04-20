@@ -12,6 +12,7 @@ import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Image,
   RefreshControl,
   StyleSheet,
   Text,
@@ -207,28 +208,26 @@ export default function ExaminerProfileScreen() {
   }
 
   const Avatar = () => {
-    const seed = user?.email || user?.fullName || "user";
-    const [g0, g1] = pickGrad(seed);
     return (
-      <View style={{ width: 64, height: 64 }}>
-        <LinearGradient
-          colors={[g0, g1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ position: "absolute", inset: 0, borderRadius: 999 }}
-        />
-        <View
+      <View
+        style={{
+          width: 64,
+          height: 64,
+          borderRadius: 999,
+          overflow: "hidden",
+          borderWidth: 2,
+          borderColor: C.primary,
+        }}
+      >
+        <Image
+          source={require("../assets/images/AVT1.png")}
           style={{
-            position: "absolute",
-            inset: 2,
+            width: "100%",
+            height: "100%",
             borderRadius: 999,
-            backgroundColor: C.card,
-            alignItems: "center",
-            justifyContent: "center",
           }}
-        >
-          <Ionicons name="person-outline" size={22} color={C.mutedForeground} />
-        </View>
+          resizeMode="cover"
+        />
       </View>
     );
   };
@@ -368,7 +367,10 @@ export default function ExaminerProfileScreen() {
               <Text style={[s.name, { color: C.foreground }]}>
                 {user.fullName}
               </Text>
-              <Text style={[s.handle, { color: C.mutedForeground }]}>
+              <Text
+                style={[s.handle, { color: C.mutedForeground }]}
+                numberOfLines={1}
+              >
                 {user.email}
               </Text>
             </View>
@@ -495,10 +497,17 @@ export default function ExaminerProfileScreen() {
 
                           <View style={{ gap: 12 }}>
                             {daySchedules
-                              .sort(
-                                (a, b) =>
-                                  a.createdAt.getTime() - b.createdAt.getTime(),
-                              )
+                              .sort((a, b) => {
+                                const timeA =
+                                  a.createdAt instanceof Date
+                                    ? a.createdAt.getTime()
+                                    : new Date(a.createdAt).getTime();
+                                const timeB =
+                                  b.createdAt instanceof Date
+                                    ? b.createdAt.getTime()
+                                    : new Date(b.createdAt).getTime();
+                                return timeA - timeB;
+                              })
                               .map((schedule) => (
                                 <ScheduleCard
                                   key={schedule.scheduleId}
@@ -623,7 +632,7 @@ const s = StyleSheet.create({
     backgroundColor: "transparent",
   },
   name: { fontSize: 16, fontWeight: "900" },
-  handle: { marginTop: 2, opacity: 0.8 },
+  handle: { marginTop: 2, opacity: 0.8, overflow: "hidden" },
   addBadge: {
     position: "absolute",
     right: -2,
@@ -657,6 +666,6 @@ const t = StyleSheet.create({
     right: 0,
     zIndex: 20,
   },
-  headerTitle: { fontSize: 24, fontWeight: "600" },
+  headerTitle: { fontSize: 20, fontWeight: "700" },
   iconBtn: { padding: 8, marginLeft: 4 },
 });

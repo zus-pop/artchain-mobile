@@ -36,55 +36,43 @@ function calcProgress(start: string | Date, end: string | Date) {
   return { pct, daysLeft };
 }
 
-function statusMeta(status: ExaminerContest["status"], C: ColorTokens) {
+function getStatusStyle(status: ExaminerContest["status"], C: ColorTokens) {
   switch (status) {
     case "ACTIVE":
       return {
+        grad: ["#16a34a", "#22c55e"],
+        fg: "#16a34a",
         label: "Đang diễn ra",
-        icon: "play-outline" as const,
-        grad: [C.primary, C.chart1],
-        fg: C.primaryForeground,
-        softBg: C.primary + "22",
       };
     case "UPCOMING":
       return {
+        grad: ["#f59e0b", "#fbbf24"],
+        fg: "#f59e0b",
         label: "Sắp diễn ra",
-        icon: "time-outline" as const,
-        grad: [C.chart1, C.primary],
-        fg: C.primaryForeground,
-        softBg: C.chart1 + "22",
       };
     case "ENDED":
       return {
+        grad: ["#64748b", "#94a3b8"],
+        fg: "#64748b",
         label: "Đã kết thúc",
-        icon: "stop-circle-outline" as const,
-        grad: [C.muted, C.border],
-        fg: C.foreground,
-        softBg: C.muted + "22",
       };
     case "COMPLETED":
       return {
+        grad: ["#16a34a", "#22c55e"],
+        fg: "#16a34a",
         label: "Hoàn thành",
-        icon: "checkmark-done-outline" as const,
-        grad: [C.primary, C.chart1],
-        fg: C.primaryForeground,
-        softBg: C.primary + "22",
       };
     case "DRAFT":
       return {
+        grad: ["#64748b", "#94a3b8"],
+        fg: "#64748b",
         label: "Bản nháp",
-        icon: "document-outline" as const,
-        grad: [C.muted, C.border],
-        fg: C.mutedForeground,
-        softBg: C.muted + "22",
       };
     default:
       return {
-        label: String(status || "Khác"),
-        icon: "sparkles-outline" as const,
         grad: [C.muted, C.border],
         fg: C.foreground,
-        softBg: C.muted + "22",
+        label: String(status || "Khác"),
       };
   }
 }
@@ -132,7 +120,7 @@ function ContestCardColorful({
   style,
   titleStyle,
 }: Props) {
-  const st = statusMeta(contest.status, C);
+  const st = getStatusStyle(contest.status, C);
   const examinerMeta = examinerRoleMeta(C, contest.examinerRole);
 
   // Anti-spam: khoá nút trong lúc xử lý
@@ -147,6 +135,16 @@ function ContestCardColorful({
       setTimeout(() => setIsEvaluating(false), 800);
     }
   }, [isEvaluating, onEvaluate, contest]);
+
+  // Determine button state and label
+  const isButtonDisabled =
+    isEvaluating || !contest.canEvaluate || contest.status === "ENDED";
+  const getButtonLabel = () => {
+    if (isEvaluating) return "Đang xử lý...";
+    if (contest.status === "ENDED") return "Cuộc thi đã kết thúc";
+    if (!contest.canEvaluate) return "Chưa tới lịch chấm";
+    return examinerMeta?.label || "Chấm bài";
+  };
 
   return (
     <Pressable
@@ -185,17 +183,11 @@ function ContestCardColorful({
             </Text>
 
             <LinearGradient
-              colors={[st.grad[0], st.grad[1]]}
+              colors={st.grad as [string, string]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.pillGrad}
             >
-              <Ionicons
-                name={st.icon}
-                size={14}
-                color="#fff"
-                style={{ marginRight: 6 }}
-              />
               <Text style={styles.pillTextWhite}>{st.label}</Text>
             </LinearGradient>
           </View>
@@ -224,66 +216,36 @@ function ContestCardColorful({
             </View>
           </View>
 
-          {/* Role and Actions in same row */}
-          <View style={styles.roleAndActionsRow}>
-            {/* Examiner Role chip */}
-            {examinerMeta && (
-              <LinearGradient
-                colors={examinerMeta.grad as [string, string]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.roleChip}
-              >
-                <Ionicons name={examinerMeta.icon} size={14} color="#ffffff" />
-                <Text
-                  style={[styles.roleText, { color: "#ffffff" }]}
-                  numberOfLines={1}
-                >
-                  {examinerMeta.label}
-                </Text>
-              </LinearGradient>
-            )}
-
-            {/* Evaluate Button */}
+          {/* Role Action Button - Replaces both role chip and evaluate button */}
+          {examinerMeta && (
             <Pressable
               onPress={handleEvaluate}
-              disabled={isEvaluating || !contest.canEvaluate}
+              disabled={isButtonDisabled}
               android_ripple={{ color: "#ffffff22" }}
               style={({ pressed }) => [
-                styles.evaluateBtn,
+                styles.roleActionBtn,
                 {
-                  backgroundColor: "transparent",
-                  opacity:
-                    isEvaluating || !contest.canEvaluate
-                      ? 0.6
-                      : pressed
-                        ? 0.96
-                        : 1,
-                  shadowColor: st.grad[1],
+                  opacity: isButtonDisabled ? 0.5 : pressed ? 0.92 : 1,
                 },
               ]}
             >
               <LinearGradient
-                colors={[st.grad[0], st.grad[1]]}
+                colors={examinerMeta.grad as [string, string]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.evaluateBtnFill}
+                style={styles.roleActionBtnFill}
               >
                 <Ionicons
-                  name={isEvaluating ? "time" : "star-outline"}
+                  name={isEvaluating ? "time" : examinerMeta.icon}
                   size={16}
-                  color="#fff"
+                  color="#ffffff"
                 />
-                <Text style={styles.evaluateBtnText}>
-                  {isEvaluating
-                    ? "Đang xử lý..."
-                    : !contest.canEvaluate
-                      ? "Chưa tới lịch chấm"
-                      : "Đánh giá"}
+                <Text style={styles.roleActionText} numberOfLines={1}>
+                  {getButtonLabel()}
                 </Text>
               </LinearGradient>
             </Pressable>
-          </View>
+          )}
         </View>
       </LinearGradient>
     </Pressable>
@@ -370,7 +332,7 @@ const styles = StyleSheet.create({
   rowBetween: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap:12,
+    gap: 12,
   },
   metaChip: {
     flexDirection: "row",
@@ -412,28 +374,8 @@ const styles = StyleSheet.create({
   },
   categoryText: { fontSize: 12, fontWeight: "800" },
 
-  roleAndActionsRow: {
+  roleActionBtn: {
     marginTop: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  roleChip: {
-    flex: 1,
-    borderRadius: 4,
-
-    paddingVertical: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    textAlign: "center",
-    alignContent: "center",
-    justifyContent: "center",
-  },
-  roleText: { fontSize: 12, fontWeight: "800" },
-
-  evaluateBtn: {
     borderRadius: 4,
     shadowOpacity: 0.12,
     shadowRadius: 9,
@@ -441,15 +383,16 @@ const styles = StyleSheet.create({
     elevation: 2,
     overflow: "hidden",
   },
-  evaluateBtnFill: {
+  roleActionBtnFill: {
     borderRadius: 4,
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 10,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    justifyContent: "center",
+    gap: 8,
   },
-  evaluateBtnText: {
+  roleActionText: {
     fontSize: 13,
     fontWeight: "800",
     color: "#fff",
@@ -457,27 +400,4 @@ const styles = StyleSheet.create({
   },
 
   actions: { marginTop: 16 },
-  primaryBtn: {
-    alignSelf: "flex-start",
-    borderRadius: 999,
-    shadowOpacity: 0.12,
-    shadowRadius: 9,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 2,
-    overflow: "hidden",
-  },
-  primaryBtnFill: {
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  primaryBtnText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#fff",
-    letterSpacing: 0.2,
-  },
 });

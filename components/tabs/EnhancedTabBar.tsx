@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingTop: 8,
+    paddingTop: 4,
     borderTopWidth: StyleSheet.hairlineWidth,
     justifyContent: "center",
   },
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   item: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 6,
+    paddingVertical: 2,
     gap: 2,
   },
   label: {

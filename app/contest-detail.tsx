@@ -2,22 +2,27 @@
 import { useWhoAmI } from "@/apis/auth";
 import { useCheckUploadCompetitor, useContestById } from "@/apis/contest";
 import ArtchainAnimation from "@/components/animations/ArtchainAnimation";
-import UnifiedHeader from "@/components/headers/UnifiedHeader";
+import { HEADER_HEIGHT } from "@/constants/headerConfig";
 import { Colors, withOpacity } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Rounds } from "@/types";
+import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { ExternalLink, FileText, Trophy, Users } from "lucide-react-native";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Image,
   Linking,
+  Platform,
+  Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /** Status tone using app theme colors - more visible */
 const getStatusStyle = (scheme: "light" | "dark") => {
@@ -54,9 +59,20 @@ export default function ContestDetail() {
   } = useContestById(contestId);
   const { data: me } = useWhoAmI();
   const scheme = (useColorScheme() ?? "light") as "light" | "dark";
+  const insets = useSafeAreaInsets();
 
   const C = Colors[scheme];
   const s = styles(C);
+
+  // 🔴 FIX: Lock safe-area inset on mount
+  const topInset = useMemo(() => {
+    if (insets.top === 0) {
+      return Platform.OS === "ios" ? 44 : 0;
+    }
+    return insets.top;
+  }, []);
+
+  const headerHeight = HEADER_HEIGHT + topInset;
 
   const { data: uploadStatus, isLoading: isCheckingUpload } =
     useCheckUploadCompetitor(
@@ -132,13 +148,48 @@ export default function ContestDetail() {
   const round1 = findRound1(contest?.rounds);
   return (
     <View style={s.screen}>
-      {/* Unified header with back button */}
-      <UnifiedHeader
-        title="Chi tiết Cuộc Thi"
-        showBack={true}
-        onBack={() => router.back()}
-        scheme={scheme}
+      {/* 🔴 Custom Header - Fixed height, no flicker */}
+      <StatusBar
+        barStyle={scheme === "dark" ? "light-content" : "dark-content"}
+        backgroundColor={C.card}
       />
+      <View
+        style={[
+          s.customHeader,
+          {
+            height: headerHeight,
+            paddingTop: topInset,
+            backgroundColor: C.card,
+          },
+        ]}
+      >
+        <View style={s.headerContent}>
+          {/* Back Button */}
+          <Pressable
+            onPress={() => router.back()}
+            style={s.backButton}
+            android_ripple={{ color: "rgba(0,0,0,0.08)" }}
+            hitSlop={8}
+          >
+            <Ionicons
+              name={Platform.OS === "ios" ? "chevron-back" : "arrow-back"}
+              size={24}
+              color={C.foreground}
+            />
+          </Pressable>
+
+          {/* Title */}
+          <Text
+            style={[s.headerTitle, { color: C.foreground }]}
+            numberOfLines={1}
+          >
+            Chi tiết Cuộc Thi
+          </Text>
+
+          {/* Spacer */}
+          <View style={{ width: 40 }} />
+        </View>
+      </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
         {/* HERO BANNER */}
@@ -281,7 +332,7 @@ export default function ContestDetail() {
               <View style={s.roundContent}>
                 <Text style={s.roundTitle}>Số lượng tham gia</Text>
                 <Text style={s.roundDate}>
-                  Top {contest?.round2Quantity ?? 0} từ Sơ Khảo
+                  Top {contest?.round2Quantity ?? 0} từ vòng Sơ Khảo
                 </Text>
               </View>
             </View>
@@ -401,6 +452,39 @@ const styles = (C: any) => {
   const R = 8; // ít bo tròn hơn
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: C.background },
+
+    // 🔴 CUSTOM HEADER - Fixed height
+    customHeader: {
+      justifyContent: "flex-end",
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: C.border,
+      shadowColor: "#000",
+      shadowOpacity: 0.08,
+      shadowRadius: 3,
+      shadowOffset: { width: 0, height: 1 },
+      elevation: 2,
+    },
+    headerContent: {
+      height: HEADER_HEIGHT,
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 12,
+      gap: 8,
+    },
+    backButton: {
+      width: 48,
+      height: 48,
+      borderRadius: 8,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    headerTitle: {
+      flex: 1,
+      fontSize: 20,
+      fontWeight: "700",
+      textAlign: "center",
+    },
+
     primaryButton: {
       backgroundColor: C.primary,
       borderRadius: 8,
@@ -413,7 +497,7 @@ const styles = (C: any) => {
 
     // HERO BANNER
     heroContainer: {
-      height: 280,
+      height: 160,
       position: "relative",
       marginBottom: 20,
     },
@@ -664,10 +748,7 @@ const styles = (C: any) => {
       gap: 12,
       backgroundColor: "#ff9500",
       borderRadius: 8,
-      paddingVertical: 16,
-      paddingHorizontal: 24,
-      marginHorizontal: 16,
-      marginVertical: 12,
+      padding: 16,
       shadowColor: "#ff9500",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.35,

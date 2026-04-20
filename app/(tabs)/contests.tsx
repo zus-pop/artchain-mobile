@@ -1,8 +1,9 @@
 import { router } from "expo-router";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Animated,
   LayoutChangeEvent,
+  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
@@ -40,6 +41,15 @@ const filterToStatus: Record<FilterOption, ContestStatus> = {
   "Đang diễn ra": "ACTIVE",
   "Đã kết thúc": "ENDED",
 };
+
+// Helper to normalize Vietnamese text for search
+function normalizeVN(s = "") {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
 
 /* ======================== Screen ======================== */
 export default function ContestsScreen() {
@@ -133,6 +143,16 @@ export default function ContestsScreen() {
     fetchNextPage();
   }, [fetchNextPage]);
 
+  // Filter contests based on search query
+  const allContests = data?.pages?.flatMap((page) => page?.data ?? []) ?? [];
+  const filteredContests = useMemo(() => {
+    if (!searchQuery.trim()) return allContests;
+    const q = normalizeVN(searchQuery);
+    return allContests.filter((contest) =>
+      normalizeVN(contest.title ?? "").includes(q),
+    );
+  }, [allContests, searchQuery]);
+
   const keyExtractor = useCallback(
     (c: Contest, i: number) => String(c.contestId ?? i),
     [],
@@ -220,10 +240,22 @@ export default function ContestsScreen() {
           <Text style={[s.stateText, { color: C.destructive ?? "#EF4444" }]}>
             Không tải được dữ liệu. Vui lòng thử lại.
           </Text>
+          <Pressable
+            onPress={onRefresh}
+            style={({ pressed }) => [
+              s.retryButton,
+              {
+                backgroundColor: C.primary,
+                opacity: pressed ? 0.8 : 1,
+              },
+            ]}
+          >
+            <Text style={[s.retryButtonText, { color: "#fff" }]}>Thử lại</Text>
+          </Pressable>
         </View>
       ) : (
         <FlatList
-          data={data?.pages?.flatMap((page) => page?.data ?? []) ?? []}
+          data={filteredContests}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           contentContainerStyle={{
@@ -232,6 +264,8 @@ export default function ContestsScreen() {
             paddingHorizontal: 6,
           }}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={true}
+          nestedScrollEnabled={true}
           onEndReached={onEndReached}
           onEndReachedThreshold={0.5}
           scrollIndicatorInsets={{
@@ -247,6 +281,7 @@ export default function ContestsScreen() {
               tintColor={C.mutedForeground}
               colors={[C.primary]}
               progressViewOffset={TOP_PADDING}
+              progressBackgroundColor={C.card}
             />
           }
           ListFooterComponent={listFooterComponent}
@@ -317,6 +352,18 @@ const styles = (scheme: "light" | "dark") => {
       color: C.mutedForeground,
       textAlign: "center",
       lineHeight: 20,
+    },
+    retryButton: {
+      marginTop: 16,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 8,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    retryButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
     },
   });
 };

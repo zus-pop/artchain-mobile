@@ -6,7 +6,13 @@ import type { ColorTokens } from "@/types/tabkey";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Animated,
   Dimensions,
@@ -69,6 +75,12 @@ export default function ExaminerContestsPanel({
     error,
     refetch,
   } = useExaminerContest(userId);
+
+  // ===== Sort data: newest contests first (higher contestId = newer) =====
+  const sortedContests = useMemo(() => {
+    if (!ongoingContests) return undefined;
+    return [...ongoingContests].sort((a, b) => b.contestId - a.contestId);
+  }, [ongoingContests]);
 
   // ===== Bouncing Animation =====
   useEffect(() => {
@@ -672,7 +684,7 @@ export default function ExaminerContestsPanel({
         paddingBottom: SECTION_PADDING,
       }}
     >
-      {ongoingContests.map((contest: ExaminerContest) => (
+      {sortedContests?.map((contest: ExaminerContest) => (
         <View
           key={contest.contestId}
           style={{

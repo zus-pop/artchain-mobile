@@ -7,16 +7,15 @@ import PressSelect from "@/components/form/PressSelect";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
+import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
-import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   Dimensions,
   FlatList,
   KeyboardAvoidingView,
-
   Platform,
   ScrollView,
   Text,
@@ -56,10 +55,9 @@ const competitorSchema = z
       .string({ message: "Lớp là bắt buộc" })
       .trim()
       .min(1, "Lớp là bắt buộc")
-      .refine(
-        (val) => ["6", "7", "8", "9"].includes(val),
-        { message: "Lớp phải là từ 6 đến 9" }
-      ),
+      .refine((val) => ["6", "7", "8", "9"].includes(val), {
+        message: "Lớp phải là từ 6 đến 9",
+      }),
     ward: z
       .string({ message: "Khu vực là bắt buộc" })
       .trim()
@@ -71,19 +69,19 @@ const competitorSchema = z
   .superRefine(({ confirmPassword, password, birthday, grade }, ctx) => {
     if (confirmPassword !== password) {
       ctx.addIssue({
-        code: \"custom\",
-        message: \"Mật khẩu xác nhận không khớp\",
-        path: [\"confirmPassword\"],
+        code: "custom",
+        message: "Mật khẩu xác nhận không khớp",
+        path: ["confirmPassword"],
       });
     }
-    
+
     // Cross-validate birthday with grade
     if (birthday && grade && !isValidBirthdayForGrade(birthday, grade)) {
       const range = GRADE_BIRTH_YEARS[grade as keyof typeof GRADE_BIRTH_YEARS];
       ctx.addIssue({
-        code: \"custom\",
+        code: "custom",
         message: `Ngày sinh không phù hợp với lớp ${grade}. Sinh năm ${range?.min}-${range?.max}`,
-        path: [\"birthday\"],
+        path: ["birthday"],
       });
     }
   });
@@ -111,10 +109,10 @@ const CURRENT_YEAR = new Date().getFullYear();
 
 // Grade-to-birth-year mapping (2026 năm hiện tại)
 const GRADE_BIRTH_YEARS = {
-  "6": { min: 2012, max: 2013 }, // 12-14 tuổi
-  "7": { min: 2011, max: 2012 }, // 13-15 tuổi
-  "8": { min: 2010, max: 2011 }, // 14-16 tuổi
-  "9": { min: 2009, max: 2010 }, // 15-17 tuổi
+  "6": { min: 2012, max: 2013 },
+  "7": { min: 2011, max: 2012 },
+  "8": { min: 2010, max: 2011 },
+  "9": { min: 2009, max: 2010 },
 };
 
 const getMinBirthdayForGrade = (grade: string): Date => {
@@ -134,7 +132,7 @@ const getGradeFromBirthday = (birthdayStr: string): string | null => {
   try {
     const date = new Date(birthdayStr);
     const birthYear = date.getFullYear();
-    
+
     for (const [grade, range] of Object.entries(GRADE_BIRTH_YEARS)) {
       if (birthYear >= range.min && birthYear <= range.max) {
         return grade;
@@ -148,14 +146,14 @@ const getGradeFromBirthday = (birthdayStr: string): string | null => {
 
 const isValidBirthdayForGrade = (
   birthdayStr: string,
-  grade: string
+  grade: string,
 ): boolean => {
   if (!birthdayStr || !grade) return true; // Allow empty
   try {
     const date = new Date(birthdayStr);
     const birthYear = date.getFullYear();
     const range = GRADE_BIRTH_YEARS[grade as keyof typeof GRADE_BIRTH_YEARS];
-    
+
     if (!range) return false;
     return birthYear >= range.min && birthYear <= range.max;
   } catch {
@@ -166,17 +164,45 @@ const isValidBirthdayForGrade = (
 export default function CompetitorSignupScreen() {
   const wardSheetRef = useRef<BottomSheet>(null);
   const gradeSheetRef = useRef<BottomSheet>(null);
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
-  const [q, setQ] = useState("");  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleNavigation = (path: string) => {
+    if (isNavigating) return;
+
+    setIsNavigating(true);
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current);
+    }
+
+    navigationTimeoutRef.current = setTimeout(() => {
+      setIsNavigating(false);
+    }, 600);
+
+    router.replace(path);
+  };
+
+  const [q, setQ] = useState("");
   // Track selected values for validation
-  const [selectedBirthday, setSelectedBirthday] = useState(\"\");
-  const [selectedGrade, setSelectedGrade] = useState(\"\");
+  const [selectedBirthday, setSelectedBirthday] = useState("");
+  const [selectedGrade, setSelectedGrade] = useState("");
   const [suggestedGrade, setSuggestedGrade] = useState<string | null>(null);
   const [minBirthdayDate, setMinBirthdayDate] = useState(new Date(2009, 0, 1));
-  const [maxBirthdayDate, setMaxBirthdayDate] = useState(new Date(2013, 11, 31));
+  const [maxBirthdayDate, setMaxBirthdayDate] = useState(
+    new Date(2013, 11, 31),
+  );
   const { data: wards = [], isLoading: wardsLoading } = useWards();
 
   const filteredWards = useMemo(() => {
@@ -185,7 +211,7 @@ export default function CompetitorSignupScreen() {
     return (wards || []).filter(
       (w: any) =>
         (w.name || "").toLowerCase().includes(key) ||
-        (w.code || "").toLowerCase().includes(key)
+        (w.code || "").toLowerCase().includes(key),
     );
   }, [q, wards]);
 
@@ -206,8 +232,8 @@ export default function CompetitorSignupScreen() {
   } = competitorForm;
 
   // Watch birthday field to suggest grade
-  const watchBirthday = watch(\"birthday\");
-  const watchGrade = watch(\"grade\");
+  const watchBirthday = watch("birthday");
+  const watchGrade = watch("grade");
 
   // When birthday changes → suggest grade
   useMemo(() => {
@@ -375,18 +401,20 @@ export default function CompetitorSignupScreen() {
                     onPress={() => gradeSheetRef.current?.expand()}
                     leftIcon="layers-outline"
                     errorText={errors.grade?.message}
-                  />                  {suggestedGrade && !field.value && (
+                  />
+                  {suggestedGrade && !field.value && (
                     <Text
                       style={{
                         fontSize: 12,
                         color: C.primary,
                         marginTop: 4,
-                        fontWeight: \"500\",
+                        fontWeight: "500",
                       }}
                     >
                       💡 Gợi ý: Lớp {suggestedGrade}
                     </Text>
-                  )}                </View>
+                  )}
+                </View>
               )}
             />
             <Controller
@@ -495,8 +523,9 @@ export default function CompetitorSignupScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => router.replace("/login")}
-            style={{ marginTop: 8 }}
+            disabled={isNavigating}
+            onPress={() => handleNavigation("/login")}
+            style={{ marginTop: 8, opacity: isNavigating ? 0.5 : 1 }}
           >
             <Text style={{ color: C.primary, fontSize: 15 }}>
               Đã có tài khoản? Đăng nhập
@@ -515,146 +544,142 @@ export default function CompetitorSignupScreen() {
         handleIndicatorStyle={{ backgroundColor: C.border }}
       >
         <BottomSheetView style={{ flex: 1, paddingHorizontal: 12 }}>
-
-            {/* header + title */}
-            <View
+          {/* header + title */}
+          <View
+            style={{
+              alignItems: "center",
+              paddingVertical: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: C.border,
+            }}
+          >
+            <Text
               style={{
-                alignItems: "center",
-                paddingVertical: 8,
-                borderBottomWidth: 1,
-                borderBottomColor: C.border,
+                fontSize: 16,
+                fontWeight: "700",
+                color: C.foreground,
               }}
             >
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: "700",
-                  color: C.foreground,
-                }}
-              >
-                Chọn khu vực
+              Chọn khu vực
+            </Text>
+          </View>
+          {/* body */}
+          {wardsLoading ? (
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: C.mutedForeground }}>
+                Đang tải danh sách khu vực...
               </Text>
             </View>
-            {/* body */}
-            {wardsLoading ? (
+          ) : (
+            <View style={{ padding: 12, paddingTop: 12, flex: 1 }}>
+              {/* search box */}
               <View
                 style={{
-                  flex: 1,
-                  justifyContent: "center",
+                  flexDirection: "row",
                   alignItems: "center",
+                  borderWidth: 1,
+                  borderColor: C.border,
+                  backgroundColor: C.card,
+                  borderRadius: 10,
+                  paddingHorizontal: 10,
+                  height: 42,
+                  marginBottom: 10,
                 }}
               >
-                <Text style={{ color: C.mutedForeground }}>
-                  Đang tải danh sách khu vực...
-                </Text>
-              </View>
-            ) : (
-              <View style={{ padding: 12, paddingTop: 12, flex: 1 }}>
-                {/* search box */}
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    borderWidth: 1,
-                    borderColor: C.border,
-                    backgroundColor: C.card,
-                    borderRadius: 10,
-                    paddingHorizontal: 10,
-                    height: 42,
-                    marginBottom: 10,
-                  }}
-                >
-                  <Ionicons
-                    name="search-outline"
-                    size={18}
-                    color={C.mutedForeground}
-                  />
-                  <Text
-                    style={{ color: C.mutedForeground, marginHorizontal: 6 }}
-                  >
-                    |
-                  </Text>
-                  <TextInput
-                    placeholder="Tìm theo tên hoặc mã..."
-                    placeholderTextColor={C.mutedForeground}
-                    value={q}
-                    onChangeText={setQ}
-                    style={{
-                      flex: 1,
-                      color: C.foreground,
-                      fontSize: 14,
-                      paddingVertical: 0,
-                    }}
-                    autoCapitalize="none"
-                  />
-                  {q ? (
-                    <TouchableOpacity
-                      onPress={() => setQ("")}
-                      style={{ padding: 6 }}
-                    >
-                      <Ionicons
-                        name="close-circle"
-                        size={18}
-                        color={C.mutedForeground}
-                      />
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-
-                {/* list (cuộn trong sheet) */}
-                <FlatList
-                  data={filteredWards}
-                  keyExtractor={(item: any) => item.code}
-                  keyboardShouldPersistTaps="handled"
-
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      onPress={() => {
-                        competitorForm.setValue("ward", item.name, {
-                          shouldValidate: true,
-                          shouldDirty: true,
-                        });
-                        wardSheetRef.current?.close();
-                        setQ("");
-                      }}
-                      style={{
-                        paddingVertical: 12,
-                        paddingHorizontal: 14,
-                        borderRadius: 10,
-                        backgroundColor: C.card,
-                        borderWidth: 1,
-                        borderColor: C.border,
-                        marginBottom: 8,
-                      }}
-                    >
-                      <Text
-                        style={{ fontSize: 15, color: C.foreground }}
-                        numberOfLines={1}
-                      >
-                        {item.name}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          color: C.mutedForeground,
-                          marginTop: 2,
-                        }}
-                        numberOfLines={1}
-                      >
-                        {item.code}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  ListEmptyComponent={
-                    <View style={{ paddingVertical: 24, alignItems: "center" }}>
-                      <Text style={{ color: C.mutedForeground }}>
-                        Không có dữ liệu khu vực
-                      </Text>
-                    </View>
-                  }
+                <Ionicons
+                  name="search-outline"
+                  size={18}
+                  color={C.mutedForeground}
                 />
+                <Text style={{ color: C.mutedForeground, marginHorizontal: 6 }}>
+                  |
+                </Text>
+                <TextInput
+                  placeholder="Tìm theo tên hoặc mã..."
+                  placeholderTextColor={C.mutedForeground}
+                  value={q}
+                  onChangeText={setQ}
+                  style={{
+                    flex: 1,
+                    color: C.foreground,
+                    fontSize: 14,
+                    paddingVertical: 0,
+                  }}
+                  autoCapitalize="none"
+                />
+                {q ? (
+                  <TouchableOpacity
+                    onPress={() => setQ("")}
+                    style={{ padding: 6 }}
+                  >
+                    <Ionicons
+                      name="close-circle"
+                      size={18}
+                      color={C.mutedForeground}
+                    />
+                  </TouchableOpacity>
+                ) : null}
               </View>
-            )}
+
+              {/* list (cuộn trong sheet) */}
+              <FlatList
+                data={filteredWards}
+                keyExtractor={(item: any) => item.code}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    onPress={() => {
+                      competitorForm.setValue("ward", item.name, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
+                      wardSheetRef.current?.close();
+                      setQ("");
+                    }}
+                    style={{
+                      paddingVertical: 12,
+                      paddingHorizontal: 14,
+                      borderRadius: 10,
+                      backgroundColor: C.card,
+                      borderWidth: 1,
+                      borderColor: C.border,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Text
+                      style={{ fontSize: 15, color: C.foreground }}
+                      numberOfLines={1}
+                    >
+                      {item.name}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: C.mutedForeground,
+                        marginTop: 2,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {item.code}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={
+                  <View style={{ paddingVertical: 24, alignItems: "center" }}>
+                    <Text style={{ color: C.mutedForeground }}>
+                      Không có dữ liệu khu vực
+                    </Text>
+                  </View>
+                }
+              />
+            </View>
+          )}
         </BottomSheetView>
       </BottomSheet>
       {/* Grade Picker Bottom Sheet */}
@@ -666,7 +691,9 @@ export default function CompetitorSignupScreen() {
         backgroundStyle={{ backgroundColor: C.background }}
         handleIndicatorStyle={{ backgroundColor: C.border }}
       >
-        <BottomSheetView style={{ paddingHorizontal: 16, paddingVertical: 12, flex: 1 }}>
+        <BottomSheetView
+          style={{ paddingHorizontal: 16, paddingVertical: 12, flex: 1 }}
+        >
           {/* header + title */}
           <View
             style={{
@@ -687,69 +714,69 @@ export default function CompetitorSignupScreen() {
             </Text>
           </View>
 
-            {/* content: auto change list/grid + tối đa chiều cao */}
-            <FlatList
-              data={grades}
-              numColumns={GRADE_NUM_COLS}
-              keyExtractor={(g) => String(g)}
-              scrollEnabled={false}
-              columnWrapperStyle={{
-                justifyContent: "space-between",
-                marginBottom: GRADE_GAP,
-              }}
-              renderItem={({ item: grade }) => {
-                const isSuggested = suggestedGrade === String(grade);
-                return (
-                  <TouchableOpacity
-                    onPress={() => {
-                      competitorForm.setValue("grade", String(grade), {
-                        shouldValidate: true,
-                        shouldDirty: true,
-                      });
-                      gradeSheetRef.current?.close();
-                    }}
+          {/* content: auto change list/grid + tối đa chiều cao */}
+          <FlatList
+            data={grades}
+            numColumns={GRADE_NUM_COLS}
+            keyExtractor={(g) => String(g)}
+            scrollEnabled={false}
+            columnWrapperStyle={{
+              justifyContent: "space-between",
+              marginBottom: GRADE_GAP,
+            }}
+            renderItem={({ item: grade }) => {
+              const isSuggested = suggestedGrade === String(grade);
+              return (
+                <TouchableOpacity
+                  onPress={() => {
+                    competitorForm.setValue("grade", String(grade), {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
+                    gradeSheetRef.current?.close();
+                  }}
+                  style={{
+                    width: `${100 / GRADE_NUM_COLS - 2}%`,
+                    height: GRADE_CHIP_SIZE,
+                    borderRadius: 14,
+                    backgroundColor: C.primary,
+                    borderWidth: isSuggested ? 3 : 2,
+                    borderColor: isSuggested ? C.accent : C.primary,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    shadowColor: "#000",
+                    shadowOpacity: isSuggested ? 0.2 : 0.1,
+                    shadowRadius: isSuggested ? 8 : 6,
+                    shadowOffset: { width: 0, height: 2 },
+                    elevation: isSuggested ? 4 : 2,
+                    opacity: isSuggested ? 1 : 0.8,
+                  }}
+                >
+                  <Text
                     style={{
-                      width: `${100 / GRADE_NUM_COLS - 2}%`,
-                      height: GRADE_CHIP_SIZE,
-                      borderRadius: 14,
-                      backgroundColor: C.primary,
-                      borderWidth: isSuggested ? 3 : 2,
-                      borderColor: isSuggested ? C.accent : C.primary,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      shadowColor: "#000",
-                      shadowOpacity: isSuggested ? 0.2 : 0.1,
-                      shadowRadius: isSuggested ? 8 : 6,
-                      shadowOffset: { width: 0, height: 2 },
-                      elevation: isSuggested ? 4 : 2,
-                      opacity: isSuggested ? 1 : 0.8,
+                      fontSize: 18,
+                      fontWeight: "900",
+                      color: C.primaryForeground,
                     }}
                   >
+                    Lớp {grade}
+                  </Text>
+                  {isSuggested && (
                     <Text
                       style={{
-                        fontSize: 18,
-                        fontWeight: "900",
+                        fontSize: 10,
                         color: C.primaryForeground,
+                        fontWeight: "600",
+                        marginTop: 2,
                       }}
                     >
-                      Lớp {grade}
+                      ✓ Gợi ý
                     </Text>
-                    {isSuggested && (
-                      <Text
-                        style={{
-                          fontSize: 10,
-                          color: C.primaryForeground,
-                          fontWeight: "600",
-                          marginTop: 2,
-                        }}
-                      >
-                        ✓ Gợi ý
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                );
-              }}
-            />
+                  )}
+                </TouchableOpacity>
+              );
+            }}
+          />
         </BottomSheetView>
       </BottomSheet>
     </KeyboardAvoidingView>

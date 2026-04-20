@@ -1,6 +1,5 @@
 // app/profile-detail.tsx
 import { useWhoAmI } from "@/apis/auth";
-import UnifiedHeader from "@/components/headers/UnifiedHeader";
 import ProfileDetailsModal from "@/components/modals/ProfileDetailsModal";
 import myAxios from "@/constants/custom-axios";
 import { Colors, withOpacity } from "@/constants/theme";
@@ -13,6 +12,7 @@ import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   Animated,
+  Image,
   Platform,
   Pressable,
   RefreshControl,
@@ -23,8 +23,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 /* ================= Helpers ================= */
-const HEADER_H = 56;
-
 const toAlpha = (hex: string, a: number) => {
   if (!hex) return `rgba(0,0,0,${a})`;
   const h = hex.replace("#", "");
@@ -87,27 +85,20 @@ export default function ProfileDetailScreen() {
         style={[
           s.safeArea,
           {
-            backgroundColor: "#EAE6E0",
-            paddingTop: Platform.OS === "ios" ? 8 : 0,
+            backgroundColor: C.background,
           },
         ]}
         edges={["top"]}
       >
-        {/* Header */}
+        {/* Custom Header */}
         <View style={s.header}>
-          <Pressable
-            onPress={() => router.back()}
-            style={({ pressed }) => [
-              s.headerIconBtn,
-              { opacity: pressed ? 0.6 : 1 },
-            ]}
-          >
-            <Ionicons name="arrow-back" size={20} color="#fff" />
+          <Pressable onPress={() => router.back()} style={s.backBtn}>
+            <Ionicons name="arrow-back" size={22} color={C.foreground} />
           </Pressable>
-          <Text style={s.headerTitle}>Hồ sơ</Text>
-          <View style={{ width: 32 }} />
+          <Text style={s.headerTitle} numberOfLines={1}>
+            Hồ sơ
+          </Text>
         </View>
-
         <View style={[s.container, s.center]}>
           <Text style={{ color: C.mutedForeground }}>Đang tải hồ sơ...</Text>
         </View>
@@ -121,27 +112,20 @@ export default function ProfileDetailScreen() {
         style={[
           s.safeArea,
           {
-            backgroundColor: C.border,
-            paddingTop: Platform.OS === "ios" ? 8 : 0,
+            backgroundColor: C.background,
           },
         ]}
         edges={["top"]}
       >
-        {/* Header */}
+        {/* Custom Header */}
         <View style={s.header}>
-          <Pressable
-            onPress={() => router.back()}
-            style={({ pressed }) => [
-              s.headerIconBtn,
-              { opacity: pressed ? 0.6 : 1 },
-            ]}
-          >
-            <Ionicons name="arrow-back" size={20} color="#111827" />
+          <Pressable onPress={() => router.back()} style={s.backBtn}>
+            <Ionicons name="arrow-back" size={22} color={C.foreground} />
           </Pressable>
-          <Text style={s.headerTitle}>Hồ sơ</Text>
-          <View style={{ width: 32 }} />
+          <Text style={s.headerTitle} numberOfLines={1}>
+            Hồ sơ
+          </Text>
         </View>
-
         <View style={[s.container, s.center]}>
           <Text style={{ color: C.mutedForeground }}>
             Không lấy được dữ liệu hồ sơ
@@ -156,16 +140,21 @@ export default function ProfileDetailScreen() {
       style={[
         s.safeArea,
         {
-          backgroundColor: "#EAE6E0",
-          paddingTop: Platform.OS === "ios" ? 8 : 0,
+          backgroundColor: C.background,
         },
       ]}
       edges={["top"]}
     >
+      {/* Custom Header */}
+      <View style={s.header}>
+        <Pressable onPress={() => router.back()} style={s.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={C.foreground} />
+        </Pressable>
+        <Text style={s.headerTitle} numberOfLines={1}>
+          Hồ sơ
+        </Text>
+      </View>
       <View style={s.container}>
-        {/* Unified header with back button */}
-        <UnifiedHeader title="Hồ sơ" showBack={true} scheme={scheme} />
-
         <Animated.ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 28 }}
@@ -181,16 +170,18 @@ export default function ProfileDetailScreen() {
               tintColor={C.primary}
             />
           }
-          style={{ backgroundColor: "#EAE6E0" }}
+          style={{ backgroundColor: C.background }}
         >
           {/* Card avatar + nút camera */}
           <View style={[s.card, { marginTop: 12 }]}>
             <View style={s.avatarBox}>
               <View style={s.avatarRing}>
                 <View style={s.avatarRingFill} />
-                <View style={[s.avatar, { backgroundColor: C.background }]}>
-                  <Ionicons name="person" size={28} color={C.mutedForeground} />
-                </View>
+                <Image
+                  source={require("../assets/images/AVT1.png")}
+                  style={[s.avatar, { borderRadius: 999 }]}
+                  resizeMode="cover"
+                />
               </View>
 
               <Pressable
@@ -435,29 +426,22 @@ const styles = (C: ColorTokens) =>
     },
     center: { alignItems: "center", justifyContent: "center" },
 
-    // New header inside screen (uses beige bg to match body)
+    // Header styles (matching painting-review-round1)
     header: {
-      height: HEADER_H,
-      paddingHorizontal: 16,
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
-      backgroundColor: "#rgba(31, 41, 55, 0.8)",
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      backgroundColor: C.background,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: toAlpha("#000000", 0.06),
+      borderBottomColor: toAlpha(C.border, 0.7),
     },
-    headerIconBtn: {
-      width: 42,
-      height: 42,
-      borderRadius: 16,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: "rgba(255,255,255,0.92)",
-    },
+    backBtn: { padding: 6, marginRight: 8, borderRadius: 10 },
     headerTitle: {
-      fontSize: 18,
-      fontWeight: "800",
-      color: "#FFF",
+      fontSize: 20,
+      fontWeight: "700",
+      color: C.foreground,
+      flex: 1,
     },
 
     card: {

@@ -12,6 +12,7 @@ export interface PaintingUploadRequest {
   };
   roundId: string;
   ignoreAiCheck?: boolean;
+  isFlagged?: boolean;
 }
 
 export interface Painting {
@@ -28,6 +29,7 @@ export interface Painting {
   createdAt: Date;
   updatedAt: Date;
   isPassed: boolean | null;
+  isFlagged: boolean;
   user: {
     userId: string;
     username: string;

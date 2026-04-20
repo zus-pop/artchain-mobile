@@ -396,17 +396,10 @@ function AwardCardRegular({
         !isLast && { borderBottomColor: colors.border, borderBottomWidth: 1 },
       ]}
     >
-      {/* Rank Badge */}
-      <View style={s.regularRankBadge}>
-        <Text style={s.regularRankLabel}>
-          {award.rank && award.rank >= 4 ? `thứ ${award.rank}` : "bổ sung"}
-        </Text>
-      </View>
-
       {/* Award Info */}
       <View style={s.regularAwardInfo}>
         <Text style={s.regularAwardName} numberOfLines={2}>
-          {award.name || "—"}
+          Giải : {award.name || "—"}
         </Text>
 
         {award.description && (
@@ -496,7 +489,7 @@ const styles = (colors: typeof Colors.light) =>
       fontSize: 18,
       fontWeight: "700",
       color: colors.foreground,
-      textTransform: "lowercase",
+     
       letterSpacing: 0.3,
     },
 
@@ -527,8 +520,6 @@ const styles = (colors: typeof Colors.light) =>
     statusLabel: {
       fontSize: 12,
       fontWeight: "700",
-      textTransform: "lowercase",
-      letterSpacing: 0.3,
     },
     infoLabel: {
       fontSize: 11,
@@ -734,7 +725,7 @@ const styles = (colors: typeof Colors.light) =>
       fontWeight: "700",
       textAlign: "center",
       lineHeight: 12,
-      textTransform: "lowercase",
+      
     },
     regularAwardInfo: {
       flex: 1,
@@ -743,7 +734,7 @@ const styles = (colors: typeof Colors.light) =>
       fontSize: 14,
       fontWeight: "600",
       color: "#1F2937",
-      textTransform: "lowercase",
+    
       lineHeight: 18,
     },
     regularAwardDesc: {

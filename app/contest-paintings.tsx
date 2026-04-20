@@ -1,5 +1,6 @@
 import { useGetPaintings } from "@/apis/painting";
 import { useUserById } from "@/apis/user";
+import { HEADER_HEIGHT } from "@/constants/headerConfig";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import type { ExaminerRole, Painting } from "@/types";
@@ -7,7 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -132,6 +133,15 @@ export default function ContestPaintingsScreen() {
   const insets = useSafeAreaInsets();
   const s = styles(C);
   const { data: user } = useWhoAmI();
+
+  const topInset = useMemo(() => {
+    if (insets.top === 0) {
+      return Platform.OS === "ios" ? 44 : 0;
+    }
+    return insets.top;
+  }, [insets.top]);
+
+  const headerHeight = HEADER_HEIGHT + topInset;
 
   /* API */
   const {
@@ -260,20 +270,34 @@ export default function ContestPaintingsScreen() {
     return (
       <View style={[s.container, { backgroundColor: C.background }]}>
         <StatusBar barStyle="light-content" backgroundColor={C.primary} />
-        <View style={[s.header, { paddingTop: insets.top }]}>
-          <Pressable
-            onPress={() => router.back()}
-            style={s.backBtn}
-            android_ripple={{ color: "rgba(255,255,255,0.2)" }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons
-              name="chevron-back"
-              size={24}
-              color={C.primaryForeground}
-            />
-          </Pressable>
-          <Text style={s.headerTitle}>Tranh</Text>
+        <View
+          style={[
+            s.customHeader,
+            {
+              height: headerHeight,
+              paddingTop: topInset,
+              backgroundColor: C.primary,
+            },
+          ]}
+        >
+          <View style={s.headerContent}>
+            <Pressable
+              onPress={() => router.back()}
+              style={s.backButton}
+              android_ripple={{ color: "rgba(255,255,255,0.2)" }}
+              hitSlop={8}
+            >
+              <Ionicons
+                name={Platform.OS === "ios" ? "chevron-back" : "arrow-back"}
+                size={24}
+                color="#fff"
+              />
+            </Pressable>
+            <Text style={[s.headerTitle, { color: "#fff" }]} numberOfLines={1}>
+              Tranh
+            </Text>
+            <View style={{ width: 48 }} />
+          </View>
         </View>
         <View style={s.loading}>
           <ActivityIndicator size="large" color={C.primaryForeground} />
@@ -287,20 +311,34 @@ export default function ContestPaintingsScreen() {
     return (
       <View style={[s.container, { backgroundColor: C.background }]}>
         <StatusBar barStyle="light-content" backgroundColor={C.primary} />
-        <View style={[s.header, { paddingTop: insets.top }]}>
-          <Pressable
-            onPress={() => router.back()}
-            style={s.backBtn}
-            android_ripple={{ color: "rgba(255,255,255,0.2)" }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons
-              name="chevron-back"
-              size={24}
-              color={C.primaryForeground}
-            />
-          </Pressable>
-          <Text style={s.headerTitle}>Tranh</Text>
+        <View
+          style={[
+            s.customHeader,
+            {
+              height: headerHeight,
+              paddingTop: topInset,
+              backgroundColor: C.primary,
+            },
+          ]}
+        >
+          <View style={s.headerContent}>
+            <Pressable
+              onPress={() => router.back()}
+              style={s.backButton}
+              android_ripple={{ color: "rgba(255,255,255,0.2)" }}
+              hitSlop={8}
+            >
+              <Ionicons
+                name={Platform.OS === "ios" ? "chevron-back" : "arrow-back"}
+                size={24}
+                color="#fff"
+              />
+            </Pressable>
+            <Text style={[s.headerTitle, { color: "#fff" }]} numberOfLines={1}>
+              Tranh
+            </Text>
+            <View style={{ width: 48 }} />
+          </View>
         </View>
         <View style={s.center}>
           <Ionicons
@@ -321,18 +359,34 @@ export default function ContestPaintingsScreen() {
     <View style={[s.container, { backgroundColor: C.background }]}>
       <StatusBar barStyle="light-content" backgroundColor={C.primary} />
       {/* Header */}
-      <View style={[s.header, { paddingTop: insets.top }]}>
-        <Pressable
-          onPress={() => router.back()}
-          style={s.backBtn}
-          android_ripple={{ color: "rgba(255,255,255,0.2)" }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="chevron-back" size={24} color={C.primaryForeground} />
-        </Pressable>
-        <Text style={s.headerTitle} numberOfLines={1}>
-          {contestTitle ? `${contestTitle}` : "Tranh cuộc thi"}
-        </Text>
+      <View
+        style={[
+          s.customHeader,
+          {
+            height: headerHeight,
+            paddingTop: topInset,
+            backgroundColor: C.primary,
+          },
+        ]}
+      >
+        <View style={s.headerContent}>
+          <Pressable
+            onPress={() => router.back()}
+            style={s.backButton}
+            android_ripple={{ color: "rgba(255,255,255,0.2)" }}
+            hitSlop={8}
+          >
+            <Ionicons
+              name={Platform.OS === "ios" ? "chevron-back" : "arrow-back"}
+              size={24}
+              color="#fff"
+            />
+          </Pressable>
+          <Text style={[s.headerTitle, { color: "#fff" }]} numberOfLines={1}>
+            {contestTitle ? `${contestTitle}` : "Tranh cuộc thi"}
+          </Text>
+          <View style={{ width: 48 }} />
+        </View>
       </View>
 
       {paintings && paintings.paintings.length > 0 ? (
@@ -374,35 +428,35 @@ const styles = (C: any) =>
     },
 
     /* Header */
-    header: {
+    customHeader: {
+      justifyContent: "flex-end",
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: C.border,
+      shadowColor: "#000",
+      shadowOpacity: 0.08,
+      shadowRadius: 3,
+      shadowOffset: { width: 0, height: 1 },
+      elevation: 2,
+    },
+    headerContent: {
+      height: HEADER_HEIGHT,
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "flex-start",
       paddingHorizontal: 12,
-      paddingBottom: 10,
-      backgroundColor: C.primary,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: toAlpha("#000000", 0.15),
-      shadowColor: "#000",
-      shadowOpacity: Platform.OS === "ios" ? 0.12 : 0.08,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 3,
+      gap: 8,
     },
-    backBtn: {
-      width: 40,
-      height: 40,
+    backButton: {
+      width: 48,
+      height: 48,
+      borderRadius: 8,
       justifyContent: "center",
       alignItems: "center",
-      borderRadius: 8,
-      backgroundColor: toAlpha("#ffffff", 0.15),
     },
     headerTitle: {
-      fontSize: 16,
-      fontWeight: "900",
-      color: C.primaryForeground,
       flex: 1,
-      marginLeft: 10,
+      fontSize: 20,
+      fontWeight: "700",
+      textAlign: "center",
     },
 
     /* Loading / Error */

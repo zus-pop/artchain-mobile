@@ -370,6 +370,8 @@ export default function PaintingUpload() {
 
   // Use ref to track ignoreAiCheck flag synchronously (state update is async)
   const ignoreAiCheckRef = useRef(false);
+  // Track if painting is flagged by AI (for subsequent uploads)
+  const isFlaggedRef = useRef(false);
 
   useEffect(() => {
     console.log("🎨 [PAINTING UPLOAD] Component mounted - ready to upload", {
@@ -377,9 +379,12 @@ export default function PaintingUpload() {
       competitorId,
       roundId,
       currentUser: currentUser?.id,
+      timestamp: new Date().toISOString(),
     });
     return () => {
-      console.log("🎨 [PAINTING UPLOAD] Component unmounted/cleaned up");
+      console.log("🎨 [PAINTING UPLOAD] Component unmounted/cleaned up", {
+        timestamp: new Date().toISOString(),
+      });
     };
   }, []);
 
@@ -453,8 +458,11 @@ export default function PaintingUpload() {
           fileName: file.fileName,
           size: file.fileSize,
           type: file.mimeType,
+          timestamp: new Date().toISOString(),
         });
         setImage(file);
+        // Reset flagged state when selecting new image
+        isFlaggedRef.current = false;
         resetAiCheckState();
       }
     } catch {
@@ -495,8 +503,11 @@ export default function PaintingUpload() {
           fileName: file.fileName,
           size: file.fileSize,
           type: file.mimeType,
+          timestamp: new Date().toISOString(),
         });
         setImage(file);
+        // Reset flagged state when taking new photo
+        isFlaggedRef.current = false;
         resetAiCheckState();
       }
     } catch {
@@ -505,13 +516,19 @@ export default function PaintingUpload() {
   };
 
   const removeImage = () => {
-    console.log("🗑️ [PAINTING UPLOAD] Image removed");
+    console.log("🗑️ [PAINTING UPLOAD] Image removed", {
+      timestamp: new Date().toISOString(),
+    });
     setImage(null);
+    // Also reset flagged state when removing image
+    isFlaggedRef.current = false;
     resetAiCheckState();
   };
 
   const resetAiCheckState = () => {
-    console.log("🔄 [PAINTING UPLOAD] Resetting AI check state");
+    console.log("🔄 [PAINTING UPLOAD] Resetting AI check state", {
+      timestamp: new Date().toISOString(),
+    });
     setIsAiCheckFailed(false);
     setAiCheckConfirmationInput("");
     setAiCheckErrorMessage("");
@@ -523,8 +540,16 @@ export default function PaintingUpload() {
       return;
     }
 
-    // Use ref value to get current ignoreAiCheck flag (synchronous)
+    // Use ref values to get current flags (synchronous)
     const ignoreAiCheckFlag = ignoreAiCheckRef.current;
+    const isFlaggedFlag = isFlaggedRef.current;
+
+    // Debug: log the refs before submitting
+    console.log("📍 [PAINTING UPLOAD] Before submit - checking refs:", {
+      ignoreAiCheckRef: ignoreAiCheckRef.current,
+      isFlaggedRef: isFlaggedRef.current,
+      timestamp: new Date().toISOString(),
+    });
 
     // Reset all error states before new submission
     // This ensures each submit is fresh and independent
@@ -537,9 +562,6 @@ export default function PaintingUpload() {
     setErrorModalConfirmationInput("");
     setIsErrorModalConfirmed(false);
 
-    // Reset ref after capturing
-    ignoreAiCheckRef.current = false;
-
     console.log("🎨 [PAINTING UPLOAD] Submitting painting...", {
       title: data.title,
       description: data.description,
@@ -549,6 +571,7 @@ export default function PaintingUpload() {
       roundId,
       competitorId,
       ignoreAiCheck: ignoreAiCheckFlag,
+      isFlagged: isFlaggedFlag,
       timestamp: new Date().toISOString(),
     });
     mutate(
@@ -565,16 +588,25 @@ export default function PaintingUpload() {
         competitorId: String(competitorId),
         // Send ignoreAiCheck using ref value (synchronous)
         ignoreAiCheck: ignoreAiCheckFlag,
+        // Send isFlagged using ref value
+        isFlagged: isFlaggedFlag,
       },
       {
         onSuccess: () => {
-          console.log("✅ [PAINTING UPLOAD] Upload successful!");
+          console.log("✅ [PAINTING UPLOAD] Upload successful!", {
+            title: data.title,
+            flagged: isFlaggedFlag,
+            timestamp: new Date().toISOString(),
+          });
           Alert.alert("Thành công", "Đã gửi bài thi!", [
             { text: "OK", onPress: () => router.back() },
           ]);
           // Reset AI check state and error modal state after success
           resetAiCheckState();
           setIsErrorModalConfirmed(false);
+          // Reset both flags after successful upload
+          isFlaggedRef.current = false;
+          ignoreAiCheckRef.current = false;
         },
         onError: (error: any) => {
           const errorMessage =
@@ -585,29 +617,46 @@ export default function PaintingUpload() {
           console.log("❌ [PAINTING UPLOAD] Upload error:", {
             status: error?.response?.status,
             message: errorMessage,
+            isFlagged: isFlaggedFlag,
             isAiCheckError: Boolean(
               error?.response?.status === 400 &&
               (errorMessage.toLowerCase().includes("ai") ||
                 errorMessage.toLowerCase().includes("detect") ||
                 errorMessage.toLowerCase().includes("phát hiện") ||
-                errorMessage.toLowerCase().includes("vấn đề")),
+                errorMessage.toLowerCase().includes("vấn đề") ||
+                errorMessage.toLowerCase().includes("kỹ thuật số") ||
+                errorMessage.toLowerCase().includes("vector") ||
+                errorMessage.toLowerCase().includes("không hợp lệ") ||
+                errorMessage.toLowerCase().includes("sạch") ||
+                errorMessage.toLowerCase().includes("tác phẩm")),
             ),
+            timestamp: new Date().toISOString(),
           });
 
           // Check if this is an AI check failed error
-          // AI check errors typically contain keywords like "AI", "detect", "phát hiện", etc.
+          // AI check errors typically contain keywords related to AI detection, image quality, etc.
           const isAiCheckError =
             error?.response?.status === 400 &&
             (errorMessage.toLowerCase().includes("ai") ||
               errorMessage.toLowerCase().includes("detect") ||
               errorMessage.toLowerCase().includes("phát hiện") ||
-              errorMessage.toLowerCase().includes("vấn đề"));
+              errorMessage.toLowerCase().includes("vấn đề") ||
+              errorMessage.toLowerCase().includes("kỹ thuật số") ||
+              errorMessage.toLowerCase().includes("vector") ||
+              errorMessage.toLowerCase().includes("không hợp lệ") ||
+              errorMessage.toLowerCase().includes("sạch") ||
+              errorMessage.toLowerCase().includes("tác phẩm"));
 
           if (isAiCheckError && !isAiCheckFailed) {
-            // First time AI check failed - show AI check confirmation modal
+            // First time AI check failed - mark painting as flagged
             console.log(
-              "⚠️ [PAINTING UPLOAD] AI check failed - showing AI check modal",
+              "⚠️ [PAINTING UPLOAD] AI check failed - marking as flagged and showing AI check modal",
             );
+            isFlaggedRef.current = true;
+            console.log("📍 [PAINTING UPLOAD] isFlaggedRef SET to true:", {
+              value: isFlaggedRef.current,
+              timestamp: new Date().toISOString(),
+            });
             setAiCheckErrorMessage(errorMessage);
             setIsAiCheckFailed(true);
             setAiCheckConfirmationInput("");
@@ -1102,17 +1151,25 @@ export default function PaintingUpload() {
                     alignItems: "center",
                     backgroundColor: BORDER_COLOR,
                   },
-                  aiCheckConfirmationInput !== "GỬI BÀI THI" && {
+                  (aiCheckConfirmationInput !== "GỬI BÀI THI" || isPending) && {
                     opacity: 0.5,
                   },
                 ]}
-                disabled={aiCheckConfirmationInput !== "GỬI BÀI THI"}
+                disabled={
+                  aiCheckConfirmationInput !== "GỬI BÀI THI" || isPending
+                }
                 onPress={() => {
                   console.log(
                     "📝 [PAINTING UPLOAD] User confirmed AI check modal - retrying with ignoreAiCheck = true",
                   );
-                  // Set ref immediately (synchronous) before submit
+                  // Ensure both flags are set correctly before retry
                   ignoreAiCheckRef.current = true;
+                  isFlaggedRef.current = true; // ← ENSURE flagged is true
+                  console.log("📍 [PAINTING UPLOAD] Refs SET before retry:", {
+                    ignoreAiCheckRef: ignoreAiCheckRef.current,
+                    isFlaggedRef: isFlaggedRef.current,
+                    timestamp: new Date().toISOString(),
+                  });
                   handleSubmit(onSubmit)();
                 }}
               >
@@ -1286,17 +1343,29 @@ export default function PaintingUpload() {
                     alignItems: "center",
                     backgroundColor: BORDER_COLOR,
                   },
-                  errorModalConfirmationInput !== "GỬI BÀI THI" && {
+                  (errorModalConfirmationInput !== "GỬI BÀI THI" ||
+                    isPending) && {
                     opacity: 0.5,
                   },
                 ]}
-                disabled={errorModalConfirmationInput !== "GỬI BÀI THI"}
+                disabled={
+                  errorModalConfirmationInput !== "GỬI BÀI THI" || isPending
+                }
                 onPress={() => {
                   console.log(
                     "📝 [PAINTING UPLOAD] User confirmed error modal - retrying with ignoreAiCheck = true",
                   );
-                  // Set ref immediately (synchronous) before submit
+                  // Set refs immediately (synchronous) before submit - treat error as flagged
                   ignoreAiCheckRef.current = true;
+                  isFlaggedRef.current = true; // ← Set flagged same as AI modal
+                  console.log(
+                    "📍 [PAINTING UPLOAD] Error modal confirm - Refs SET:",
+                    {
+                      ignoreAiCheckRef: ignoreAiCheckRef.current,
+                      isFlaggedRef: isFlaggedRef.current,
+                      timestamp: new Date().toISOString(),
+                    },
+                  );
                   setIsErrorModalOpen(false);
                   setErrorModalConfirmationInput("");
                   handleSubmit(onSubmit)();
@@ -1309,7 +1378,7 @@ export default function PaintingUpload() {
                     color: "#fff",
                   }}
                 >
-                  Xác Nhận 
+                  Xác Nhận
                 </Text>
               </TouchableOpacity>
             </View>

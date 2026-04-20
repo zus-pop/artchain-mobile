@@ -1,4 +1,5 @@
 // components/cards/ScheduleCardRainbow.tsx
+import { useContestById } from "@/apis/contest";
 import type { Schedule } from "@/types";
 import type { ColorTokens } from "@/types/tabkey";
 import { Ionicons } from "@expo/vector-icons";
@@ -103,6 +104,15 @@ function ScheduleCardRainbow({
         minute: "2-digit",
       }),
     [date],
+  );
+
+  // Fetch contest name
+  const { data: contest, isLoading: contestLoading } = useContestById(
+    String(schedule.contestId),
+  );
+  const contestName = useMemo(
+    () => contest?.title || `Cuộc thi #${schedule.contestId}`,
+    [contest?.title, schedule.contestId],
   );
 
   // Press scale animation (use ONE spring param group)
@@ -234,7 +244,7 @@ function ScheduleCardRainbow({
                 </Text>
               </View>
 
-              {/* Contest id */}
+              {/* Contest name */}
               <View
                 style={[
                   styles.idPill,
@@ -249,8 +259,8 @@ function ScheduleCardRainbow({
                   size={12}
                   color={C.mutedForeground}
                 />
-                <Text style={[styles.contestId, { color: C.mutedForeground }]}>
-                  Cuộc thi #{schedule.contestId}
+                <Text style={[styles.contestId, { color: C.mutedForeground }]} numberOfLines={1}>
+                  {contestLoading ? "Đang tải..." : contestName}
                 </Text>
               </View>
             </View>

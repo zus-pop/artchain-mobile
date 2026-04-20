@@ -224,7 +224,7 @@ const styles = (C: any) =>
     },
     title: {
       color: C.cardForeground,
-      fontSize: 18,
+      fontSize: 20,
       fontWeight: "900",
       letterSpacing: 0.3,
     },

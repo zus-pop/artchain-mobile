@@ -10,6 +10,7 @@ import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Image,
   Platform,
   RefreshControl,
   StyleSheet,
@@ -80,7 +81,7 @@ export default function GuardianProfileComponent() {
       { icon: "person-outline" as const, bg: "#BB8FCE" },
       { icon: "person-outline" as const, bg: "#85C1E9" },
     ],
-    []
+    [],
   );
 
   const getChildAvatar = (index: number) =>
@@ -89,7 +90,7 @@ export default function GuardianProfileComponent() {
   useFocusEffect(
     useCallback(() => {
       reloadMe();
-    }, [reloadMe])
+    }, [reloadMe]),
   );
 
   const onRefresh = useCallback(async () => {
@@ -100,28 +101,26 @@ export default function GuardianProfileComponent() {
   }, [reloadMe, refetchChildren]);
 
   const Avatar = () => {
-    const seed = user?.email || user?.fullName || "guardian";
-    const [g0, g1] = pickGrad(seed);
     return (
-      <View style={{ width: 64, height: 64 }}>
-        <LinearGradient
-          colors={[g0, g1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ position: "absolute", inset: 0, borderRadius: 32 }}
-        />
-        <View
+      <View
+        style={{
+          width: 64,
+          height: 64,
+          borderRadius: 32,
+          overflow: "hidden",
+          borderWidth: 2,
+          borderColor: C.primary,
+        }}
+      >
+        <Image
+          source={require("@/assets/images/AVT1.png")}
           style={{
-            position: "absolute",
-            inset: 2,
+            width: "100%",
+            height: "100%",
             borderRadius: 32,
-            backgroundColor: C.card,
-            alignItems: "center",
-            justifyContent: "center",
           }}
-        >
-          <Ionicons name="person-outline" size={22} color={C.mutedForeground} />
-        </View>
+          resizeMode="cover"
+        />
       </View>
     );
   };
@@ -146,7 +145,6 @@ export default function GuardianProfileComponent() {
               { backgroundColor: BRAND, borderBottomColor: C.border },
             ]}
           >
-         
             <View style={{ flexDirection: "row" }}>
               <TouchableOpacity style={s.iconBtn}>
                 <Ionicons name="notifications-outline" size={22} color="#fff" />
@@ -242,7 +240,7 @@ export default function GuardianProfileComponent() {
           showsVerticalScrollIndicator={false}
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: true }
+            { useNativeDriver: true },
           )}
           scrollEventThrottle={16}
           refreshControl={
@@ -279,7 +277,9 @@ export default function GuardianProfileComponent() {
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
               <Text style={s.name}>{user.fullName}</Text>
-              <Text style={s.handle}>{user.email}</Text>
+              <Text style={s.handle} numberOfLines={1}>
+                {user.email}
+              </Text>
             </View>
 
             <PillButton
@@ -504,7 +504,7 @@ const styles = (C: ColorTokens) =>
       gap: 10,
     },
     name: { fontSize: 15, fontWeight: "800", color: C.foreground },
-    handle: { color: C.mutedForeground, marginTop: 2 },
+    handle: { color: C.mutedForeground, marginTop: 2, overflow: "hidden" },
     addBadge: {
       position: "absolute",
       right: -2,
@@ -626,7 +626,7 @@ const styles = (C: ColorTokens) =>
     // Floating Action Button
     fabButton: {
       position: "absolute",
-      bottom: 90,
+      bottom: 95,
       right: 20,
       width: 60,
       height: 60,

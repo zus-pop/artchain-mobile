@@ -20,8 +20,8 @@ export const BACK_BUTTON_SIZE = Platform.OS === "ios" ? 36 : 48;
 export const BACK_BUTTON_ICON_SIZE = Platform.OS === "ios" ? 20 : 24;
 
 // ============= Title Specs =============
-export const TITLE_FONT_SIZE = 18;
-export const TITLE_FONT_WEIGHT = Platform.OS === "ios" ? "600" : "500";
+export const TITLE_FONT_SIZE = 20;
+export const TITLE_FONT_WEIGHT = "700";
 export const TITLE_TEXT_ALIGN = Platform.OS === "ios" ? "center" : "left";
 
 // ============= Right Action Specs =============
