@@ -1204,8 +1204,6 @@ export default function PaintingUpload() {
           </View>
         </View>
       </Modal>
-
-     
     </View>
   );
 }
