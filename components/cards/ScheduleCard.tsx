@@ -259,7 +259,10 @@ function ScheduleCardRainbow({
                   size={12}
                   color={C.mutedForeground}
                 />
-                <Text style={[styles.contestId, { color: C.mutedForeground }]} numberOfLines={1}>
+                <Text
+                  style={[styles.contestId, { color: C.mutedForeground }]}
+                  numberOfLines={1}
+                >
                   {contestLoading ? "Đang tải..." : contestName}
                 </Text>
               </View>

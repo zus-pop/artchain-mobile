@@ -363,10 +363,6 @@ export default function PaintingUpload() {
   const [errorModalConfirmationInput, setErrorModalConfirmationInput] =
     useState("");
   const [isErrorModalConfirmed, setIsErrorModalConfirmed] = useState(false);
-  // AI Check Failed Modal State
-  const [isAiCheckFailed, setIsAiCheckFailed] = useState(false);
-  const [aiCheckErrorMessage, setAiCheckErrorMessage] = useState("");
-  const [aiCheckConfirmationInput, setAiCheckConfirmationInput] = useState("");
 
   // Use ref to track ignoreAiCheck flag synchronously (state update is async)
   const ignoreAiCheckRef = useRef(false);
@@ -526,12 +522,13 @@ export default function PaintingUpload() {
   };
 
   const resetAiCheckState = () => {
-    console.log("🔄 [PAINTING UPLOAD] Resetting AI check state", {
+    console.log("🔄 [PAINTING UPLOAD] Resetting error modal state", {
       timestamp: new Date().toISOString(),
     });
-    setIsAiCheckFailed(false);
-    setAiCheckConfirmationInput("");
-    setAiCheckErrorMessage("");
+    setIsErrorModalOpen(false);
+    setErrorModalConfirmationInput("");
+    setErrorMessage("");
+    setErrorTitle("");
   };
 
   const onSubmit = (data: PaintingUploadForm) => {
@@ -553,9 +550,6 @@ export default function PaintingUpload() {
 
     // Reset all error states before new submission
     // This ensures each submit is fresh and independent
-    setIsAiCheckFailed(false);
-    setAiCheckErrorMessage("");
-    setAiCheckConfirmationInput("");
     setIsErrorModalOpen(false);
     setErrorMessage("");
     setErrorTitle("");
@@ -647,19 +641,20 @@ export default function PaintingUpload() {
               errorMessage.toLowerCase().includes("sạch") ||
               errorMessage.toLowerCase().includes("tác phẩm"));
 
-          if (isAiCheckError && !isAiCheckFailed) {
+          if (isAiCheckError && !isErrorModalOpen) {
             // First time AI check failed - mark painting as flagged
             console.log(
-              "⚠️ [PAINTING UPLOAD] AI check failed - marking as flagged and showing AI check modal",
+              "⚠️ [PAINTING UPLOAD] AI check failed - marking as flagged and showing error modal",
             );
             isFlaggedRef.current = true;
             console.log("📍 [PAINTING UPLOAD] isFlaggedRef SET to true:", {
               value: isFlaggedRef.current,
               timestamp: new Date().toISOString(),
             });
-            setAiCheckErrorMessage(errorMessage);
-            setIsAiCheckFailed(true);
-            setAiCheckConfirmationInput("");
+            setErrorTitle("AI Phát Hiện Tranh Có Vấn Đề");
+            setErrorMessage(errorMessage);
+            setIsErrorModalOpen(true);
+            setErrorModalConfirmationInput("");
           } else {
             // Other errors - show error modal (not AI check)
             console.log(
@@ -1013,181 +1008,6 @@ export default function PaintingUpload() {
         </View>
       </Modal>
 
-      {/* AI Check Failed Confirmation Modal */}
-      <Modal
-        visible={isAiCheckFailed}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          console.log("❌ [PAINTING UPLOAD] User dismissed AI check modal");
-          setIsAiCheckFailed(false);
-          setAiCheckConfirmationInput("");
-        }}
-        statusBarTranslucent
-      >
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: "rgba(0,0,0,0.5)",
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: C.card,
-              borderRadius: 16,
-              padding: 20,
-              marginHorizontal: 16,
-              maxWidth: "90%",
-            }}
-          >
-            {/* Header */}
-            <View style={{ alignItems: "center", marginBottom: 16 }}>
-              <Ionicons name="warning" size={48} color={BORDER_COLOR} />
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: "900",
-                  color: C.foreground,
-                  marginTop: 12,
-                  textAlign: "center",
-                }}
-              >
-                AI Phát Hiện Tranh Có Vấn Đề
-              </Text>
-            </View>
-
-            {/* Message */}
-            <Text
-              style={{
-                fontSize: 14,
-                color: C.mutedForeground,
-                marginBottom: 16,
-                textAlign: "center",
-                lineHeight: 20,
-              }}
-            >
-              {aiCheckErrorMessage
-                ? aiCheckErrorMessage
-                : "Hệ thống AI đã phát hiện tranh của bạn có thể không phù hợp với quy định. Vui lòng xác nhận nếu bạn muốn tiếp tục nộp."}
-            </Text>
-
-            {/* Input Label */}
-            <Text
-              style={{
-                fontSize: 12,
-                fontWeight: "700",
-                color: C.foreground,
-                marginBottom: 8,
-                textTransform: "uppercase",
-              }}
-            >
-              Xác nhận
-            </Text>
-
-            {/* Confirmation Input */}
-            <TextInput
-              placeholder="GỬI BÀI THI"
-              placeholderTextColor={scheme === "dark" ? "#94a3b8" : "#9aa5b1"}
-              style={{
-                borderWidth: 1.5,
-                borderColor:
-                  scheme === "light"
-                    ? "rgba(0,0,0,0.14)"
-                    : "rgba(255,255,255,0.16)",
-                backgroundColor:
-                  scheme === "light" ? "#fff" : "rgba(255,255,255,0.04)",
-                borderRadius: 10,
-                paddingVertical: 12,
-                paddingHorizontal: 14,
-                fontSize: 16,
-                color: C.foreground,
-                marginBottom: 16,
-              }}
-              value={aiCheckConfirmationInput}
-              onChangeText={setAiCheckConfirmationInput}
-              cursorColor={BORDER_COLOR}
-              selectionColor="rgba(220,90,84,0.25)"
-            />
-
-            {/* Buttons */}
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  paddingVertical: 12,
-                  borderRadius: 10,
-                  borderWidth: 1.5,
-                  borderColor: BORDER_COLOR,
-                  alignItems: "center",
-                }}
-                onPress={() => {
-                  console.log(
-                    "❌ [PAINTING UPLOAD] User cancelled AI check modal",
-                  );
-                  setIsAiCheckFailed(false);
-                  setAiCheckErrorMessage("");
-                  setAiCheckConfirmationInput("");
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: "700",
-                    color: BORDER_COLOR,
-                  }}
-                >
-                  Hủy
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  {
-                    flex: 1,
-                    paddingVertical: 12,
-                    borderRadius: 10,
-                    alignItems: "center",
-                    backgroundColor: BORDER_COLOR,
-                  },
-                  (aiCheckConfirmationInput !== "GỬI BÀI THI" || isPending) && {
-                    opacity: 0.5,
-                  },
-                ]}
-                disabled={
-                  aiCheckConfirmationInput !== "GỬI BÀI THI" || isPending
-                }
-                onPress={() => {
-                  console.log(
-                    "📝 [PAINTING UPLOAD] User confirmed AI check modal - retrying with ignoreAiCheck = true",
-                  );
-                  // Ensure both flags are set correctly before retry
-                  ignoreAiCheckRef.current = true;
-                  isFlaggedRef.current = true; // ← ENSURE flagged is true
-                  console.log("📍 [PAINTING UPLOAD] Refs SET before retry:", {
-                    ignoreAiCheckRef: ignoreAiCheckRef.current,
-                    isFlaggedRef: isFlaggedRef.current,
-                    timestamp: new Date().toISOString(),
-                  });
-                  handleSubmit(onSubmit)();
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: "700",
-                    color: "#fff",
-                  }}
-                >
-                  Gửi
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       {/* Error Modal (for non-AI-check errors) */}
       <Modal
         visible={isErrorModalOpen}
@@ -1319,7 +1139,6 @@ export default function PaintingUpload() {
                   setIsErrorModalOpen(false);
                   setErrorModalConfirmationInput("");
                   setIsErrorModalConfirmed(false);
-                  setIsAiCheckFailed(false);
                   removeImage();
                 }}
               >
