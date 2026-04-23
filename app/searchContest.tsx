@@ -248,8 +248,20 @@ function HorizontalContestItem({
       style={pressableItemStyle(C)}
     >
       {/* LEFT: cover */}
-      <Image source={{ uri: cover }} style={itemStyles.cover} />
-
+      <View
+        style={{
+          width: 72,
+          height: 72,
+          borderRadius: 10,
+          overflow: "hidden",
+          backgroundColor: "#eee",
+        }}
+      >
+        <Image
+          source={{ uri: cover }}
+          style={{ width: "100%", height: "100%" }}
+        />
+      </View>
       {/* CENTER: content */}
       <View style={itemStyles.content}>
         <Text numberOfLines={2} style={itemStyles.title(C)}>

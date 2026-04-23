@@ -212,7 +212,7 @@ export default function PaintingReviewRound1Screen() {
 
   /* API - Get paintings that passed round 1 */
   const {
-    data: paintings,
+    data: paintingData,
     isLoading,
     error,
   } = useGetPaintings({
@@ -220,6 +220,8 @@ export default function PaintingReviewRound1Screen() {
     roundName: "ROUND_1",
     is_passed: true,
   });
+
+  const paintings = paintingData?.paintings;
 
   const { mutate: reviewMutate, isPending: isReviewPending } =
     useReviewEvaluationRound1Drop();

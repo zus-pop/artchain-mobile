@@ -44,10 +44,10 @@ export default function UnifiedHeader({
   scheme: providedScheme,
 }: Props) {
   const insets = useSafeAreaInsets();
-  const scheme = (providedScheme ?? useColorScheme() ?? "light") as
-    | "light"
-    | "dark";
-  const colors = Colors[scheme];
+  const colorScheme = useColorScheme() ?? "light";
+  const scheme = colorScheme as "light" | "dark";
+  const finalScheme = (providedScheme || scheme) as "light" | "dark";
+  const colors = Colors[finalScheme];
 
   const handleBack = () => {
     if (onBack) {
@@ -63,7 +63,7 @@ export default function UnifiedHeader({
       return Platform.OS === "ios" ? 44 : 0;
     }
     return insets.top;
-  }, []); // ⭐ CRITICAL: Empty array = value locked forever
+  }, [insets.top]); // ⭐ Include insets.top in dependency
 
   const headerHeight = HEADER_HEIGHT + topInset;
   const bgColor = backgroundColor || colors.card;
@@ -71,7 +71,7 @@ export default function UnifiedHeader({
   return (
     <>
       <StatusBar
-        barStyle={scheme === "dark" ? "light-content" : "dark-content"}
+        barStyle={finalScheme === "dark" ? "light-content" : "dark-content"}
         backgroundColor={bgColor}
       />
       <View

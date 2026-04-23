@@ -358,7 +358,7 @@ export default function ExaminerContestsPanel({
   }, [vertical, C.primary, insets.top, isLoading, ongoingContests]);
 
   // ===== Creative Loading State =====
-  if (isLoading && (!ongoingContests || ongoingContests.length === 0)) {
+  if (isLoading && (!sortedContests || sortedContests.length === 0)) {
     const loadingContent = (
       <View
         style={{

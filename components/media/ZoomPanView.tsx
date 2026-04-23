@@ -65,7 +65,7 @@ export default function ZoomPanView({
     (s: number) => {
       if (onScaleChange) onScaleChange(s);
     },
-    [onScaleChange]
+    [onScaleChange],
   );
 
   const tap = Gesture.Tap()
@@ -138,7 +138,7 @@ export default function ZoomPanView({
   const composed = Gesture.Simultaneous(
     Gesture.Exclusive(doubleTap, tap),
     pinch,
-    pan
+    pan,
   );
 
   const rStyle = useAnimatedStyle(() => ({
@@ -150,10 +150,7 @@ export default function ZoomPanView({
   }));
 
   return (
-    <GestureDetector
-      gesture={composed}
-      simultaneousHandlers={simultaneousHandlers}
-    >
+    <GestureDetector gesture={composed}>
       <View style={styles.fill} onLayout={onLayout}>
         <Animated.View style={[styles.fill, rStyle]}>
           <Image source={source} style={styles.fill} contentFit={contentFit} />
