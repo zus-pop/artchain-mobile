@@ -168,6 +168,8 @@ export default function PaintingEvaluationRound2Screen() {
 
   const scheme = useColorScheme();
   const colors = Colors[scheme ?? "light"];
+  const glassBg =
+    scheme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)";
   const insets = useSafeAreaInsets();
 
   const topInset = useMemo(() => {

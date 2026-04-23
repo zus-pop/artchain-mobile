@@ -363,7 +363,7 @@ export default function PaintingUpload() {
   const [errorModalConfirmationInput, setErrorModalConfirmationInput] =
     useState("");
   const [isErrorModalConfirmed, setIsErrorModalConfirmed] = useState(false);
-
+ 
   // Use ref to track ignoreAiCheck flag synchronously (state update is async)
   const ignoreAiCheckRef = useRef(false);
   // Track if painting is flagged by AI (for subsequent uploads)
