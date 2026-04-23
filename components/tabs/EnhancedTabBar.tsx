@@ -129,7 +129,6 @@ const EnhancedTabButton = memo(
     renderIcon,
     activeColor,
     inactiveColor,
-    colors,
   }: EnhancedTabButtonProps) => {
     // Use useSharedValue without effects - update directly in animated style
     const progressValue = useSharedValue(focused ? 1 : 0);

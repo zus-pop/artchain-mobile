@@ -30,7 +30,7 @@ export default function AuroraBackdrop({
             easing: Easing.inOut(Easing.quad),
             useNativeDriver: true,
           }),
-        ])
+        ]),
       ).start();
     loop(t1, 10000, 0);
     loop(t2, 12000, 800);
@@ -44,7 +44,7 @@ export default function AuroraBackdrop({
     v: Animated.Value,
     dx: number,
     dy: number,
-    size = Math.max(W, H) * 0.9
+    size = Math.max(W, H) * 0.9,
   ) => ({
     width: size,
     height: size,
@@ -74,7 +74,7 @@ export default function AuroraBackdrop({
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <LinearGradient
-        colors={c1}
+        colors={c1 as any}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
