@@ -13,7 +13,6 @@ import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-  Dimensions,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -88,24 +87,19 @@ const competitorSchema = z
 
 type CompetitorForm = z.infer<typeof competitorSchema>;
 
-const { height: SCREEN_H } = Dimensions.get("window");
 const grades = [6, 7, 8, 9]; // Grades 6-9 only
 
 // Grade picker constants
-const GRADE_PICKER_HEADER_H = 60;
 const GRADE_CHIP_SIZE = 56;
 const GRADE_GAP = 12;
 const GRADE_NUM_COLS = 2;
 const GRADE_ROWS = Math.ceil(grades.length / GRADE_NUM_COLS);
-const GRADE_PICKER_H = GRADE_ROWS * (GRADE_CHIP_SIZE + GRADE_GAP) + 40;
 
 // Ward picker constants
-const MAX_RATIO = 0.75; // 75% of screen height for bottom sheet
 const WARD_SNAP_POINTS = ["70%", "90%"];
 const GRADE_SNAP_POINTS = ["40%"];
 
 // ===== Helper Functions for Birthday-Grade Validation =====
-const CURRENT_YEAR = new Date().getFullYear();
 
 // Grade-to-birth-year mapping (2026 năm hiện tại)
 const GRADE_BIRTH_YEARS = {
@@ -164,7 +158,9 @@ const isValidBirthdayForGrade = (
 export default function CompetitorSignupScreen() {
   const wardSheetRef = useRef<BottomSheet>(null);
   const gradeSheetRef = useRef<BottomSheet>(null);
-  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const navigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -191,13 +187,10 @@ export default function CompetitorSignupScreen() {
       setIsNavigating(false);
     }, 600);
 
-    router.replace(path);
+    router.replace(path as any);
   };
 
   const [q, setQ] = useState("");
-  // Track selected values for validation
-  const [selectedBirthday, setSelectedBirthday] = useState("");
-  const [selectedGrade, setSelectedGrade] = useState("");
   const [suggestedGrade, setSuggestedGrade] = useState<string | null>(null);
   const [minBirthdayDate, setMinBirthdayDate] = useState(new Date(2009, 0, 1));
   const [maxBirthdayDate, setMaxBirthdayDate] = useState(

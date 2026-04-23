@@ -142,10 +142,9 @@ export default function LoginField({
       render={({ field, fieldState }) => {
         const hasValue = !!field.value?.length;
 
-        // sync label state khi mount / value đổi
         useEffect(() => {
           animateTo(hasValue ? 1 : 0);
-        }, [hasValue]);
+        }, [hasValue, animateTo]);
 
         return (
           <View style={S.wrap}>

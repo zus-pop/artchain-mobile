@@ -52,7 +52,7 @@ export default function ContestList({
     <View style={{ flex: 1 }}>
       <FlatList
         data={contests}
-        keyExtractor={(item) => String(item.contestId ?? item.id)}
+        keyExtractor={(item) => String(item.contestId)}
         contentContainerStyle={{ paddingBottom: contentPaddingBottom }}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
