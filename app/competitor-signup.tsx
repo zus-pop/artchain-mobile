@@ -93,7 +93,6 @@ const grades = [6, 7, 8, 9]; // Grades 6-9 only
 const GRADE_CHIP_SIZE = 56;
 const GRADE_GAP = 12;
 const GRADE_NUM_COLS = 2;
-const GRADE_ROWS = Math.ceil(grades.length / GRADE_NUM_COLS);
 
 // Ward picker constants
 const WARD_SNAP_POINTS = ["70%", "90%"];
@@ -153,6 +152,28 @@ const isValidBirthdayForGrade = (
   } catch {
     return false;
   }
+};
+
+const formatDateToYMD = (date: Date): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
+const clampBirthdayToGradeRange = (
+  birthdayStr: string,
+  grade: string,
+): string => {
+  const parsed = new Date(birthdayStr);
+  if (Number.isNaN(parsed.getTime())) return birthdayStr;
+
+  const min = getMinBirthdayForGrade(grade);
+  const max = getMaxBirthdayForGrade(grade);
+
+  if (parsed < min) return formatDateToYMD(min);
+  if (parsed > max) return formatDateToYMD(max);
+  return formatDateToYMD(parsed);
 };
 
 export default function CompetitorSignupScreen() {
@@ -222,29 +243,53 @@ export default function CompetitorSignupScreen() {
     control,
     formState: { errors },
     watch,
+    setValue,
+    trigger,
   } = competitorForm;
 
   // Watch birthday field to suggest grade
   const watchBirthday = watch("birthday");
   const watchGrade = watch("grade");
 
-  // When birthday changes → suggest grade
-  useMemo(() => {
+  // When birthday changes → suggest grade + re-check cross-field rules
+  useEffect(() => {
     if (watchBirthday) {
-      setSelectedBirthday(watchBirthday);
       const suggested = getGradeFromBirthday(watchBirthday);
       setSuggestedGrade(suggested);
+    } else {
+      setSuggestedGrade(null);
     }
-  }, [watchBirthday]);
+
+    if (watchBirthday && watchGrade) {
+      void trigger("birthday");
+    }
+  }, [watchBirthday, watchGrade, trigger]);
 
   // When grade changes → update min/max dates for picker
-  useMemo(() => {
+  useEffect(() => {
     if (watchGrade) {
-      setSelectedGrade(watchGrade);
       setMinBirthdayDate(getMinBirthdayForGrade(watchGrade));
       setMaxBirthdayDate(getMaxBirthdayForGrade(watchGrade));
+
+      if (watchBirthday) {
+        const nextBirthday = clampBirthdayToGradeRange(
+          watchBirthday,
+          watchGrade,
+        );
+        if (nextBirthday !== watchBirthday) {
+          setValue("birthday", nextBirthday, {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+        }
+
+        void trigger("birthday");
+      }
+    } else {
+      setMinBirthdayDate(new Date(2009, 0, 1));
+      setMaxBirthdayDate(new Date(2013, 11, 31));
     }
-  }, [watchGrade]);
+  }, [watchGrade, watchBirthday, setValue, trigger]);
 
   const handleSignup = (data: CompetitorForm) => {
     mutate({

@@ -76,7 +76,7 @@ function getRoundLabel(round2Table: any | null): string {
   return round2Table ? "Vòng 2" : "Vòng 1";
 }
 
-function getRoundIcon(round2Table: any | null): string {
+function getRoundIcon(round2Table: any | null): any {
   return round2Table ? "trophy-outline" : "medal-outline";
 }
 

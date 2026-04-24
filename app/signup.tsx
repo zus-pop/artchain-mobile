@@ -1,6 +1,7 @@
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
+import type { Href } from "expo-router";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -21,7 +22,9 @@ export default function SignupScreen() {
 
   // Prevent double tap
   const [isNavigating, setIsNavigating] = useState(false);
-  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const navigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -32,7 +35,7 @@ export default function SignupScreen() {
     };
   }, []);
 
-  const handleNavigation = (path: string) => {
+  const handleNavigation = (path: Href) => {
     if (isNavigating) return; // Ignore if already navigating
 
     setIsNavigating(true);
