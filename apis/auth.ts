@@ -64,7 +64,8 @@ export function useSignInMutation() {
       setPendingEmail(variables.email);
       toast.success(`Đăng ký thành công!`);
       // Navigate to verify email screen
-      router.replace("/verify-email");
+      //   router.replace("/verify-email");
+      router.replace("/login");
     },
     onError: (error) => {
       toast.error(error.message);

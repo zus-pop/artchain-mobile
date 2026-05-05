@@ -9,7 +9,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -99,20 +98,22 @@ const Setting = () => {
     >
       <UnifiedHeader title="Cài đặt" showBack={true} scheme={scheme} />
 
-      {/* Content */}
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={{
-          padding: 16,
-          paddingBottom: 28,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ===== Appearance ===== */}
-        <View style={sectionCardStyle}>
-          <SectionTitle title="Giao diện" />
+      <View style={styles.screenBody}>
+        {/* Content */}
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={{
+            padding: 16,
+            paddingBottom: 28,
+            flexGrow: 1,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ===== Appearance ===== */}
+          {/* <View style={sectionCardStyle}> */}
+          {/* <SectionTitle title="Giao diện" /> */}
 
-          <SettingRow
+          {/* <SettingRow
             icon="moon"
             title="Chế độ tối"
             subtitle="Giảm chói, dễ đọc vào ban đêm"
@@ -129,9 +130,9 @@ const Setting = () => {
             }
             scheme={scheme}
             accent={ORANGE}
-          />
+          /> */}
 
-          <Divider color={C.border} />
+          {/* <Divider color={C.border} />
 
           <View style={styles.rowHorizontal}>
             <SettingIcon name="language" scheme={scheme} accent={ORANGE} />
@@ -143,9 +144,9 @@ const Setting = () => {
                 Chọn ngôn ngữ hiển thị
               </Text>
             </View>
-          </View>
+          </View> */}
 
-          <View style={styles.langChips}>
+          {/* <View style={styles.langChips}>
             {languages.map((lang) => {
               const active = lang.value === language;
               return (
@@ -179,11 +180,11 @@ const Setting = () => {
                 </Pressable>
               );
             })}
-          </View>
-        </View>
+          </View> */}
+          {/* </View> */}
 
-        {/* ===== Notifications ===== */}
-        <View style={sectionCardStyle}>
+          {/* ===== Notifications ===== */}
+          {/* <View style={sectionCardStyle}>
           <SectionTitle title="Thông báo" />
 
           <SettingRow
@@ -213,10 +214,10 @@ const Setting = () => {
             accent={ORANGE}
             onPress={() => {}}
           />
-        </View>
+        </View> */}
 
-        {/* ===== Account ===== */}
-        <View style={sectionCardStyle}>
+          {/* ===== Account ===== */}
+          {/* <View style={sectionCardStyle}>
           <SectionTitle title="Tài khoản" />
 
           <SettingRow
@@ -240,10 +241,10 @@ const Setting = () => {
             accent={ORANGE}
             // onPress={() => router.push("/privacy")}
           />
-        </View>
+        </View> */}
 
-        {/* ===== Disable Account (Danger Zone) ===== */}
-        <View
+          {/* ===== Disable Account (Danger Zone) ===== */}
+          {/* <View
           style={[
             styles.sectionCard,
             {
@@ -278,27 +279,30 @@ const Setting = () => {
               </Text>
             </View>
           </Pressable>
-        </View>
+        </View> */}
+
+          {Platform.OS === "ios" && <View style={{ height: 12 }} />}
+        </ScrollView>
 
         {/* ===== Sign out (cam, ít rực) ===== */}
-        <LinearGradient
-          colors={[ORANGE + "E6", ORANGE]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.signoutWrap, { borderRadius: 10 }]}
-        >
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={handleSignOut}
-            style={styles.signoutBtn}
+        <View style={styles.signoutContainer}>
+          <LinearGradient
+            colors={[ORANGE + "E6", ORANGE]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.signoutWrap, { borderRadius: 10 }]}
           >
-            <Ionicons name="log-out-outline" size={18} color="#fff" />
-            <Text style={styles.signoutTxt}>Đăng xuất</Text>
-          </TouchableOpacity>
-        </LinearGradient>
-
-        {Platform.OS === "ios" && <View style={{ height: 12 }} />}
-      </ScrollView>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={handleSignOut}
+              style={styles.signoutBtn}
+            >
+              <Ionicons name="log-out-outline" size={18} color="#fff" />
+              <Text style={styles.signoutTxt}>Đăng xuất</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+      </View>
     </SafeAreaView>
   );
 };
@@ -409,6 +413,10 @@ const SettingRow = memo(function SettingRow({
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
+  screenBody: {
+    flex: 1,
+  },
+
   /* Content */
   content: { flex: 1 },
 
@@ -476,8 +484,11 @@ const styles = StyleSheet.create({
 
   signoutWrap: {
     borderRadius: 10,
-    marginTop: 6,
     overflow: "hidden",
+  },
+  signoutContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   signoutBtn: {
     paddingVertical: 14,

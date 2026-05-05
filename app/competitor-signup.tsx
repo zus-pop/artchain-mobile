@@ -7,7 +7,11 @@ import PressSelect from "@/components/form/PressSelect";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
-import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
+import BottomSheet, {
+  BottomSheetFlatList,
+  BottomSheetTextInput,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -18,7 +22,6 @@ import {
   Platform,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -224,8 +227,12 @@ export default function CompetitorSignupScreen() {
     if (!key) return wards || [];
     return (wards || []).filter(
       (w: any) =>
-        (w.name || "").toLowerCase().includes(key) ||
-        (w.code || "").toLowerCase().includes(key),
+        String(w?.name ?? "")
+          .toLowerCase()
+          .includes(key) ||
+        String(w?.code ?? "")
+          .toLowerCase()
+          .includes(key),
     );
   }, [q, wards]);
 
@@ -310,6 +317,7 @@ export default function CompetitorSignupScreen() {
       style={{ flex: 1, backgroundColor: C.background }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
+      enabled={Platform.OS === "ios"}
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
@@ -427,6 +435,22 @@ export default function CompetitorSignupScreen() {
             )}
           />
 
+          <Controller
+            control={control}
+            name="birthday"
+            render={({ field }) => (
+              <PressDateField
+                label="Ngày sinh"
+                value={field.value}
+                onChange={field.onChange}
+                minDate={minBirthdayDate}
+                maxDate={maxBirthdayDate}
+                leftIcon="calendar-outline"
+                errorText={errors.birthday?.message}
+              />
+            )}
+          />
+
           <View style={{ flexDirection: "row", gap: 8, width: "100%" }}>
             <Controller
               control={control}
@@ -473,24 +497,6 @@ export default function CompetitorSignupScreen() {
             />
           </View>
 
-          {/* 7. Ngày sinh */}
-          <Controller
-            control={control}
-            name="birthday"
-            render={({ field }) => (
-              <PressDateField
-                label="Ngày sinh"
-                value={field.value}
-                onChange={field.onChange}
-                minDate={minBirthdayDate}
-                maxDate={maxBirthdayDate}
-                leftIcon="calendar-outline"
-                errorText={errors.birthday?.message}
-              />
-            )}
-          />
-
-          {/* 8. Mật khẩu */}
           <Controller
             control={control}
             name="password"
@@ -578,147 +584,150 @@ export default function CompetitorSignupScreen() {
         snapPoints={WARD_SNAP_POINTS}
         index={-1}
         enablePanDownToClose
+        keyboardBehavior={Platform.OS === "ios" ? "interactive" : "extend"}
+        keyboardBlurBehavior="restore"
         backgroundStyle={{ backgroundColor: C.background }}
         handleIndicatorStyle={{ backgroundColor: C.border }}
       >
-        <BottomSheetView style={{ flex: 1, paddingHorizontal: 12 }}>
-          {/* header + title */}
-          <View
-            style={{
-              alignItems: "center",
-              paddingVertical: 8,
-              borderBottomWidth: 1,
-              borderBottomColor: C.border,
-            }}
+        {wardsLoading ? (
+          <BottomSheetView
+            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
           >
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "700",
-                color: C.foreground,
-              }}
-            >
-              Chọn khu vực
+            <Text style={{ color: C.mutedForeground }}>
+              Đang tải danh sách khu vực...
             </Text>
-          </View>
-          {/* body */}
-          {wardsLoading ? (
-            <View
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: C.mutedForeground }}>
-                Đang tải danh sách khu vực...
-              </Text>
-            </View>
-          ) : (
-            <View style={{ padding: 12, paddingTop: 12, flex: 1 }}>
-              {/* search box */}
-              <View
+          </BottomSheetView>
+        ) : (
+          <BottomSheetFlatList
+            data={filteredWards}
+            keyExtractor={(item: any) => item.code}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{
+              paddingHorizontal: 12,
+              paddingTop: 12,
+              paddingBottom: 24,
+              flexGrow: 1,
+            }}
+            ListHeaderComponent={
+              <>
+                <View
+                  style={{
+                    alignItems: "center",
+                    paddingVertical: 8,
+                    borderBottomWidth: 1,
+                    borderBottomColor: C.border,
+                    marginBottom: 12,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "700",
+                      color: C.foreground,
+                    }}
+                  >
+                    Chọn khu vực
+                  </Text>
+                </View>
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    backgroundColor: C.card,
+                    borderRadius: 10,
+                    paddingHorizontal: 10,
+                    height: 42,
+                    marginBottom: 10,
+                  }}
+                >
+                  <Ionicons
+                    name="search-outline"
+                    size={18}
+                    color={C.mutedForeground}
+                  />
+                  <Text
+                    style={{ color: C.mutedForeground, marginHorizontal: 6 }}
+                  >
+                    |
+                  </Text>
+                  <BottomSheetTextInput
+                    placeholder="Tìm theo tên hoặc mã..."
+                    placeholderTextColor={C.mutedForeground}
+                    value={q}
+                    onChangeText={setQ}
+                    style={{
+                      flex: 1,
+                      color: C.foreground,
+                      fontSize: 14,
+                      paddingVertical: 0,
+                    }}
+                    autoCapitalize="none"
+                  />
+                  {q ? (
+                    <TouchableOpacity
+                      onPress={() => setQ("")}
+                      style={{ padding: 6 }}
+                    >
+                      <Ionicons
+                        name="close-circle"
+                        size={18}
+                        color={C.mutedForeground}
+                      />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              </>
+            }
+            renderItem={({ item }: { item: any }) => (
+              <TouchableOpacity
+                onPress={() => {
+                  competitorForm.setValue("ward", item.name, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  });
+                  wardSheetRef.current?.close();
+                  setQ("");
+                }}
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  borderRadius: 10,
+                  backgroundColor: C.card,
                   borderWidth: 1,
                   borderColor: C.border,
-                  backgroundColor: C.card,
-                  borderRadius: 10,
-                  paddingHorizontal: 10,
-                  height: 42,
-                  marginBottom: 10,
+                  marginBottom: 8,
                 }}
               >
-                <Ionicons
-                  name="search-outline"
-                  size={18}
-                  color={C.mutedForeground}
-                />
-                <Text style={{ color: C.mutedForeground, marginHorizontal: 6 }}>
-                  |
+                <Text
+                  style={{ fontSize: 15, color: C.foreground }}
+                  numberOfLines={1}
+                >
+                  {item.name}
                 </Text>
-                <TextInput
-                  placeholder="Tìm theo tên hoặc mã..."
-                  placeholderTextColor={C.mutedForeground}
-                  value={q}
-                  onChangeText={setQ}
+                <Text
                   style={{
-                    flex: 1,
-                    color: C.foreground,
-                    fontSize: 14,
-                    paddingVertical: 0,
+                    fontSize: 12,
+                    color: C.mutedForeground,
+                    marginTop: 2,
                   }}
-                  autoCapitalize="none"
-                />
-                {q ? (
-                  <TouchableOpacity
-                    onPress={() => setQ("")}
-                    style={{ padding: 6 }}
-                  >
-                    <Ionicons
-                      name="close-circle"
-                      size={18}
-                      color={C.mutedForeground}
-                    />
-                  </TouchableOpacity>
-                ) : null}
+                  numberOfLines={1}
+                >
+                  {item.code}
+                </Text>
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={
+              <View style={{ paddingVertical: 24, alignItems: "center" }}>
+                <Text style={{ color: C.mutedForeground }}>
+                  Không có dữ liệu khu vực
+                </Text>
               </View>
-
-              {/* list (cuộn trong sheet) */}
-              <FlatList
-                data={filteredWards}
-                keyExtractor={(item: any) => item.code}
-                keyboardShouldPersistTaps="handled"
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    onPress={() => {
-                      competitorForm.setValue("ward", item.name, {
-                        shouldValidate: true,
-                        shouldDirty: true,
-                      });
-                      wardSheetRef.current?.close();
-                      setQ("");
-                    }}
-                    style={{
-                      paddingVertical: 12,
-                      paddingHorizontal: 14,
-                      borderRadius: 10,
-                      backgroundColor: C.card,
-                      borderWidth: 1,
-                      borderColor: C.border,
-                      marginBottom: 8,
-                    }}
-                  >
-                    <Text
-                      style={{ fontSize: 15, color: C.foreground }}
-                      numberOfLines={1}
-                    >
-                      {item.name}
-                    </Text>
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        color: C.mutedForeground,
-                        marginTop: 2,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {item.code}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                ListEmptyComponent={
-                  <View style={{ paddingVertical: 24, alignItems: "center" }}>
-                    <Text style={{ color: C.mutedForeground }}>
-                      Không có dữ liệu khu vực
-                    </Text>
-                  </View>
-                }
-              />
-            </View>
-          )}
-        </BottomSheetView>
+            }
+          />
+        )}
       </BottomSheet>
       {/* Grade Picker Bottom Sheet */}
       <BottomSheet
